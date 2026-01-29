@@ -7,6 +7,7 @@ import { AmazingInsightCard } from "@/components/AIChat/AmazingInsightCard";
 import { ChatHeader } from "@/components/AIChat/ChatHeader";
 import { ChatInput } from "@/components/AIChat/ChatInput";
 import { ChatMessages } from "@/components/AIChat/ChatMessages";
+import { MobileGeekModeToggle } from "@/components/AIChat/MobileGeekModeToggle";
 import { ParrotHub } from "@/components/AIChat/ParrotHub";
 import { PartnerGreeting } from "@/components/AIChat/PartnerGreeting";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -129,6 +130,14 @@ function UnifiedChatView({
         disabled={isTyping}
         isTyping={isTyping}
       />
+
+      {/* Mobile Geek Mode Toggle - Floating Action Button */}
+      {!md && (
+        <MobileGeekModeToggle
+          enabled={geekMode}
+          onToggle={onGeekModeToggle}
+        />
+      )}
 
       {/* Clear Chat Confirmation Dialog */}
       <ConfirmDialog

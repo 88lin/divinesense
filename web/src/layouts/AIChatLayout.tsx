@@ -2,6 +2,7 @@ import { MenuIcon } from "lucide-react";
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { AIChatSidebar } from "@/components/AIChat/AIChatSidebar";
+import { GeekModeThemeProvider } from "@/components/AIChat/GeekModeThemeProvider";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,7 +10,6 @@ import RouteHeaderImage from "@/components/RouteHeaderImage";
 import { AIChatProvider } from "@/contexts/AIChatContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
-import { useTranslate } from "@/utils/i18n";
 
 
 
@@ -24,7 +24,6 @@ import { useTranslate } from "@/utils/i18n";
 const AIChatLayoutContent = () => {
   const lg = useMediaQuery("lg");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const t = useTranslate();
 
   return (
     <section className="@container w-full h-screen flex flex-col lg:h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
@@ -75,6 +74,7 @@ const AIChatLayoutContent = () => {
 const AIChatLayout = () => {
   return (
     <AIChatProvider>
+      <GeekModeThemeProvider />
       <AIChatLayoutContent />
     </AIChatProvider>
   );
