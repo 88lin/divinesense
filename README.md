@@ -1,198 +1,234 @@
 # DivineSense (神识)
 
-**AI-Powered Personal Second Brain** — Automate tasks, filter information, amplify productivity through intelligent agents.
+<div align="center">
+
+**AI 驱动的个人第二大脑** — 通过智能代理自动化任务、过滤高价值信息、以技术杠杆提升生产力
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
 
----
+[快速开始](#快速开始) • [功能特性](#功能特性) • [部署指南](#部署指南) • [开发文档](#开发文档)
 
-## Why DivineSense?
-
-| **Efficiency** | **Knowledge** | **AI Agents** | **Privacy** |
-|:-------------:|:-------------:|:-------------:|:-----------:|
-| Automate tasks | Smart storage | Intent routing | Self-hosted |
-| Save time | Semantic search | Multi-agent | Data privacy |
+</div>
 
 ---
 
-## Quick Start
+## 为什么选择 DivineSense？
 
-### Docker (All-in-One)
+| 🎯 **效率** | 🧠 **知识** | 🤖 **AI 代理** | 🔒 **隐私** |
+|:----------:|:----------:|:------------:|:----------:|
+| 自动化任务 | 智能存储 | 意图路由 | 自托管 |
+| 节省时间 | 语义搜索 | 多代理协作 | 数据隐私 |
+
+---
+
+## 功能特性
+
+### 📝 笔记管理
+
+- **Markdown 编辑器**：完整支持 KaTeX 数学公式、Mermaid 图表、GFM
+- **智能标签系统**：AI 自动推荐相关标签
+- **语义搜索**：BM25 + 向量混合检索，精准定位内容
+- **笔记关联**：自动检测重复内容，建立知识网络
+- **附件管理**：支持图片、文档等多类型附件
+- **版本历史**：笔记修改全程可追溯
+
+### 📅 日程管理
+
+- **自然语言创建**：「明天下午3点开会」一句话搞定
+- **智能冲突检测**：自动发现时间冲突并建议调整
+- **多视图日历**：月/周/日/列表视图随心切换
+- **周期事件**：支持每日/每周/每月/自定义重复
+- **时区支持**：跨时区日程自动转换
+
+### 🦜 AI 智能代理
+
+三位各具专长的「鹦鹉」代理，协同处理你的任务：
+
+| 代理 | 名称 | 擅长 | 示例 |
+|:----:|:-----|:-----|:-----|
+| 🦜 | **灰灰** | 知识检索 | "我写过关于 React 的什么内容？" |
+| 🦜 | **金刚** | 日程管理 | "帮我安排明天下午3点的会议" |
+| 🦜 | **惊奇** | 综合助理 | "总结我这周的工作和待办" |
+
+**智能路由**：
+- 规则匹配（0ms）—— 常见模式瞬间响应
+- 历史感知（~10ms）—— 结合对话上下文
+- LLM 降级（~400ms）—— 复杂语义理解
+
+**会话记忆**：
+- 跨会话上下文持续
+- 30天自动保留
+- 每个代理独立记忆空间
+
+### 🧠 AI 增强功能
+
+- **间隔重复复习**：基于记忆曲线的智能复习系统
+- **知识图谱**：可视化笔记与日程的关联网络
+- **每日回顾**：AI 生成的每日总结与洞察
+- **向量检索**：pgvector 驱动的语义搜索
+- **结果重排**：BGE-reranker 优化搜索精度
+
+---
+
+## 快速开始
+
+### Docker 一键启动（基础笔记功能）
 
 ```bash
-docker run -d --name divinesense -p 5230:5230 -v ~/.divinesense:/var/opt/divinesense hrygo/divinesense:stable
+docker run -d --name divinesense \
+  -p 5230:5230 \
+  -v ~/.divinesense:/var/opt/divinesense \
+  hrygo/divinesense:stable
 ```
 
-Access at http://localhost:5230
+访问 http://localhost:5230
 
-### Full AI Features (PostgreSQL Required)
+### 完整 AI 功能（需要 PostgreSQL）
 
 ```bash
-# 1. Clone repository
+# 1. 克隆仓库
 git clone https://github.com/hrygo/divinesense.git && cd divinesense
 
-# 2. Configure environment
+# 2. 配置环境变量
 cp .env.example .env
-# Edit .env and add your API keys
+# 编辑 .env，添加你的 API Keys
 
-# 3. Install dependencies
+# 3. 安装依赖
 make deps-all
 
-# 4. Start all services (PostgreSQL + Backend + Frontend)
+# 4. 启动所有服务（PostgreSQL + 后端 + 前端）
 make start
 ```
 
-Access at http://localhost:25173
+访问 http://localhost:25173
 
 <details>
-<summary><b>Service Management</b></summary>
+<summary><b>服务管理命令</b></summary>
 
 ```bash
-make status   # Check service status
-make logs     # View logs
-make stop     # Stop services
-make restart  # Restart services
+make status   # 查看服务状态
+make logs     # 查看日志
+make stop     # 停止服务
+make restart  # 重启服务
 ```
 
 </details>
 
 ---
 
-## Features
+## 部署指南
 
-### Note Taking
-- Quick capture with Markdown support (KaTeX, Mermaid, GFM)
-- Tag-based organization (`#tag`)
-- Timeline view with filters
-- File attachments (images, documents)
-- Semantic search with hybrid BM25 + vector retrieval
-- Memo relations and linking
-
-### Schedule Management
-- Calendar views (month/week/day/agenda)
-- Natural language event creation
-- Automatic conflict detection
-- Drag-and-drop rescheduling
-- Recurring events (daily/weekly/monthly/custom)
-- Time zone support
-
-### AI Agents
-
-Three specialized "Parrot" agents with distinct personalities:
-
-| Agent | Name | Purpose | Example |
-|:-----:|:-----|:--------|:--------|
-| **🦜** | **HuiHui** (灰灰) | Knowledge Retrieval | "What did I write about React?" |
-| **🦜** | **JinGang** (金刚) | Schedule Management | "Schedule tomorrow's 3pm meeting" |
-| **🦜** | **Amazing** (惊奇) | Comprehensive Assistant | "Summarize my week and upcoming tasks" |
-
-**Smart Routing**:
-- Rule-based matching (0ms) for common patterns
-- History-aware routing (~10ms) for context
-- LLM fallback (~400ms) for ambiguous inputs
-- No manual agent selection needed
-
-**Session Memory**:
-- Conversation context persists across sessions
-- 30-day retention with auto-cleanup
-- Per-agent memory isolation
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|:-----|:----------|
-| **Backend** | Go 1.25+, Echo Framework, Connect RPC |
-| **Frontend** | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI |
-| **Database** | PostgreSQL 16+ (pgvector extension) |
-| **AI Models** | DeepSeek V3, Qwen2.5-7B, bge-m3, bge-reranker-v2-m3 |
-
-### Hybrid RAG Retrieval
-
-```
-Query → QueryRouter → BM25 + pgvector (HNSW) → Reranker → RRF Fusion
-```
-
-| Component | Technology | Purpose |
-|:----------|:-----------|:--------|
-| **Vector Search** | pgvector + HNSW index | Semantic similarity |
-| **Full-Text** | PostgreSQL FTS + BM25 | Keyword matching |
-| **Reranker** | BAAI/bge-reranker-v2-m3 | Result refinement |
-| **Embedding** | BAAI/bge-m3 (1024d) | Text vectorization |
-| **LLM** | DeepSeek V3 / Qwen2.5 | Response generation |
-
-### Agent Architecture
-
-```
-ChatRouter (Intent Classification)
-    ├── Rule-based (0ms) - keywords, patterns
-    ├── History-aware (~10ms) - conversation context
-    └── LLM fallback (~400ms) - semantic understanding
-
-Routes to:
-    ├── MemoParrot (灰灰) - memo_search tool
-    ├── ScheduleParrotV2 (金刚) - schedule_add/query/update/find_free_time
-    └── AmazingParrot (惊奇) - concurrent multi-tool orchestration
-```
-
----
-
-## Deployment
-
-### Docker Deployment (Recommended)
+### Docker 部署（推荐）
 
 ```bash
-docker run -d --name divinesense -p 5230:5230 -v ~/.divinesense:/var/opt/divinesense hrygo/divinesense:stable
+docker run -d --name divinesense \
+  -p 5230:5230 \
+  -v ~/.divinesense:/var/opt/divinesense \
+  hrygo/divinesense:stable
 ```
 
-### Binary Deployment (Geek Mode)
+### 二进制部署（Geek Mode 专用）
 
-Binary deployment offers better performance and native Geek Mode support.
+二进制部署提供更高性能和原生 Geek Mode 支持。
 
 ```bash
-# One-click installation (default: Docker mode)
+# 一键安装（默认 Docker 模式）
 curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash
 
-# Binary mode (for Geek Mode)
+# 二进制模式（支持 Geek Mode）
 curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash -s -- --mode=binary
 ```
 
-**Advantages:**
-- ✅ Native Geek Mode (Claude Code CLI integration)
-- ✅ Faster startup, lower overhead
-- ✅ Easier updates
+**优势**：
+- ✅ 原生 Geek Mode（Claude Code CLI 集成）
+- ✅ 更快的启动速度，更低的资源开销
+- ✅ 更便捷的升级流程
 
-**Documentation:** [Binary Deployment Guide](docs/deployment/BINARY_DEPLOYMENT.md)
+**详细文档**：[二进制部署指南](docs/deployment/BINARY_DEPLOYMENT.md)
 
 ---
 
-## Development
+## 技术架构
 
-```bash
-make start     # Start all services
-make stop      # Stop all services
-make status    # Check service status
-make logs      # View logs
-make test      # Run tests
-make check-all # Run all checks (build, test, i18n)
+### 技术栈
+
+| 层级 | 技术选型 |
+|:-----|:--------|
+| **后端** | Go 1.25+, Echo 框架, Connect RPC |
+| **前端** | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI |
+| **数据库** | PostgreSQL 16+ (pgvector 扩展) |
+| **AI 模型** | DeepSeek V3, Qwen2.5-7B, bge-m3, bge-reranker-v2-m3 |
+
+### 混合 RAG 检索
+
+```
+查询 → 查询路由器 → BM25 + pgvector (HNSW) → 重排器 → RRF 融合
 ```
 
-**Documentation**:
-- [Backend & Database](docs/dev-guides/BACKEND_DB.md) - API, DB schema, environment setup
-- [Frontend Architecture](docs/dev-guides/FRONTEND.md) - Layouts, Tailwind pitfalls, components
-- [System Architecture](docs/dev-guides/ARCHITECTURE.md) - Project structure, AI agents, data flow
+| 组件 | 技术 | 用途 |
+|:-----|:-----|:-----|
+| **向量搜索** | pgvector + HNSW 索引 | 语义相似度 |
+| **全文搜索** | PostgreSQL FTS + BM25 | 关键词匹配 |
+| **结果重排** | BAAI/bge-reranker-v2-m3 | 结果精炼 |
+| **文本向量化** | BAAI/bge-m3 (1024维) | 文本向量化 |
+| **大语言模型** | DeepSeek V3 / Qwen2.5 | 响应生成 |
+
+### AI 代理架构
+
+```
+ChatRouter (意图分类)
+    ├── 规则引擎 (0ms) - 关键词、模式匹配
+    ├── 历史感知 (~10ms) - 对话上下文
+    └── LLM 降级 (~400ms) - 语义理解
+
+路由到：
+    ├── MemoParrot (灰灰) - memo_search 工具
+    ├── ScheduleParrotV2 (金刚) - schedule_add/query/update/find_free_time
+    └── AmazingParrot (惊奇) - 并发多工具编排
+```
 
 ---
 
-## License
+## 开发指南
 
-[MIT](LICENSE) — Free to use, modify, and distribute.
+```bash
+make start     # 启动所有服务
+make stop      # 停止服务
+make status    # 查看服务状态
+make logs      # 查看日志
+make test      # 运行测试
+make check-all # 运行所有检查（构建、测试、i18n）
+```
+
+**开发文档**：
+- [后端与数据库](docs/dev-guides/BACKEND_DB.md) - API、数据库结构、环境配置
+- [前端架构](docs/dev-guides/FRONTEND.md) - 布局、Tailwind 注意事项、组件
+- [系统架构](docs/dev-guides/ARCHITECTURE.md) - 项目结构、AI 代理、数据流
 
 ---
 
-## Acknowledgments
+## 数据库架构
 
-This project draws inspiration from the excellent [memos](https://github.com/usememos/memos) project by the usememos community. Their work on privacy-focused note-taking laid the foundation for many of the core features in DivineSense.
+| 表名 | 用途 |
+|:-----|:-----|
+| `memo` | 笔记主体内容 |
+| `memo_embedding` | 笔记向量嵌入（语义搜索） |
+| `schedule` | 日程主体 |
+| `ai_conversation` | AI 对话历史 |
+| `episodic_memory` | 长期用户记忆和偏好 |
+| `user_preference` | 用户沟通设置 |
+| `agent_metrics` | 代理性能追踪（A/B 测试） |
+
+---
+
+## 开源协议
+
+[MIT](LICENSE) — 自由使用、修改和分发
+
+---
+
+## 致谢
+
+本项目受到优秀的 [memos](https://github.com/usememos/memos) 项目启发。usememos 社区在隐私优先的笔记管理方面的工作，为 DivineSense 的许多核心功能奠定了基础。

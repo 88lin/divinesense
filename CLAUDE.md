@@ -1,193 +1,219 @@
 # CLAUDE.md
 
-> Primary context for AI assistance. See Documentation Index below for detailed guides.
+> Claude Code 辅助开发的主要上下文文档。详细指南请参见下方的文档索引。
 
-## Product Vision
+## 产品愿景
 
-**DivineSense (神识)**: AI agent-powered personal "second brain" — automates tasks, filters high-value information, amplifies productivity through technical leverage.
-
----
-
-## Essentials
-
-**Quick Start**: `make start` → localhost:25173 (Frontend) / 28081 (Backend)
-
-| Command | Action |
-|:--------|:-------|
-| `make start` | Full stack up (PostgreSQL + Backend + Frontend) |
-| `make stop` | Stop all services |
-| `make test` | Run backend tests |
-| `make build-all` | Build binary + static assets |
-| `make check-all` | Run all pre-commit checks (build, test, i18n) |
-
-**Tech Stack**: Go 1.25 + React 18 (Vite/Tailwind 4) + PostgreSQL (prod) / SQLite (dev)
+**DivineSense (神识)**：AI 代理驱动的个人「第二大脑」—— 通过智能代理自动化任务、过滤高价值信息、以技术杠杆提升生产力。
 
 ---
 
-## Critical Rules
+## 快速开始
 
-### 1. Internationalization (i18n)
-- **ALL UI text must use `t("key")`** — no hardcoded strings
-- Translation keys must exist in **both** `en.json` and `zh-Hans.json`
-- Verify: `make check-i18n`
+**默认端口**：`make start` → localhost:25173 (前端) / 28081 (后端) / 25432 (PostgreSQL)
 
-### 2. Database Strategy
-- **PostgreSQL**: Production environment. Full AI support (pgvector).
-- **SQLite**: Development only. **No AI features available**.
-- Always use PostgreSQL when testing AI-related features.
+| 命令 | 作用 |
+|:-----|:-----|
+| `make start` | 启动全栈 (PostgreSQL + 后端 + 前端) |
+| `make stop` | 停止所有服务 |
+| `make test` | 运行后端测试 |
+| `make build-all` | 构建二进制 + 静态资源 |
+| `make check-all` | 运行所有预提交检查 (构建、测试、i18n) |
 
-### 3. Code Style
+**技术栈**：Go 1.25 + React 18 (Vite/Tailwind 4) + PostgreSQL (生产) / SQLite (开发)
 
-**Go:**
-- `snake_case.go` file naming
-- Use `log/slog` for structured logging
-- Follow standard Go project layout
+---
 
-**React/TypeScript:**
-- PascalCase for components: `UserProfile.tsx`
-- `use` prefix for hooks: `useUserData()`
-- Use Tailwind CSS classes for styling (see below)
+## 核心规则
 
-**AI Routing:**
-- Backend `ChatRouter` handles intent classification
-- Location: `plugin/ai/agent/chat_router.go`
-- Rule-based matching (0ms) → LLM fallback (~400ms)
-- Routes to: MEMO / SCHEDULE / AMAZING agents
+### 1. 国际化 (i18n)
+- **所有 UI 文本必须使用 `t("key")`** —— 禁止硬编码字符串
+- 翻译 key 必须同时存在于 `en.json` 和 `zh-Hans.json`
+- 验证命令：`make check-i18n`
 
-### 4. Tailwind CSS 4 — CRITICAL
+### 2. 数据库策略
+- **PostgreSQL**：生产环境，完整 AI 支持 (pgvector)
+- **SQLite**：开发环境，**不支持 AI 功能**
+- 测试 AI 相关功能时务必使用 PostgreSQL
 
-> **NEVER use semantic `max-w-sm/md/lg/xl`** — they resolve to ~16px in Tailwind v4.
+### 3. 代码风格
+
+**Go**：
+- 文件命名：`snake_case.go`
+- 日志：使用 `log/slog` 结构化日志
+- 遵循标准 Go 项目布局
+
+**React/TypeScript**：
+- 组件：PascalCase 命名 (`UserProfile.tsx`)
+- Hooks：`use` 前缀 (`useUserData()`)
+- 样式：使用 Tailwind CSS 类名 (参见下方)
+
+**AI 路由**：
+- 后端 `ChatRouter` 处理意图分类
+- 位置：`plugin/ai/agent/chat_router.go`
+- 规则匹配 (0ms) → LLM 降级 (~400ms)
+- 路由到：MEMO / SCHEDULE / AMAZING 代理
+
+### 4. Tailwind CSS 4 — 关键
+
+> **切勿使用语义化 `max-w-sm/md/lg/xl`** —— 在 Tailwind v4 中它们解析为约 16px。
 >
-> **Use explicit values**: `max-w-[24rem]`, `max-w-[28rem]`, etc.
+> **请使用显式值**：`max-w-[24rem]`, `max-w-[28rem]` 等
 
-See `docs/dev-guides/FRONTEND.md` for detailed Tailwind v4 gotchas.
+详见 `docs/dev-guides/FRONTEND.md` 中的 Tailwind v4 陷阱说明。
 
-### 5. Git Conventions
+### 5. Git 约定
 
-Follow conventional commits:
+遵循约定式提交：
 
-| Type | Scope | Example |
-|:-----|:------|:--------|
-| `feat` | Feature area | `feat(ai): add intent router` |
-| `fix` | Bug area | `fix(db): resolve race condition` |
-| `refactor` | Code area | `refactor(frontend): extract hooks` |
-| `perf` | N/A | `perf(query): optimize vector search` |
-| `docs` | N/A | `docs(readme): update quick start` |
+| 类型 | 范围 | 示例 |
+|:-----|:-----|:-----|
+| `feat` | 功能区域 | `feat(ai): 添加意图路由器` |
+| `fix` | Bug 区域 | `fix(db): 修复竞态条件` |
+| `refactor` | 代码区域 | `refactor(frontend): 提取 hooks` |
+| `perf` | N/A | `perf(query): 优化向量搜索` |
+| `docs` | N/A | `docs(readme): 更新快速开始` |
 
-**Format**: `<type>(<scope>): <description>`
+**格式**：`<type>(<scope>): <description>`
 
-**Always include**:
+**始终包含**：
 ```
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
-### 6. Testing
+### 6. 测试
 
-- Run `make test` before committing
-- AI tests: `make test-ai`
-- For database changes, verify migrations work
-
----
-
-## Documentation Index
-
-| Domain | File | When to Reference |
-|:--------|:-----|:------------------|
-| **Backend** | `docs/dev-guides/BACKEND_DB.md` | API design, DB schema, Docker setup, .env config |
-| **Frontend** | `docs/dev-guides/FRONTEND.md` | Layout structure, Tailwind pitfalls, component patterns |
-| **Architecture** | `docs/dev-guides/ARCHITECTURE.md` | Project structure, AI agent system, data flow |
-| **Deployment** | `docs/deployment/BINARY_DEPLOYMENT.md` | Binary deployment, Geek Mode setup |
+- 提交前运行 `make test`
+- AI 测试：`make test-ai`
+- 数据库变更后验证迁移
 
 ---
 
-## Key Project Paths
+## 文档索引
 
-| Area | Path | Purpose |
-|:-----|:-----|:--------|
-| API Handlers | `server/router/api/v1/` | REST/Connect RPC endpoints |
-| AI Agents | `plugin/ai/agent/` | Parrot agents (MEMO, SCHEDULE, AMAZING) |
-| AI Services | `plugin/ai/{memory,router,vector,aitime,cache,metrics,session}/` | AI infrastructure |
-| Query Engine | `server/queryengine/` | Hybrid RAG retrieval (BM25 + vector) |
-| Frontend Pages | `web/src/pages/` | Page components |
-| Layouts | `web/src/layouts/` | Shared layout components |
-| DB Models | `store/db/postgres/` | PostgreSQL models |
-| DB Migrations | `store/migration/postgres/` | Schema migrations |
-| Release Scripts | `scripts/release/` | Build and package release binaries |
-| Deployment | `deploy/aliyun/` | Aliyun deployment (Docker/Binary modes) |
+| 领域 | 文件 | 参考时机 |
+|:-----|:-----|:---------|
+| **后端** | `docs/dev-guides/BACKEND_DB.md` | API 设计、数据库、Docker、环境变量 |
+| **前端** | `docs/dev-guides/FRONTEND.md` | 布局结构、Tailwind 陷阱、组件模式 |
+| **架构** | `docs/dev-guides/ARCHITECTURE.md` | 项目结构、AI 代理、数据流 |
+| **部署** | `docs/deployment/BINARY_DEPLOYMENT.md` | 二进制部署、Geek Mode 配置 |
 
 ---
 
-## Common Tasks
+## 关键项目路径
 
-### Add a New API Endpoint
-1. Create handler in `server/router/api/v1/`
-2. Add route in `server/router/api/v1/routes.go`
-3. Update proto files if using Connect RPC
-4. Run `make check-build` to verify
-
-### Add a New Frontend Page
-1. Create component in `web/src/pages/`
-2. Add route in `web/src/router/`
-3. Add i18n keys to both `en.json` and `zh-Hans.json`
-4. Run `make check-i18n` to verify
-
-### Modify Database Schema
-1. Create migration in `store/migration/postgres/`
-2. Update models in `store/db/postgres/`
-3. Test with `make db-reset` (dev environment only!)
-4. Run `make test` to verify
-
-### Add AI Feature
-1. Determine agent type (MEMO/SCHEDULE/AMAZING)
-2. Update agent in `plugin/ai/agent/`
-3. Add routing rules in `chat_router.go`
-4. Test with PostgreSQL (required for AI features)
-
-### Build Release Binary
-1. Update version in `internal/version/version.go`
-2. Run `make release-all VERSION=v1.0.0`
-3. Find binaries in `dist/` and packages in `releases/`
+| 领域 | 路径 | 用途 |
+|:-----|:-----|:-----|
+| API 处理器 | `server/router/api/v1/` | REST/Connect RPC 端点 |
+| AI 代理 | `plugin/ai/agent/` | Parrot 代理 (MEMO、SCHEDULE、AMAZING) |
+| AI 服务 | `plugin/ai/{memory,router,vector,aitime,cache,metrics,session}/` | AI 基础设施 |
+| 查询引擎 | `server/queryengine/` | 混合 RAG 检索 (BM25 + 向量) |
+| 前端页面 | `web/src/pages/` | 页面组件 |
+| 布局 | `web/src/layouts/` | 共享布局组件 |
+| 数据库模型 | `store/db/postgres/` | PostgreSQL 模型 |
+| 数据库迁移 | `store/migration/postgres/` | 数据库迁移 |
+| 发布脚本 | `scripts/release/` | 构建和打包发布二进制 |
+| 部署 | `deploy/aliyun/` | 阿里云部署 (Docker/二进制模式) |
 
 ---
 
-## Pre-Commit Checklist
+## 常见任务
 
-Before committing, run:
+### 添加新 API 端点
+1. 在 `server/router/api/v1/` 创建处理器
+2. 在 `server/router/api/v1/routes.go` 添加路由
+3. 如使用 Connect RPC，更新 proto 文件
+4. 运行 `make check-build` 验证
+
+### 添加新前端页面
+1. 在 `web/src/pages/` 创建组件
+2. 在 `web/src/router/` 添加路由
+3. 向 `en.json` 和 `zh-Hans.json` 添加 i18n key
+4. 运行 `make check-i18n` 验证
+
+### 修改数据库 Schema
+1. 在 `store/migration/postgres/` 创建迁移
+2. 更新 `store/db/postgres/` 中的模型
+3. 测试：`make db-reset`（仅限开发环境！）
+4. 运行 `make test` 验证
+
+### 添加 AI 功能
+1. 确定代理类型 (MEMO/SCHEDULE/AMAZING)
+2. 更新 `plugin/ai/agent/` 中的代理
+3. 在 `chat_router.go` 添加路由规则
+4. 使用 PostgreSQL 测试（AI 功能必需）
+
+### 构建发布二进制
+1. 更新 `internal/version/version.go` 中的版本号
+2. 运行 `make release-all VERSION=v1.0.0`
+3. 在 `dist/` 查找二进制，在 `releases/` 查找安装包
+
+---
+
+## 提交前检查清单
+
+提交前运行：
 
 ```bash
 make check-all
 ```
 
-This verifies:
-- Build passes (`go build ./...`)
-- Tests pass (`go test ./...`)
-- i18n keys are complete
+这会验证：
+- 构建通过 (`go build ./...`)
+- 测试通过 (`go test ./...`)
+- i18n key 完整
 
 ---
 
-## Environment Variables
+## 环境变量
 
-Key `.env` variables (see `.env.example`):
+主要 `.env` 变量（详见 `.env.example`）：
 
-| Variable | Purpose | Default |
-|:---------|:--------|:--------|
-| `DIVINESENSE_DRIVER` | Database driver | `postgres` |
-| `DIVINESENSE_DSN` | Database connection string | — |
-| `DIVINESENSE_AI_ENABLED` | Enable AI features | `false` |
-| `DIVINESENSE_AI_EMBEDDING_PROVIDER` | Embedding API provider | `siliconflow` |
-| `DIVINESENSE_AI_LLM_PROVIDER` | LLM provider | `deepseek` |
+| 变量 | 用途 | 默认值 |
+|:-----|:-----|:------|
+| `DIVINESENSE_DRIVER` | 数据库驱动 | `postgres` |
+| `DIVINESENSE_DSN` | 数据库连接字符串 | — |
+| `DIVINESENSE_AI_ENABLED` | 启用 AI 功能 | `false` |
+| `DIVINESENSE_AI_EMBEDDING_PROVIDER` | 向量化 API 提供商 | `siliconflow` |
+| `DIVINESENSE_AI_LLM_PROVIDER` | LLM 提供商 | `deepseek` |
 | `SILICONFLOW_API_KEY` | SiliconFlow API key | — |
 | `DEEPSEEK_API_KEY` | DeepSeek API key | — |
 | `OPENAI_API_KEY` | OpenAI API key | — |
 
 ---
 
-## Troubleshooting
+## 故障排查
 
-| Issue | Solution |
-|:------|:---------|
-| AI not working | Ensure PostgreSQL is running and `DIVINESENSE_AI_ENABLED=true` |
-| Tailwind styles broken | Use explicit values (`max-w-[24rem]`) not semantic (`max-w-md`) |
-| i18n check fails | Add missing keys to both `web/src/locales/en.json` and `zh-Hans.json` |
-| Build fails | Run `make deps` to update Go modules |
-| Tests fail | Ensure PostgreSQL is running on port 25432 |
+| 问题 | 解决方案 |
+|:-----|:---------|
+| AI 不可用 | 确保 PostgreSQL 运行且 `DIVINESENSE_AI_ENABLED=true` |
+| Tailwind 样式异常 | 使用显式值 (`max-w-[24rem]`) 而非语义化 (`max-w-md`) |
+| i18n 检查失败 | 向 `web/src/locales/en.json` 和 `zh-Hans.json` 添加缺失的 key |
+| 构建失败 | 运行 `make deps` 更新 Go 模块 |
+| 测试失败 | 确保 PostgreSQL 运行在 25432 端口 |
+
+---
+
+## 产品功能概览
+
+### 笔记管理
+- Markdown 编辑器（KaTeX, Mermaid, GFM）
+- 智能标签系统（AI 推荐）
+- 语义搜索（BM25 + 向量）
+- 笔记关联与重复检测
+
+### 日程管理
+- 自然语言创建
+- 智能冲突检测
+- 多视图日历（月/周/日/列表）
+- 周期事件
+
+### AI 智能代理
+- **灰灰** (MemoParrot)：笔记检索
+- **金刚** (ScheduleParrot)：日程管理
+- **惊奇** (AmazingParrot)：综合助理
+
+### 其他功能
+- 知识图谱可视化
+- 每日回顾（间隔重复）
+- Geek Mode（Claude Code CLI 集成）

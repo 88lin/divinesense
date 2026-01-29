@@ -1,211 +1,212 @@
-# Architecture & Context
+# 架构文档
 
-## Project Overview
+## 项目概述
 
-DivineSense (神识) is a privacy-first, lightweight note-taking service enhanced with AI-powered parrot agents.
-- **Core Architecture**: Go backend (Echo/Connect RPC) + React frontend (Vite/Tailwind)
-- **Data Storage**: PostgreSQL (production, full AI support), SQLite (development only, **no AI features**)
-- **Key Features**: Multi-agent AI system, semantic search, schedule assistant, self-hosted with no telemetry
-- **Ports**: Backend 28081, Frontend 25173, PostgreSQL 25432 (development)
+DivineSense (神识) 是一款隐私优先、轻量级的笔记服务，通过 AI 驱动的「鹦鹉」代理增强用户体验。
+- **核心架构**：Go 后端 (Echo/Connect RPC) + React 前端 (Vite/Tailwind)
+- **数据存储**：PostgreSQL（生产环境，完整 AI 支持），SQLite（仅开发环境，**不支持 AI 功能**）
+- **核心特性**：多代理 AI 系统、语义搜索、日程助理、自托管无遥测
+- **端口**：后端 28081，前端 25173，PostgreSQL 25432（开发环境）
 
-## Tech Stack
+## 技术栈
 
-| Area     | Technologies                                                        |
-| -------- | ------------------------------------------------------------------- |
-| Backend  | Go 1.25, Echo, Connect RPC, pgvector                                |
-| Frontend | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI, TanStack Query |
-| Database | PostgreSQL 16+ (production with AI), SQLite (dev only, **no AI**)  |
-| AI       | DeepSeek V3 (LLM), SiliconFlow (Embedding, Reranker)                 |
+| 领域 | 技术选型 |
+|:-----|:--------|
+| 后端 | Go 1.25, Echo, Connect RPC, pgvector |
+| 前端 | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI, TanStack Query |
+| 数据库 | PostgreSQL 16+（生产环境带 AI），SQLite（仅开发环境，**无 AI**） |
+| AI | DeepSeek V3（LLM），SiliconFlow（Embedding、Reranker） |
 
 ---
 
-## Project Architecture
+## 项目架构
 
-### Directory Structure
+### 目录结构
+
 ```
 divinesense/
-├── cmd/divinesense/     # Main application entry point
-├── server/              # HTTP/gRPC server & routing
-│   ├── router/          # API handlers (v1 implementation)
-│   ├── queryengine/     # Query routing & intent detection
-│   ├── retrieval/       # Adaptive retrieval (BM25 + Vector)
-│   ├── runner/          # Background task runners
-│   ├── scheduler/       # Schedule management
-│   └── service/         # Business logic layer
-├── plugin/              # Plugin system
-│   ├── ai/              # AI capabilities
-│   │   ├── agent/       # Parrot agents (MemoParrot, ScheduleParrot, AmazingParrot)
-│   │   ├── router/      # Three-layer intent routing
-│   │   ├── vector/      # Embedding service
-│   │   ├── memory/      # Episodic memory
-│   │   ├── session/     # Conversation persistence
-│   │   ├── cache/       # LRU cache layer
-│   │   └── metrics/     # Agent performance tracking
-│   ├── scheduler/       # Task scheduling
-│   ├── storage/         # Storage adapters (S3, local)
-│   └── idp/             # Identity providers
-├── store/               # Data storage layer
-│   ├── db/              # Database implementations
+├── cmd/divinesense/     # 主程序入口
+├── server/              # HTTP/gRPC 服务器 & 路由
+│   ├── router/          # API 处理器（v1 实现）
+│   ├── queryengine/     # 查询路由 & 意图检测
+│   ├── retrieval/       # 自适应检索（BM25 + 向量）
+│   ├── runner/          # 后台任务运行器
+│   ├── scheduler/       # 日程管理
+│   └── service/         # 业务逻辑层
+├── plugin/              # 插件系统
+│   ├── ai/              # AI 能力
+│   │   ├── agent/       # Parrot 代理（MemoParrot、ScheduleParrot、AmazingParrot）
+│   │   ├── router/      # 三层意图路由
+│   │   ├── vector/      # Embedding 服务
+│   │   ├── memory/      # 情景记忆
+│   │   ├── session/     # 对话持久化
+│   │   ├── cache/       # LRU 缓存层
+│   │   └── metrics/     # 代理性能追踪
+│   ├── scheduler/       # 任务调度
+│   ├── storage/         # 存储适配器（S3、本地）
+│   └── idp/             # 身份提供商
+├── store/               # 数据存储层
+│   ├── db/              # 数据库实现
 │   │   ├── postgres/    # PostgreSQL with pgvector
-│   │   └── sqlite/      # SQLite (dev only, no AI)
-│   └── [interfaces]     # Storage abstractions
-├── proto/               # Protobuf definitions (API contracts)
-│   ├── api/v1/          # API service definitions
-│   └── store/           # Store service definitions
-├── web/                 # React frontend application
+│   │   └── sqlite/      # SQLite（仅开发环境，无 AI）
+│   └── [interfaces]     # 存储抽象
+├── proto/               # Protobuf 定义（API 契约）
+│   ├── api/v1/          # API 服务定义
+│   └── store/           # Store 服务定义
+├── web/                 # React 前端应用
 │   ├── src/
-│   │   ├── pages/       # Page components
-│   │   ├── layouts/     # Layout components
-│   │   ├── components/  # UI components
-│   │   ├── locales/     # i18n translations (en, zh-Hans, zh-Hant)
+│   │   ├── pages/       # 页面组件
+│   │   ├── layouts/     # 布局组件
+│   │   ├── components/  # UI 组件
+│   │   ├── locales/     # i18n 翻译（en、zh-Hans、zh-Hant）
 │   │   └── hooks/       # React hooks
 │   └── package.json
-├── docs/                # Documentation
-├── scripts/             # Development and build scripts
-└── docker/              # Docker configurations
+├── docs/                # 文档
+├── scripts/             # 开发和构建脚本
+└── docker/              # Docker 配置
 ```
 
-### Core Components
+### 核心组件
 
-1. **Server Initialization**: Profile → DB → Store → Server
-   - Uses Echo framework with Connect RPC for gRPC/HTTP transcoding
-   - Auto-migration on startup
+1. **服务器初始化**：Profile → DB → Store → Server
+   - 使用 Echo 框架 + Connect RPC（gRPC/HTTP 转码）
+   - 启动时自动迁移
 
-2. **Plugin System** (`plugin/ai/`):
-   - LLM providers: DeepSeek, OpenAI, Ollama
-   - Embedding: SiliconFlow (BAAI/bge-m3), OpenAI
-   - Reranker: BAAI/bge-reranker-v2-m3
-   - All AI features are optional (controlled by `DIVINESENSE_AI_ENABLED`)
+2. **插件系统** (`plugin/ai/`):
+   - LLM 提供商：DeepSeek、OpenAI、Ollama
+   - Embedding：SiliconFlow (BAAI/bge-m3)、OpenAI
+   - Reranker：BAAI/bge-reranker-v2-m3
+   - 所有 AI 功能可选（由 `DIVINESENSE_AI_ENABLED` 控制）
 
-3. **Background Runners** (`server/runner/`):
-   - Async embedding generation for memos
-   - Task queue system for AI operations
-   - Runs automatically when AI is enabled
+3. **后台运行器** (`server/runner/`):
+   - 异步生成笔记 Embedding
+   - AI 操作任务队列
+   - AI 启用时自动运行
 
-4. **Storage Layer**:
-   - Interface definitions in `store/`
-   - Driver-specific implementations in `store/db/{postgres,sqlite}/`
-   - Migration system in `store/migration/`
+4. **存储层**：
+   - 接口定义在 `store/`
+   - 驱动特定实现在 `store/db/{postgres,sqlite}/`
+   - 迁移系统在 `store/migration/`
 
-5. **Intelligent Query Engine** (`server/queryengine/`):
-   - Adaptive retrieval (BM25 + Vector search with selective reranking)
-   - Smart query routing (detects schedule vs. search queries)
-   - Natural language date parsing
-   - Schedule assistant with conflict detection
+5. **智能查询引擎** (`server/queryengine/`):
+   - 自适应检索（BM25 + 向量搜索 + 选择性重排）
+   - 智能查询路由（检测日程 vs. 搜索查询）
+   - 自然语言日期解析
+   - 带冲突检测的日程助理
 
 ---
 
-## Parrot Agent Architecture
+## Parrot 代理架构
 
-### Agent Types (`plugin/ai/agent/`)
+### 代理类型 (`plugin/ai/agent/`)
 
-| AgentType  | Parrot Name | File                 | Chinese Name | Description                               |
-|:----------:|:-----------|:---------------------|:------------|:-----------------------------------------|
-| `MEMO`     | HuiHui     | `memo_parrot.go`     | 灰灰         | Memo search and retrieval specialist      |
-| `SCHEDULE` | JinGang    | `schedule_parrot_v2.go` | 金刚       | Schedule creation and management          |
-| `AMAZING`  | Amazing    | `amazing_parrot.go`  | 惊奇         | Comprehensive assistant (memo + schedule) |
+| AgentType | 鹦鹉名称 | 文件 | 中文名 | 描述 |
+|:---------:|:--------|:-----|:-------|:-----|
+| `MEMO` | 灰灰 | `memo_parrot.go` | 灰灰 | 笔记搜索和检索专家 |
+| `SCHEDULE` | 金刚 | `schedule_parrot_v2.go` | 金刚 | 日程创建和管理 |
+| `AMAZING` | 惊奇 | `amazing_parrot.go` | 惊奇 | 综合助理（笔记 + 日程） |
 
-### Agent Router
+### 代理路由器
 
-**Location**: `plugin/ai/agent/chat_router.go`
+**位置**：`plugin/ai/agent/chat_router.go`
 
-The ChatRouter implements a **three-layer** intent classification system:
+ChatRouter 实现**三层**意图分类系统：
 
 ```
-User Input → ChatRouter.Route()
+用户输入 → ChatRouter.Route()
                   ↓
-           routerService? ─Yes→ Three-layer routing
-                  │          (Rule + History + LLM)
+           routerService? ─Yes→ 三层路由
+                  │          (规则 + 历史 + LLM)
                   │
-                  No (backward compat)
+                  No（向后兼容）
                   ↓
-           routeByRules()     ← Fast path (0ms)
+           routeByRules()     ← 快速路径（0ms）
                   ↓
-         Match Found? ─Yes→ Return (confidence ≥0.80)
+         匹配成功? ─Yes→ 返回（置信度 ≥0.80）
                   │
                   No
                   ↓
-           routeByLLM()       ← Slow path (~400ms)
+           routeByLLM()       ← 慢速路径（~400ms）
                   ↓
          Qwen2.5-7B-Instruct
-         (Strict JSON Schema)
+         （严格 JSON Schema）
                   ↓
-           Route Result
+           路由结果
 ```
 
-**Three-Layer Routing** (when `router.Service` is configured):
-1. **Rule-based** (0ms): Keyword matching for common patterns
-2. **History-aware** (~10ms): Conversation context matching
-3. **LLM fallback** (~400ms): Semantic understanding for ambiguous inputs
+**三层路由**（当 `router.Service` 已配置时）：
+1. **规则匹配**（0ms）：常见模式的关键词匹配
+2. **历史感知**（~10ms）：对话上下文匹配
+3. **LLM 降级**（~400ms）：模糊输入的语义理解
 
-**Rule-based Matching**:
-- Schedule keywords: `日程`, `schedule`, `会议`, `meeting`, `提醒`, `remind`, time words (`今天`, `明天`, `周X`, `点`, `分`)
-- Memo keywords: `笔记`, `memo`, `note`, `搜索`, `search`, `查找`, `find`, `写过`, `关于`
-- Amazing keywords: `综合`, `总结`, `summary`, `本周工作`, `周报`
+**规则匹配**：
+- 日程关键词：`日程`、`schedule`、`会议`、`meeting`、`提醒`、`remind`、时间词（`今天`、`明天`、`周X`、`点`、`分`）
+- 笔记关键词：`笔记`、`memo`、`note`、`搜索`、`search`、`查找`、`find`、`写过`、`关于`
+- Amazing 关键词：`综合`、`总结`、`summary`、`本周工作`、`周报`
 
-**LLM Fallback**:
-- Model: `Qwen/Qwen2.5-7B-Instruct` via SiliconFlow
-- Max tokens: 30 (minimal response)
-- Strict JSON schema: `{"route": "memo|schedule|amazing", "confidence": 0.0-1.0}`
+**LLM 降级**：
+- 模型：`Qwen/Qwen2.5-7B-Instruct`（通过 SiliconFlow）
+- 最大 token：30（最小化响应）
+- 严格 JSON Schema：`{"route": "memo|schedule|amazing", "confidence": 0.0-1.0}`
 
-### Agent Tools
+### 代理工具
 
-**Location**: `plugin/ai/agent/tools/`
+**位置**：`plugin/ai/agent/tools/`
 
-| Tool            | File            | Description                          |
-|:---------------|:----------------|:-------------------------------------|
-| `memo_search`   | `memo_search.go` | Semantic memo search with RRF fusion |
-| `schedule_add`  | `scheduler.go`   | Create new schedule                   |
-| `schedule_query`| `scheduler.go`   | Query existing schedules              |
-| `schedule_update`| `scheduler.go`  | Update existing schedule              |
-| `find_free_time`| `scheduler.go`   | Find available time slots            |
+| 工具 | 文件 | 描述 |
+|:-----|:-----|:-----|
+| `memo_search` | `memo_search.go` | 语义笔记搜索 + RRF 融合 |
+| `schedule_add` | `scheduler.go` | 创建新日程 |
+| `schedule_query` | `scheduler.go` | 查询现有日程 |
+| `schedule_update` | `scheduler.go` | 更新现有日程 |
+| `find_free_time` | `scheduler.go` | 查找空闲时间段 |
 
-### Schedule Agent V2
+### 日程代理 V2
 
-**Location**: `plugin/ai/agent/scheduler_v2.go`
+**位置**：`plugin/ai/agent/scheduler_v2.go`
 
-Implements a native tool-calling loop (no ReAct needed for modern LLMs):
+实现原生工具调用循环（现代 LLM 不需要 ReAct）：
 
-**Features**:
-- Direct function calling with structured parameters
-- Default 1-hour duration
-- Automatic conflict detection
-- Timezone-aware scheduling
+**特性**：
+- 带结构化参数的直接函数调用
+- 默认 1 小时持续时间
+- 自动冲突检测
+- 时区感知日程安排
 
 ---
 
-## AI Services (`plugin/ai/`)
+## AI 服务 (`plugin/ai/`)
 
-### Service Overview
+### 服务概览
 
-| Service | Package | Description |
-| ------- | ------- | ----------- |
-| Memory | `memory/` | Episodic memory & user preferences |
-| Session | `session/` | Conversation persistence (30-day retention) |
-| Router | `router/` | Three-layer intent classification & routing |
-| Cache | `cache/` | LRU cache with TTL for query results |
-| Metrics | `metrics/` | Agent & tool performance tracking (A/B testing) |
-| Vector | `vector/` | Embedding service with multiple providers |
+| 服务 | 包 | 描述 |
+|:-----|:-----|:-----|
+| Memory | `memory/` | 情景记忆 & 用户偏好 |
+| Session | `session/` | 对话持久化（30 天保留） |
+| Router | `router/` | 三层意图分类 & 路由 |
+| Cache | `cache/` | 带 TTL 的 LRU 缓存（查询结果） |
+| Metrics | `metrics/` | 代理 & 工具性能追踪（A/B 测试） |
+| Vector | `vector/` | 多提供商 Embedding 服务 |
 
-### Session Service (`plugin/ai/session/`)
+### 会话服务 (`plugin/ai/session/`)
 
-Provides conversation persistence for AI agents:
+为 AI 代理提供对话持久化：
 
-**Components**:
-- `store.go`: PostgreSQL persistence + write-through cache (30min TTL)
-- `recovery.go`: Session recovery workflow + sliding window (max 20 messages)
-- `cleanup.go`: Background job for expired session cleanup (default: 30 days)
+**组件**：
+- `store.go`：PostgreSQL 持久化 + 直写缓存（30min TTL）
+- `recovery.go`：会话恢复工作流 + 滑动窗口（最多 20 条消息）
+- `cleanup.go`：过期会话清理后台任务（默认：30 天）
 
-**Database**: `conversation_context` table (JSONB storage)
+**数据库**：`conversation_context` 表（JSONB 存储）
 
-### Context Builder (`plugin/ai/context/`)
+### 上下文构建器 (`plugin/ai/context/`)
 
-Assembles LLM context with intelligent token budget allocation:
+组装 LLM 上下文，智能分配 token 预算：
 
 ```
-Token Budget Allocation (with retrieval):
+Token 预算分配（带检索）
 ┌─────────────────────────────────────────┐
-│ System Prompt      │ 500 tokens (fixed) │
+│ System Prompt      │ 500 tokens（固定） │
 │ User Preferences   │ 10%                │
 │ Short-term Memory  │ 40%                │
 │ Long-term Memory   │ 15%                │
@@ -215,112 +216,112 @@ Token Budget Allocation (with retrieval):
 
 ---
 
-## Retrieval System (`server/retrieval/`)
+## 检索系统 (`server/retrieval/`)
 
 ### AdaptiveRetriever
 
-Hybrid BM25 + Vector search with intelligent fusion:
+混合 BM25 + 向量搜索 + 智能融合：
 
-| Strategy | Description |
-|:--------|:------------|
-| `BM25Only` | Keyword-only search (fast, low quality) |
-| `SemanticOnly` | Vector-only search (slower, semantic) |
-| `HybridStandard` | BM25 + Vector with RRF fusion (balanced) |
-| `FullPipeline` | Hybrid + Reranker (highest quality, slowest) |
+| 策略 | 描述 |
+|:-----|:-----|
+| `BM25Only` | 仅关键词搜索（快，低质量） |
+| `SemanticOnly` | 仅向量搜索（慢，语义） |
+| `HybridStandard` | BM25 + 向量 + RRF 融合（平衡） |
+| `FullPipeline` | 混合 + 重排器（最高质量，最慢） |
 
-### RRF Fusion
+### RRF 融合
 
-Reciprocal Rank Fusion for merging BM25 and vector results:
+用于合并 BM25 和向量结果的倒数排名融合：
 ```
 score = Σ weight_i / (60 + rank_i)
 ```
 
-### Reranker
+### 重排器
 
-BAAI/bge-reranker-v2-m3 for result refinement (configurable via strategy).
+BAAI/bge-reranker-v2-m3 用于结果精炼（可通过策略配置）。
 
 ---
 
-## Frontend Architecture (`web/src/`)
+## 前端架构 (`web/src/`)
 
-### Page Components
+### 页面组件
 
-| Path | Component | Layout | Purpose |
-|:-----|:----------|:-------|:--------|
-| `/` | `Home.tsx` | MainLayout | Main timeline with memo composer |
-| `/explore` | `Explore.tsx` | MainLayout | Search and explore content |
-| `/archived` | `Archived.tsx` | MainLayout | Archived memos |
-| `/chat` | `AIChat.tsx` | AIChatLayout | AI chat interface with auto-routing |
-| `/schedule` | `Schedule.tsx` | ScheduleLayout | Calendar view with FullCalendar |
-| `/review` | `Review.tsx` | MainLayout | Daily review |
-| `/setting` | `Setting.tsx` | MainLayout | User settings |
-| `/u/:username` | `UserProfile.tsx` | MainLayout | Public user profile |
+| 路径 | 组件 | 布局 | 用途 |
+|:-----|:-----|:-----|:-----|
+| `/` | `Home.tsx` | MainLayout | 主时间线 + 笔记编辑器 |
+| `/explore` | `Explore.tsx` | MainLayout | 搜索和探索内容 |
+| `/archived` | `Archived.tsx` | MainLayout | 已归档笔记 |
+| `/chat` | `AIChat.tsx` | AIChatLayout | AI 聊天界面 + 自动路由 |
+| `/schedule` | `Schedule.tsx` | ScheduleLayout | 日历视图（FullCalendar） |
+| `/review` | `Review.tsx` | MainLayout | 每日回顾 |
+| `/setting` | `Setting.tsx` | MainLayout | 用户设置 |
+| `/u/:username` | `UserProfile.tsx` | MainLayout | 公开用户资料 |
 
-### Layout Hierarchy
+### 布局层级
 
 ```
-RootLayout (global Nav + auth)
+RootLayout（全局导航 + 认证）
     │
-    ├── MainLayout (collapsible sidebar: MemoExplorer)
+    ├── MainLayout（可折叠侧边栏：MemoExplorer）
     │   └── /, /explore, /archived, /u/:username
     │
-    ├── AIChatLayout (fixed sidebar: AIChatSidebar)
+    ├── AIChatLayout（固定侧边栏：AIChatSidebar）
     │   └── /chat
     │
-    └── ScheduleLayout (fixed sidebar: ScheduleCalendar)
+    └── ScheduleLayout（固定侧边栏：ScheduleCalendar）
         └── /schedule
 ```
 
 ---
 
-## Data Flow
+## 数据流
 
-### AI Chat Flow
+### AI 聊天流程
 
 ```
-Frontend (AIChat.tsx)
-    │ (WebSocket / SSE)
+前端（AIChat.tsx）
+    │（WebSocket / SSE）
     ↓
-Backend (ai_service_chat.go)
+后端（ai_service_chat.go）
     │
     ↓ ChatRouter.Route()
-    │   → Rule-based (0ms)
-    │   → History-aware (~10ms)
-    │   → LLM fallback (~400ms)
+    │   → 规则匹配（0ms）
+    │   → 历史感知（~10ms）
+    │   → LLM 降级（~400ms）
     ↓
-Agent Execution
-    │   → MemoParrot (memo_search tool)
-    │   → ScheduleParrotV2 (scheduler tools)
-    │   → AmazingParrot (concurrent tools)
+代理执行
+    │   → MemoParrot（memo_search 工具）
+    │   → ScheduleParrotV2（scheduler 工具）
+    │   → AmazingParrot（并发工具）
     ↓
-Response Streaming
-    │   → Event types: thinking, tool_use, tool_result, answer
+响应流式传输
+    │   → 事件类型：thinking、tool_use、tool_result、answer
     ↓
-Frontend UI Update
+前端 UI 更新
 ```
 
 ---
 
-## AI Database Schema (PostgreSQL)
+## AI 数据库架构（PostgreSQL）
 
-### Core Tables
+### 核心表
 
-| Table | Purpose |
-|:-----|:--------|
-| `memo_embedding` | Vector embeddings (1024d) for semantic search |
-| `conversation_context` | Session persistence with 30-day retention |
-| `episodic_memory` | Long-term user memory and learnings |
-| `user_preferences` | User communication preferences |
-| `agent_metrics` | A/B testing metrics (prompt versions, latency, success rate) |
+| 表名 | 用途 |
+|:-----|:-----|
+| `memo_embedding` | 向量嵌入（1024 维）用于语义搜索 |
+| `conversation_context` | 会话持久化（30 天保留） |
+| `episodic_memory` | 长期用户记忆和学习 |
+| `user_preferences` | 用户沟通偏好 |
+| `agent_metrics` | A/B 测试指标（prompt 版本、延迟、成功率） |
 
 ---
 
-## Environment Configuration
+## 环境配置
 
-### Key Variables
+### 关键变量
 
 ```bash
-# Database
+# 数据库
 DIVINESENSE_DRIVER=postgres
 DIVINESENSE_DSN=postgres://divinesense:divinesense@localhost:25432/divinesense?sslmode=disable
 

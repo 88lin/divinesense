@@ -1,124 +1,124 @@
-# Frontend Development Guide
+# 前端开发指南
 
-## Tech Stack
-- **Framework**: React 18 with Vite 7
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 4, Radix UI components
-- **State**: TanStack Query (React Query)
-- **Internationalization**: `web/src/locales/` (i18next)
-- **Markdown**: React Markdown with KaTeX, Mermaid, GFM support
-- **Calendar**: FullCalendar for schedule visualization
-
----
-
-## Workflow
-
-### Commands (run in `web/` directory)
-
-```bash
-pnpm dev            # Start dev server (port 25173)
-pnpm build          # Build for production
-pnpm lint           # Run TypeScript and Biome checks
-pnpm lint:fix       # Auto-fix linting issues
-```
-
-### From Project Root
-
-```bash
-make web            # Start frontend dev server
-make build-web      # Build frontend for production
-make check-i18n     # Verify i18n keys completeness
-```
+## 技术栈
+- **框架**：React 18 + Vite 7
+- **语言**：TypeScript
+- **样式**：Tailwind CSS 4, Radix UI 组件库
+- **状态管理**：TanStack Query (React Query)
+- **国际化**：`web/src/locales/` (i18next)
+- **Markdown**：React Markdown + KaTeX + Mermaid + GFM
+- **日历**：FullCalendar 日历可视化
 
 ---
 
-## Tailwind CSS 4 Pitfalls
+## 工作流程
 
-### CRITICAL: Never use semantic `max-w-sm/md/lg/xl`
+### 命令（在 `web/` 目录下运行）
 
-**Root Cause**: Tailwind CSS 4 redefines these classes to use `--spacing-*` variables (~16px) instead of traditional container widths (384-512px). This causes Dialogs, Sheets, and modals to collapse into unusable "slivers".
+```bash
+pnpm dev            # 启动开发服务器（端口 25173）
+pnpm build          # 生产环境构建
+pnpm lint           # 运行 TypeScript 和 Biome 检查
+pnpm lint:fix       # 自动修复 lint 问题
+```
 
-| Semantic Class | Tailwind 3 | Tailwind 4 |
-|:---------------|:-----------|:-----------|
-| `max-w-sm`      | 384px      | ~16px (broken) |
-| `max-w-md`      | 448px      | ~16px (broken) |
-| `max-w-lg`      | 512px      | ~16px (broken) |
+### 从项目根目录
 
-**Wrong** (collapses to ~16px):
+```bash
+make web            # 启动前端开发服务器
+make build-web      # 构建前端（生产环境）
+make check-i18n     # 验证 i18n key 完整性
+```
+
+---
+
+## Tailwind CSS 4 陷阱
+
+### 关键：切勿使用语义化 `max-w-sm/md/lg/xl`
+
+**根本原因**：Tailwind CSS 4 重新定义了这些类，使用 `--spacing-*` 变量（约 16px）替代传统的容器宽度（384-512px）。这会导致 Dialog、Sheet 和模态框坍缩成无法使用的「细条」。
+
+| 语义化类 | Tailwind 3 | Tailwind 4 |
+|:---------|:-----------|:-----------|
+| `max-w-sm` | 384px | ~16px（损坏） |
+| `max-w-md` | 448px | ~16px（损坏） |
+| `max-w-lg` | 512px | ~16px（损坏） |
+
+**错误**（会坍缩至约 16px）：
 ```tsx
 <DialogContent className="max-w-md">
 <SheetContent className="sm:max-w-sm">
 ```
 
-**Correct** (explicit rem values):
+**正确**（使用显式 rem 值）：
 ```tsx
 <DialogContent className="max-w-[28rem]">  {/* 448px */}
 <SheetContent className="sm:max-w-[24rem]"> {/* 384px */}
 ```
 
-**Reference Table**:
-| Width   | rem Value      | Use Case                          |
-|:--------|:--------------|:----------------------------------|
-| 384px   | `max-w-[24rem]` | Small dialogs, sidebars         |
-| 448px   | `max-w-[28rem]` | Standard dialogs                 |
-| 512px   | `max-w-[32rem]` | Large dialogs, forms             |
-| 672px   | `max-w-[42rem]` | Wide content                     |
+**参考表**：
+| 宽度 | rem 值 | 用途 |
+|:-----|:-------|:-----|
+| 384px | `max-w-[24rem]` | 小对话框、侧边栏 |
+| 448px | `max-w-[28rem]` | 标准对话框 |
+| 512px | `max-w-[32rem]` | 大对话框、表单 |
+| 672px | `max-w-[42rem]` | 宽内容 |
 
-### Avoid `max-w-*` on Grid containers
+### 避免在 Grid 容器上使用 `max-w-*`
 
-**Wrong** (causes overlap/squash):
+**错误**（导致重叠/挤压）：
 ```tsx
 <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-  {/* 320px / 2 = 160px per column - content crushed */}
+  {/* 320px / 2 = 每列 160px - 内容被挤压 */}
 </div>
 ```
 
-**Correct**:
+**正确**：
 ```tsx
 <div className="grid grid-cols-2 gap-3 w-full">
-  {/* Let gap and parent padding control width */}
+  {/* 让 gap 和父级 padding 控制宽度 */}
 </div>
 ```
 
-| Use `max-w-*` for | Don't use `max-w-*` for |
-|:-------------------|:-------------------------|
-| Dialog/Modal/Popover | Grid containers |
-| Tooltip/Alert text   | Flex items that need to fill |
-| Sidebar/Drawer       | Cards in responsive layouts |
+| 适用 `max-w-*` | 不适用 `max-w-*` |
+|:---------------|:----------------|
+| Dialog/Modal/Popover | Grid 容器 |
+| Tooltip/Alert 文本 | 需要填充的 Flex 项目 |
+| Sidebar/Drawer | 响应式布局中的卡片 |
 
-**Rule**: Grid uses `gap`, not `max-w-*`. If `max-width / column_count < 200px`, don't use `max-w-*`.
+**规则**：Grid 使用 `gap` 而非 `max-w-*`。如果 `max-width / column_count < 200px`，不要使用 `max-w-*`。
 
 ---
 
-## Layout Architecture
+## 布局架构
 
-### Layout Hierarchy
+### 布局层级
 
 ```
-RootLayout (global Nav + auth)
+RootLayout (全局导航 + 认证)
     │
-    ├── MainLayout (collapsible sidebar: MemoExplorer)
+    ├── MainLayout (可折叠侧边栏：MemoExplorer)
     │   └── /, /explore, /archived, /u/:username
     │
-    ├── AIChatLayout (fixed sidebar: AIChatSidebar)
+    ├── AIChatLayout (固定侧边栏：AIChatSidebar)
     │   └── /chat
     │
-    └── ScheduleLayout (fixed sidebar: ScheduleCalendar)
+    └── ScheduleLayout (固定侧边栏：ScheduleCalendar)
         └── /schedule
 ```
 
-### Layout Files
+### 布局文件
 
-| File | Purpose | Sidebar Type | Responsive |
-|:-----|:--------|:-------------|:-----------|
-| `RootLayout.tsx` | Global navigation and auth | None | N/A |
-| `MainLayout.tsx` | Content-heavy pages | Collapsible `MemoExplorer` | md: fixed |
-| `AIChatLayout.tsx` | AI chat interface | Fixed `AIChatSidebar` | Always fixed |
-| `ScheduleLayout.tsx` | Schedule/calendar | Fixed `ScheduleCalendar` | Always fixed |
+| 文件 | 用途 | 侧边栏类型 | 响应式 |
+|:-----|:-----|:-----------|:-------|
+| `RootLayout.tsx` | 全局导航和认证 | 无 | N/A |
+| `MainLayout.tsx` | 内容密集页面 | 可折叠 `MemoExplorer` | md: 固定 |
+| `AIChatLayout.tsx` | AI 聊天界面 | 固定 `AIChatSidebar` | 始终固定 |
+| `ScheduleLayout.tsx` | 日程/日历 | 固定 `ScheduleCalendar` | 始终固定 |
 
-### Feature Layout Template
+### 功能布局模板
 
-For new feature pages requiring a dedicated sidebar:
+对于需要专用侧边栏的新功能页面：
 
 ```tsx
 import { Outlet } from "react-router-dom";
@@ -131,19 +131,19 @@ const FeatureLayout = () => {
 
   return (
     <section className="@container w-full h-screen flex flex-col lg:h-screen overflow-hidden">
-      {/* Mobile Header */}
+      {/* 移动端头部 */}
       <div className="lg:hidden flex-none flex items-center gap-2 px-4 py-3 border-b border-border/50 bg-background">
         <NavigationDrawer />
       </div>
 
-      {/* Desktop Sidebar */}
+      {/* 桌面侧边栏 */}
       {lg && (
         <div className="fixed top-0 left-16 shrink-0 h-svh border-r border-border bg-background w-72 overflow-auto">
           <FeatureSidebar />
         </div>
       )}
 
-      {/* Main Content */}
+      {/* 主内容 */}
       <div className={cn("flex-1 min-h-0 overflow-x-hidden", lg ? "pl-72" : "")}>
         <Outlet />
       </div>
@@ -152,68 +152,68 @@ const FeatureLayout = () => {
 };
 ```
 
-**Sidebar Width Options**:
-| Class  | Pixels | Use Case                              |
-|:-------|:-------|:---------------------------------------|
-| `w-56`  | 224px  | Collapsible sidebar (MainLayout md)    |
-| `w-64`  | 256px  | Standard sidebar                       |
-| `w-72`  | 288px  | Default feature sidebar (AIChat, etc)  |
-| `w-80`  | 320px  | Wide sidebar (Schedule)                |
+**侧边栏宽度选项**：
+| 类 | 像素 | 用途 |
+|:-------|:-----|:-----|
+| `w-56` | 224px | 可折叠侧边栏（MainLayout md） |
+| `w-64` | 256px | 标准侧边栏 |
+| `w-72` | 288px | 默认功能侧边栏（AIChat 等） |
+| `w-80` | 320px | 宽侧边栏（Schedule） |
 
-**Responsive Breakpoints**:
-| Breakpoint | Width  | Behavior                    |
-|:-----------|:-------|:----------------------------|
-| `sm`       | 640px  | Nav bar appears             |
-| `md`       | 768px  | Sidebar becomes fixed       |
-| `lg`       | 1024px | Full sidebar width          |
+**响应式断点**：
+| 断点 | 宽度 | 行为 |
+|:-----|:-----|:-----|
+| `sm` | 640px | 导航栏出现 |
+| `md` | 768px | 侧边栏变为固定 |
+| `lg` | 1024px | 完整侧边栏宽度 |
 
 ---
 
-## Page Components
+## 页面组件
 
-### Available Pages
+### 可用页面
 
-| Path | Component | Layout | Purpose |
-|:-----|:----------|:-------|:--------|
-| `/` | `Home.tsx` | MainLayout | Main timeline with memo composer |
-| `/explore` | `Explore.tsx` | MainLayout | Search and explore content |
-| `/archived` | `Archived.tsx` | MainLayout | Archived memos |
-| `/chat` | `AIChat.tsx` | AIChatLayout | AI chat interface |
-| `/schedule` | `Schedule.tsx` | ScheduleLayout | Calendar view |
-| `/review` | `Review.tsx` | MainLayout | Daily review |
-| `/setting` | `Setting.tsx` | MainLayout | User settings |
-| `/u/:username` | `UserProfile.tsx` | MainLayout | Public user profile |
-| `/auth/callback` | `AuthCallback.tsx` | None | OAuth callback handler |
+| 路径 | 组件 | 布局 | 用途 |
+|:-----|:-----|:-----|:-----|
+| `/` | `Home.tsx` | MainLayout | 主时间线 + 笔记编辑器 |
+| `/explore` | `Explore.tsx` | MainLayout | 搜索和探索内容 |
+| `/archived` | `Archived.tsx` | MainLayout | 已归档笔记 |
+| `/chat` | `AIChat.tsx` | AIChatLayout | AI 聊天界面 |
+| `/schedule` | `Schedule.tsx` | ScheduleLayout | 日历视图 |
+| `/review` | `Review.tsx` | MainLayout | 每日回顾 |
+| `/setting` | `Setting.tsx` | MainLayout | 用户设置 |
+| `/u/:username` | `UserProfile.tsx` | MainLayout | 公开用户资料 |
+| `/auth/callback` | `AuthCallback.tsx` | None | OAuth 回调处理 |
 
-### Adding a New Page
+### 添加新页面
 
-1. Create component in `web/src/pages/YourPage.tsx`
-2. Add i18n keys to `web/src/locales/en.json` and `zh-Hans.json`
-3. Add route in `web/src/router/index.tsx`:
+1. 在 `web/src/pages/YourPage.tsx` 创建组件
+2. 向 `web/src/locales/en.json` 和 `zh-Hans.json` 添加 i18n key
+3. 在 `web/src/router/index.tsx` 添加路由：
    ```tsx
    {
      path: "/your-page",
      element: <YourPage />,
    }
    ```
-4. Run `make check-i18n` to verify translations
+4. 运行 `make check-i18n` 验证翻译
 
 ---
 
-## Internationalization (i18n)
+## 国际化 (i18n)
 
-### File Structure
+### 文件结构
 
 ```
 web/src/locales/
-    ├── en.json       # English translations
-    ├── zh-Hans.json  # Simplified Chinese
-    └── zh-Hant.json  # Traditional Chinese
+    ├── en.json       # 英文翻译
+    ├── zh-Hans.json  # 简体中文
+    └── zh-Hant.json  # 繁体中文
 ```
 
-### Adding New Translations
+### 添加新翻译
 
-1. Add key to `en.json`:
+1. 向 `en.json` 添加 key：
    ```json
    {
      "your": {
@@ -222,7 +222,7 @@ web/src/locales/
    }
    ```
 
-2. Add key to `zh-Hans.json`:
+2. 向 `zh-Hans.json` 添加 key：
    ```json
    {
      "your": {
@@ -231,24 +231,24 @@ web/src/locales/
    }
    ```
 
-3. Use in component:
+3. 在组件中使用：
    ```tsx
    import { t } from "i18next";
 
    const text = t("your.key");
    ```
 
-4. Verify: `make check-i18n`
+4. 验证：`make check-i18n`
 
-**CRITICAL**: Never hardcode text in components. Always use `t("key")`.
+**关键**：切勿在组件中硬编码文本。始终使用 `t("key")`。
 
 ---
 
-## Component Patterns
+## 组件模式
 
 ### MemoCard
 
-Memo cards are used throughout the app for displaying memo content:
+MemoCard 用于在整个应用中显示笔记内容：
 
 ```tsx
 import MemoCard from "@/components/MemoCard";
@@ -260,9 +260,9 @@ import MemoCard from "@/components/MemoCard";
 />
 ```
 
-### Dialog/Modal Pattern
+### Dialog/Modal 模式
 
-Always use explicit rem values for width:
+始终使用显式 rem 值作为宽度：
 
 ```tsx
 import {
@@ -275,15 +275,15 @@ import {
   <DialogHeader>
     <DialogTitle>{t("title")}</DialogTitle>
   </DialogHeader>
-  {/* Content */}
+  {/* 内容 */}
 </DialogContent>
 ```
 
 ---
 
-## State Management
+## 状态管理
 
-### Data Fetching (TanStack Query)
+### 数据获取（TanStack Query）
 
 ```tsx
 import { useQuery } from "@tanstack/react-query";
@@ -294,7 +294,7 @@ const { data, isLoading, error } = useQuery({
 });
 ```
 
-### Mutations
+### 变更操作
 
 ```tsx
 import { useMutation } from "@tanstack/react-query";
