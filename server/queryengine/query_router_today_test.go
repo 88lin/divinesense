@@ -109,6 +109,11 @@ func TestQueryRouter_TodaySynonyms(t *testing.T) {
 
 // TestQueryRouter_TodayPerformance 性能测试：对比"今日"vs"今天".
 func TestQueryRouter_TodayPerformance(t *testing.T) {
+	// 跳过 race 模式下的性能测试，因为 race 检测会显著增加开销
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
+
 	router := NewQueryRouter()
 	ctx := context.Background()
 
