@@ -611,7 +611,8 @@ type ChatRequest struct {
 	AgentType          AgentType              `protobuf:"varint,5,opt,name=agent_type,json=agentType,proto3,enum=memos.api.v1.AgentType" json:"agent_type,omitempty"`                                   // Agent type (optional, defaults to DEFAULT)
 	ConversationId     int32                  `protobuf:"varint,6,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`                                                // Conversation ID to persist message to
 	IsTempConversation bool                   `protobuf:"varint,7,opt,name=is_temp_conversation,json=isTempConversation,proto3" json:"is_temp_conversation,omitempty"`                                  // Whether to create a temporary conversation (true) or fixed conversation (false)
-	GeekMode           bool                   `protobuf:"varint,10,opt,name=geek_mode,json=geekMode,proto3" json:"geek_mode,omitempty"`                                                                 // Geek Mode: Enable Claude Code CLI for code-related tasks (optional, defaults to false)
+	GeekMode           bool                   `protobuf:"varint,10,opt,name=geek_mode,json=geekMode,proto3" json:"geek_mode,omitempty"`
+DeviceContext      string                 `protobuf:"bytes,11,opt,name=device_context,json=deviceContext,proto3" json:"device_context,omitempty"`                                                                 // Geek Mode: Enable Claude Code CLI for code-related tasks (optional, defaults to false)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -693,6 +694,13 @@ func (x *ChatRequest) GetIsTempConversation() bool {
 		return x.IsTempConversation
 	}
 	return false
+}
+
+func (x *ChatRequest) GetDeviceContext() string {
+if x != nil {
+return x.DeviceContext
+}
+return ""
 }
 
 func (x *ChatRequest) GetGeekMode() bool {

@@ -1,35 +1,68 @@
+version: 2
+
 linters:
   enable:
-    - revive
+    - gofmt
     - govet
+    - errcheck
     - staticcheck
-    - misspell
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - gosec
     - gocritic
+    - printf
+    - nilerr
+    - errorlint
+    - prealloc
+    - unconvert
+    - unparam
+    - revive
+    - misspell
     - sqlclosecheck
     - rowserrcheck
-    - nilerr
     - godot
     - forbidigo
     - mirror
     - bodyclose
   disable:
-    - errcheck
+    - exhaustive
+    - exhaustivestruct
+    - funlen
+    - lll
+    - gocyclo
 
 linters-settings:
-  exhaustive:
-    explicit-exhaustive-switch: false
-  staticcheck:
-    checks:
-      - all
-      - -ST1000
-      - -ST1003
-      - -ST1021
-      - -QF1003
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  gosec:
+    excludes:
+      - G104
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+
   revive:
-    # Default to run all linters so that new rules in the future could automatically be added to the static check.
     enable-all-rules: true
     rules:
-      # The following rules are too strict and make coding harder. We do not enable them for now.
       - name: file-header
         disabled: true
       - name: line-length-limit
@@ -74,18 +107,7 @@ linters-settings:
         disabled: true
       - name: package-comments
         disabled: true
-  gocritic:
-    disabled-checks:
-      - ifElseChain
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-      - shadow
-    settings:
-      printf:
-        funcs:
-          - common.Errorf
+
   forbidigo:
     forbid:
       - pattern: 'fmt\.Errorf'
@@ -93,5 +115,33 @@ linters-settings:
       - pattern: 'ioutil\.ReadDir'
         msg: 'Please use os.ReadDir'
 
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+        - noctx
+
+    - path: cmd/
+      text: "unused-parameter"
+
+  exclude:
+    - "declaration of 'err' shadows declaration at"
+
 run:
-  go: '1.25'
+  timeout: 5m
+  go: "1.25"
+  tests: true
+  modules-download-mode: readonly
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true

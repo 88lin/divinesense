@@ -159,6 +159,10 @@ func (h *ParrotHandler) handleGeekMode(
 		return status.Error(codes.Internal, fmt.Sprintf("failed to create GeekParrot: %v", err))
 	}
 
+	// Pass detailed device context to GeekParrot
+	// 将详细的设备上下文传递给极客鹦鹉
+	geekParrot.SetDeviceContext(req.DeviceContext)
+
 	logger.Debug("GeekParrot created",
 		slog.String("agent_name", geekParrot.Name()),
 		slog.String("work_dir", geekParrot.GetWorkDir()),
@@ -304,6 +308,7 @@ func ToChatRequest(pbReq *v1pb.ChatRequest) *ChatRequest {
 		ConversationID:     pbReq.ConversationId,
 		IsTempConversation: pbReq.IsTempConversation,
 		GeekMode:           pbReq.GeekMode,
+		DeviceContext:      pbReq.DeviceContext,
 	}
 }
 

@@ -23,7 +23,8 @@ type ChatRequest struct {
 	Timezone           string
 	ConversationID     int32
 	IsTempConversation bool
-	GeekMode           bool // Geek Mode: Enable Claude Code CLI for code-related tasks
+	GeekMode           bool   // Geek Mode: Enable Claude Code CLI for code-related tasks
+	DeviceContext      string // Detailed client/device context (JSON)
 }
 
 // Handler is the interface for handling chat requests.

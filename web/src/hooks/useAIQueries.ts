@@ -148,6 +148,16 @@ export function useChat() {
         userTimezone: params.userTimezone,
         conversationId: params.conversationId,
         geekMode: params.geekMode ?? false,
+        deviceContext: JSON.stringify({
+          userAgent: navigator.userAgent,
+          isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+          screenWidth: window.screen.width,
+          screenHeight: window.screen.height,
+          windowWidth: window.innerWidth,
+          windowHeight: window.innerHeight,
+          language: navigator.language,
+          platform: (navigator as any).platform || "unknown",
+        }),
       });
 
       if (import.meta.env.DEV) {

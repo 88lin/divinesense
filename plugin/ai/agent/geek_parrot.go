@@ -29,7 +29,7 @@ const (
 )
 
 // buildSystemPrompt provides minimal, high-signal context for Claude Code CLI.
-func buildSystemPrompt(workDir, sessionID string, userID int32) string {
+func buildSystemPrompt(workDir, sessionID string, userID int32, deviceContext string) string {
 	osName := runtime.GOOS
 	arch := runtime.GOARCH
 	if osName == "darwin" {
@@ -38,6 +38,39 @@ func buildSystemPrompt(workDir, sessionID string, userID int32) string {
 
 	timestamp := time.Now().Format(time.RFC3339)
 
+	// Try to parse device context for better formatting
+	// 尝试解析设备上下文以便更好地格式化
+	var contextMap map[string]any
+	userAgent := "Unknown"
+	deviceInfo := "Unknown"
+	if deviceContext != "" {
+		if err := json.Unmarshal([]byte(deviceContext), &contextMap); err == nil {
+			if ua, ok := contextMap["userAgent"].(string); ok {
+				userAgent = ua
+			}
+			if mobile, ok := contextMap["isMobile"].(bool); ok {
+				if mobile {
+					deviceInfo = "Mobile"
+				} else {
+					deviceInfo = "Desktop"
+				}
+			}
+			// Add more fields if available (screen, language, etc.)
+			// 如果有更多字段则添加（屏幕、语言等）
+			if w, ok := contextMap["screenWidth"].(float64); ok {
+				if h, ok := contextMap["screenHeight"].(float64); ok {
+					deviceInfo = fmt.Sprintf("%s (%dx%d)", deviceInfo, int(w), int(h))
+				}
+			}
+			if lang, ok := contextMap["language"].(string); ok {
+				deviceInfo = fmt.Sprintf("%s, Language: %s", deviceInfo, lang)
+			}
+		} else {
+			// Fallback: use raw string if not JSON
+			userAgent = deviceContext
+		}
+	}
+
 	return fmt.Sprintf(`# Context
 
 You are running inside DivineSense, an intelligent assistant system.
@@ -45,7 +78,9 @@ You are running inside DivineSense, an intelligent assistant system.
 **User Interaction**: Users type questions in their web browser, which invokes you via a Go backend. Your response streams back to their browser in real-time.
 
 - **User ID**: %d
-- **OS**: %s (%s)
+- **Client Device**: %s
+- **User Agent**: %s
+- **Server OS**: %s (%s)
 - **Time**: %s
 - **Workspace**: %s
 - **Mode**: Non-interactive headless (--print)
@@ -56,7 +91,7 @@ You are running inside DivineSense, an intelligent assistant system.
 # File Output
 
 When you create a file, announce the filename so the user knows it was created.
-`, userID, osName, arch, timestamp, workDir, sessionID)
+`, userID, deviceInfo, userAgent, osName, arch, timestamp, workDir, sessionID)
 }
 
 // StreamMessage represents a single event in the stream-json format.
@@ -114,6 +149,10 @@ type GeekParrot struct {
 	timeout time.Duration
 	mu      sync.Mutex
 
+	// User context
+	// 用户上下文
+	deviceContext string // Detailed context (JSON)
+
 	// Session management
 	// 会话管理
 	sessionID  string // 会话 ID (UUID)
@@ -141,6 +180,14 @@ func NewGeekParrot(workDir string, userID int32, sessionID string) (*GeekParrot,
 		sessionID: sessionID,
 		firstCall: true, // Default to true, adjusted in ExecuteWithCallback
 	}, nil
+}
+
+// SetDeviceContext sets the full device and browser context for the parrot.
+// SetDeviceContext 为鹦鹉设置完整的设备和浏览器上下文。
+func (p *GeekParrot) SetDeviceContext(contextJson string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.deviceContext = contextJson
 }
 
 // Name returns the name of the parrot.
@@ -239,7 +286,10 @@ func (p *GeekParrot) executeWithSession(
 ) error {
 	// Build dynamic system prompt with current context
 	// 构建包含当前上下文的动态 system prompt
-	systemPrompt := buildSystemPrompt(p.workDir, sessionID, p.userID)
+	p.mu.Lock()
+	deviceContext := p.deviceContext
+	p.mu.Unlock()
+	systemPrompt := buildSystemPrompt(p.workDir, sessionID, p.userID, deviceContext)
 
 	// Build command arguments
 	// 构建命令参数
