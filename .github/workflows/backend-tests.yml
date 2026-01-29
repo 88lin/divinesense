@@ -35,8 +35,8 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
-          args: --timeout=3m
+          version: v2.8.0
+          args: --config=.golangci.yaml --timeout=3m
 
   go-tests:
     runs-on: ubuntu-latest
