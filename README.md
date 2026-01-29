@@ -6,8 +6,6 @@
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
 
-> Forked from [usememos/memos](https://github.com/usememos/memos), enhanced with multi-agent AI system.
-
 ---
 
 ## Why DivineSense?
@@ -21,7 +19,7 @@
 
 ## Quick Start
 
-### Docker (Basic Notes)
+### Docker (All-in-One)
 
 ```bash
 docker run -d --name divinesense -p 5230:5230 -v ~/.divinesense:/var/opt/divinesense hrygo/divinesense:stable
@@ -62,81 +60,7 @@ make restart  # Restart services
 
 ---
 
-## Deployment
-
-### Docker Deployment (Simple Notes)
-
-```bash
-docker run -d --name divinesense -p 5230:5230 -v ~/.divinesense:/var/opt/divinesense hrygo/divinesense:stable
-```
-
-### Binary Deployment (Recommended for Geek Mode)
-
-Binary deployment offers better performance and native Geek Mode support.
-
-```bash
-# One-click installation (default: Docker mode)
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash
-
-# Binary mode (for Geek Mode)
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash -s -- --mode=binary
-```
-
-**Advantages:**
-- ✅ Native Geek Mode (Claude Code CLI integration)
-- ✅ Faster startup, lower overhead
-- ✅ Easier updates
-
-**Documentation:** [Binary Deployment Guide](docs/deployment/BINARY_DEPLOYMENT.md)
-
-### Development Setup
-
-```bash
-# 1. Clone repository
-git clone https://github.com/hrygo/divinesense.git && cd divinesense
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env and add your API keys
-
-# 3. Install dependencies
-make deps-all
-
-# 4. Start all services (PostgreSQL + Backend + Frontend)
-make start
-```
-
-Access at http://localhost:25173
-
-<details>
-<summary><b>Service Management</b></summary>
-
-```bash
-make status   # Check service status
-make logs     # View logs
-make stop     # Stop services
-make restart  # Restart services
-```
-
-</details>
-
-<details>
-<summary><b>Release Build</b></summary>
-
-```bash
-# Build release binaries (linux/amd64, linux/arm64)
-make release-build VERSION=v1.0.0
-
-# Package releases
-make release-package VERSION=v1.0.0
-
-# Full release workflow
-make release-all VERSION=v1.0.0
-```
-
-</details>
-
----
+## Features
 
 ### Note Taking
 - Quick capture with Markdown support (KaTeX, Mermaid, GFM)
@@ -216,6 +140,35 @@ Routes to:
 
 ---
 
+## Deployment
+
+### Docker Deployment (Recommended)
+
+```bash
+docker run -d --name divinesense -p 5230:5230 -v ~/.divinesense:/var/opt/divinesense hrygo/divinesense:stable
+```
+
+### Binary Deployment (Geek Mode)
+
+Binary deployment offers better performance and native Geek Mode support.
+
+```bash
+# One-click installation (default: Docker mode)
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash
+
+# Binary mode (for Geek Mode)
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash -s -- --mode=binary
+```
+
+**Advantages:**
+- ✅ Native Geek Mode (Claude Code CLI integration)
+- ✅ Faster startup, lower overhead
+- ✅ Easier updates
+
+**Documentation:** [Binary Deployment Guide](docs/deployment/BINARY_DEPLOYMENT.md)
+
+---
+
 ## Development
 
 ```bash
@@ -234,18 +187,12 @@ make check-all # Run all checks (build, test, i18n)
 
 ---
 
-## AI Database Schema (PostgreSQL)
-
-| Table | Purpose |
-|:-----|:--------|
-| `memo_embedding` | Vector embeddings for semantic search |
-| `conversation_context` | Session persistence for AI agents |
-| `episodic_memory` | Long-term user memory and preferences |
-| `user_preferences` | User communication settings |
-| `agent_metrics` | Agent performance tracking (A/B testing) |
-
----
-
 ## License
 
 [MIT](LICENSE) — Free to use, modify, and distribute.
+
+---
+
+## Acknowledgments
+
+This project draws inspiration from the excellent [memos](https://github.com/usememos/memos) project by the usememos community. Their work on privacy-focused note-taking laid the foundation for many of the core features in DivineSense.
