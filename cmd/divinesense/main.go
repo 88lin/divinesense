@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -70,7 +71,7 @@ var (
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 			if err := s.Start(ctx); err != nil {
-				if err != http.ErrServerClosed {
+				if !errors.Is(err, http.ErrServerClosed) {
 					slog.Error("failed to start server", "error", err)
 					cancel()
 				}
