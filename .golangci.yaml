@@ -106,6 +106,7 @@ linters:
       - Godeps
       - builtin
       - proto/gen
+      - server/router/frontend
       - ".*\\.gen\\.go$"
       - ".*\\.mock\\.go$"
       - ".*_string\\.go$"
