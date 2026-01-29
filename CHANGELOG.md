@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.62.2] - 2026-01-30
+
+### 🛠️ Maintenance
+
+- **Proto**: Formatted protobuf files with `buf format` for CI compliance.
+- **Tests**: Improved test output formatting.
+
 ## [v0.62.1] - 2026-01-30
 
 ### 🛠️ Bug Fixes & Maintenance
