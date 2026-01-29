@@ -11,10 +11,11 @@ interface ScheduleSearchBarProps {
   onFilteredChange?: (filtered: Schedule[]) => void;
   onHasFilterChange?: (hasFilter: boolean) => void;
   className?: string;
+  autoFocus?: boolean;
 }
 
 /** Search and filter schedules by title, location, and description */
-export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChange, className }: ScheduleSearchBarProps) => {
+export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChange, className, autoFocus }: ScheduleSearchBarProps) => {
   const t = useTranslate();
   const [searchQuery, setSearchQuery] = useState("");
   const [semanticFilter, setSemanticFilter] = useState<{ startTs: bigint; endTs: bigint; label: string } | null>(null);
@@ -150,6 +151,7 @@ export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChan
             id="schedule-search-input"
             role="searchbox"
             value={searchQuery}
+            autoFocus={autoFocus}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("schedule.search-placeholder") || "Search schedules..."}
             aria-label={t("schedule.search-schedule") as string}

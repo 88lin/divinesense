@@ -3,7 +3,7 @@ import { ArrowUpLeftFromCircleIcon, MessageCircleIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { MemoDetailSidebar, MemoDetailSidebarDrawer } from "@/components/MemoDetailSidebar";
+import { MemoDetailSidebar } from "@/components/MemoDetailSidebar";
 import MemoEditor from "@/components/MemoEditor";
 import MemoRelatedList from "@/components/MemoRelatedList";
 import MemoView from "@/components/MemoView/MemoView";

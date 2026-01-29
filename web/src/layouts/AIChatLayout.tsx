@@ -25,7 +25,6 @@ const AIChatLayoutContent = () => {
   const lg = useMediaQuery("lg");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const t = useTranslate();
-  const assistantName = t("ai.assistant-name");
 
   return (
     <section className="@container w-full h-screen flex flex-col lg:h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
