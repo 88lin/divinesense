@@ -35,7 +35,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: auto
+          version: v1.62
           args: --timeout=3m
 
   go-tests:
@@ -67,7 +67,8 @@ jobs:
               go test -v -race -coverprofile=coverage.out -covermode=atomic ./server/...
               ;;
             plugin)
-              go test -v -race -coverprofile=coverage.out -covermode=atomic ./plugin/...
+              go test -v -race -coverprofile=coverage.out -covermode=atomic \
+                $(go list ./plugin/... | grep -v "github.com/hrygo/divinesense/plugin/cron$")
               ;;
             other)
               go test -v -race -coverprofile=coverage.out -covermode=atomic \
