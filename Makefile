@@ -204,7 +204,16 @@ db-vector: ## 验证 pgvector 扩展
 
 test: ## 运行所有测试
 	@echo "Running tests..."
-	@DIVINESENSE_DRIVER=$(DIVINESENSE_DRIVER) DIVINESENSE_DSN=$(DIVINESENSE_DSN) go test ./... -short -timeout 2m -json 2>&1 | tee test-output.log | grep -v '"Time"' | grep -E '"Action":"(pass|fail)"' | wc -l | xargs -I {} echo "Tests completed: {}"
+	@DIVINESENSE_DRIVER=$(DIVINESENSE_DRIVER) DIVINESENSE_DSN=$(DIVINESENSE_DSN) go test ./... -short -timeout 2m 2>&1 | grep -E "^(ok |FAIL|\?)" | tee test-summary.log
+	@echo ""
+	@echo "Test summary:"
+	@echo "  Passed: $$(grep -c '^ok ' test-summary.log || echo 0) packages"
+	@if grep -q "^FAIL" test-summary.log 2>/dev/null; then \
+		echo "  Failed: $$(grep -c '^FAIL' test-summary.log) packages"; \
+		exit 1; \
+	else \
+		echo "  All tests passed!"; \
+	fi
 
 .PHONY: test-verbose
 test-verbose: ## 运行所有测试(详细输出)
