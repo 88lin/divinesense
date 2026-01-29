@@ -16,14 +16,14 @@ import (
 
 // Runner processes attachments for OCR and text extraction.
 type Runner struct {
-	store               *store.Store
-	ocrClient           *ocr.Client
-	textExtractClient   *textextract.Client
-	interval            time.Duration
-	batchSize           int
-	ocrEnabled          bool
-	textExtractEnabled   bool
-	semaphore           chan struct{} // Limits concurrent async processing
+	store              *store.Store
+	ocrClient          *ocr.Client
+	textExtractClient  *textextract.Client
+	semaphore          chan struct{}
+	interval           time.Duration
+	batchSize          int
+	ocrEnabled         bool
+	textExtractEnabled bool
 }
 
 // NewRunner creates a new OCR runner.
@@ -58,14 +58,14 @@ func NewRunner(store *store.Store, profile *profile.Profile) *Runner {
 	}
 
 	return &Runner{
-		store:               store,
-		ocrClient:           ocrClient,
-		textExtractClient:   textExtractClient,
-		interval:            5 * time.Minute,
-		batchSize:           5,
-		ocrEnabled:          profile.OCREnabled,
-		textExtractEnabled:  profile.TextExtractEnabled,
-		semaphore:           make(chan struct{}, 10), // Max 10 concurrent async processing
+		store:              store,
+		ocrClient:          ocrClient,
+		textExtractClient:  textExtractClient,
+		interval:           5 * time.Minute,
+		batchSize:          5,
+		ocrEnabled:         profile.OCREnabled,
+		textExtractEnabled: profile.TextExtractEnabled,
+		semaphore:          make(chan struct{}, 10), // Max 10 concurrent async processing
 	}
 }
 

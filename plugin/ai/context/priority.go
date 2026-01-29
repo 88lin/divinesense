@@ -21,9 +21,9 @@ const (
 // ContextSegment represents a piece of context with priority.
 type ContextSegment struct {
 	Content   string
+	Source    string
 	Priority  ContextPriority
 	TokenCost int
-	Source    string // "system", "short_term", "long_term", "retrieval", "prefs"
 }
 
 // PriorityRanker ranks and truncates context segments by priority.
@@ -86,8 +86,7 @@ func PrioritizeAndTruncate(segments []*ContextSegment, budget int) []*ContextSeg
 	return NewPriorityRanker().RankAndTruncate(segments, budget)
 }
 
-// truncateToTokens truncates content to approximately fit within token limit.
-// Uses simple heuristic: 1 Chinese char ≈ 2 tokens, 1 English word ≈ 1 token
+// Uses simple heuristic: 1 Chinese char ≈ 2 tokens, 1 English word ≈ 1 token.
 func truncateToTokens(content string, maxTokens int) string {
 	if maxTokens <= 0 {
 		return ""

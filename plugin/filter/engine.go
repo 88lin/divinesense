@@ -12,8 +12,8 @@ import (
 
 // Engine parses CEL filters into a dialect-agnostic condition tree.
 type Engine struct {
-	schema Schema
 	env    *cel.Env
+	schema Schema
 }
 
 // NewEngine builds a new Engine for the provided schema.
@@ -30,8 +30,8 @@ func NewEngine(schema Schema) (*Engine, error) {
 
 // Program stores a compiled filter condition.
 type Program struct {
-	schema    Schema
 	condition Condition
+	schema    Schema
 }
 
 // ConditionTree exposes the underlying condition tree.

@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// CacheService defines the cache service interface.
-// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement)
+// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement).
 type CacheService interface {
 	// Get retrieves a value from cache.
 	// Returns: value, whether it exists

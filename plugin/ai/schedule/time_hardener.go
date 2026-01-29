@@ -14,18 +14,18 @@ import (
 
 // Pre-compiled regex patterns for performance.
 var (
-	// Time patterns
+	// Time patterns.
 	hourMinutePattern = regexp.MustCompile(`(\d{1,2})[点时:](\d{0,2})`)
 	periodPattern     = regexp.MustCompile(`(上午|下午|早上|晚上|中午|傍晚)`)
 	iso8601Pattern    = regexp.MustCompile(`\d{4}-\d{1,2}-\d{1,2}`)
 
-	// Chinese number patterns
+	// Chinese number patterns.
 	chineseNumPattern = regexp.MustCompile(`[一二三四五六七八九十]+`)
 
-	// Date reference patterns
+	// Date reference patterns.
 	dateRefPattern = regexp.MustCompile(`(今天|明天|后天|大后天|昨天|前天|这周|下周|本周|上周)`)
 
-	// Chinese digit map (shared across functions)
+	// Chinese digit map (shared across functions).
 	chineseDigitMap = map[rune]int{
 		'零': 0, '〇': 0,
 		'一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
@@ -60,11 +60,7 @@ func (h *TimeHardener) WithTimezone(tz *time.Location) *TimeHardener {
 	}
 }
 
-// HardenTime processes LLM-generated time strings and returns a validated time.
-// It performs three steps:
-// 1. Preprocess LLM output (format normalization)
-// 2. Call TimeService for parsing
-// 3. Validate the result for reasonableness
+// 3. Validate the result for reasonableness.
 func (h *TimeHardener) HardenTime(ctx context.Context, input string) (time.Time, error) {
 	if input == "" {
 		return time.Time{}, fmt.Errorf("empty time input")

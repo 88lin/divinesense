@@ -12,7 +12,7 @@ import (
 	"github.com/hrygo/divinesense/plugin/ai"
 )
 
-// Regular expression to match text-based tool calls like [Tool: function_name(args)]
+// Regular expression to match text-based tool calls like [Tool: function_name(args)].
 var textToolCallRegex = regexp.MustCompile(`\[Tool:\s*(\w+)\((.*?)\)\]`)
 
 // ToolWithSchema extends the Tool interface to include JSON Schema definition.
@@ -26,10 +26,10 @@ type ToolWithSchema interface {
 
 // NativeTool implements ToolWithSchema with direct function execution.
 type NativeTool struct {
-	name        string
-	description string
 	execute     func(ctx context.Context, input string) (string, error)
 	params      map[string]interface{}
+	name        string
+	description string
 }
 
 // NewNativeTool creates a new NativeTool.
@@ -86,9 +86,9 @@ func ToolFromLegacy(
 // It uses native LLM tool calling without LangChainGo.
 type Agent struct {
 	llm     ai.LLMService
+	toolMap map[string]ToolWithSchema
 	config  AgentConfig
 	tools   []ToolWithSchema
-	toolMap map[string]ToolWithSchema
 }
 
 // AgentConfig holds configuration for creating a new Agent.

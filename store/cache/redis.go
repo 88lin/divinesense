@@ -33,8 +33,8 @@ type RedisCacheInterface interface {
 type RedisCacheConfig struct {
 	Addr         string
 	Password     string
-	DB           int
 	KeyPrefix    string
+	DB           int
 	DefaultTTL   time.Duration
 	PoolSize     int
 	MinIdleConns int
@@ -91,10 +91,10 @@ func IsRedisEnabled() bool {
 
 // RedisCacheStats represents Redis cache statistics.
 type RedisCacheStats struct {
+	Keyspace string  `json:"keyspace"`
 	KeyCount int64   `json:"key_count"`
 	Memory   int64   `json:"memory_bytes"`
 	HitRate  float64 `json:"hit_rate"`
-	Keyspace string  `json:"keyspace"`
 }
 
 // GenerateCacheKey generates a cache key from components.

@@ -1,9 +1,4 @@
-import type {
-  UIScheduleListData,
-  UIScheduleSuggestionData,
-  UITimeSlotData,
-  UIMemoPreviewData
-} from "@/hooks/useScheduleAgent";
+import type { UIMemoPreviewData, UIScheduleListData, UIScheduleSuggestionData, UITimeSlotData } from "@/hooks/useScheduleAgent";
 
 /**
  * Validates if a value is a non-null object (and not an array)
@@ -41,8 +36,6 @@ export interface ValidationResult<T> {
   data?: T;
   errors: string[];
 }
-
-
 
 export function validateScheduleSuggestion(data: unknown): ValidationResult<UIScheduleSuggestionData> {
   const errors: string[] = [];
@@ -87,8 +80,6 @@ export function validateScheduleSuggestion(data: unknown): ValidationResult<UISc
   };
 }
 
-
-
 export function validateTimeSlot(data: unknown): ValidationResult<UITimeSlotData> {
   const errors: string[] = [];
 
@@ -122,8 +113,6 @@ export function validateTimeSlot(data: unknown): ValidationResult<UITimeSlotData
     errors: [],
   };
 }
-
-
 
 export function validateMemoPreview(data: unknown): ValidationResult<UIMemoPreviewData> {
   const errors: string[] = [];
@@ -165,11 +154,7 @@ export function validateMemoPreview(data: unknown): ValidationResult<UIMemoPrevi
 /**
  * Safe type guard wrapper that logs validation errors
  */
-export function validateAndLog<T>(
-  data: unknown,
-  validator: (data: unknown) => ValidationResult<T>,
-  context: string,
-): T | null {
+export function validateAndLog<T>(data: unknown, validator: (data: unknown) => ValidationResult<T>, context: string): T | null {
   const result = validator(data);
 
   if (!result.valid) {

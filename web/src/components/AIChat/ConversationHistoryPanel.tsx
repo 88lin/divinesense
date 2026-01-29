@@ -90,9 +90,7 @@ export function ConversationHistoryPanel({ className, onSelectConversation }: Co
             {groupedConversations.map((group) => (
               <div key={group.key} className="mb-1">
                 {/* 时间分组标签 */}
-                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {group.label}
-                </div>
+                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">{group.label}</div>
                 {/* 会话列表 */}
                 <div className="flex flex-col gap-0.5 px-2">
                   {group.conversations.map((conversation) => (

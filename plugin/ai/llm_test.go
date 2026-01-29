@@ -9,8 +9,8 @@ import (
 // TestNewLLMService tests service creation.
 func TestNewLLMService(t *testing.T) {
 	tests := []struct {
-		name        string
 		cfg         *LLMConfig
+		name        string
 		expectError bool
 	}{
 		{

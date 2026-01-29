@@ -54,9 +54,7 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
         "text-sm font-medium",
         "transition-all duration-200 ease-in-out",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-blue-500",
-        active
-          ? "bg-background text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground",
+        active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
       aria-pressed={active}
     >

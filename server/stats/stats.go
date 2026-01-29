@@ -13,43 +13,31 @@ import (
 
 // Stats represents usage statistics.
 type Stats struct {
-	Mu sync.RWMutex
-
-	// Memo stats
-	TotalMemos      int64
-	MemosLastWeek   int64
-	MemosLastMonth  int64
-
-	// Schedule stats
-	TotalSchedules   int64
+	LastSearchTime    time.Time
+	LastUpdated       time.Time
+	LastActivityTime  time.Time
+	SearchesToday     int64
+	ActiveDays        int64
 	SchedulesThisWeek int64
 	SchedulesNextWeek int64
-
-	// Search stats
-	TotalSearches    int64
-	SearchesToday   int64
-	LastSearchTime  time.Time
-
-	// Activity stats
-	ActiveDays      int64 // Days with activity in the last 30 days
-	LastActivityTime time.Time
-	StreakDays      int64 // Current consecutive days with activity
-
-	// AI stats
-	TotalAIQueries     int64
-	AIQueriesToday     int64
-	AIQueriesThisWeek  int64
-
-	// Timestamp
-	LastUpdated time.Time
+	TotalSearches     int64
+	TotalMemos        int64
+	MemosLastMonth    int64
+	TotalSchedules    int64
+	MemosLastWeek     int64
+	StreakDays        int64
+	TotalAIQueries    int64
+	AIQueriesToday    int64
+	AIQueriesThisWeek int64
+	Mu                sync.RWMutex
 }
 
 // Collector collects and manages usage statistics.
 type Collector struct {
 	store    *store.Store
 	stats    *Stats
-	mu       sync.Mutex
 	tickStop chan struct{}
+	mu       sync.Mutex
 }
 
 // NewCollector creates a new statistics collector.
@@ -317,7 +305,7 @@ func getWeekStart(t time.Time) time.Time {
 	if weekday == 0 {
 		weekday = 7
 	}
-	return t.Truncate(24 * time.Hour).AddDate(0, 0, -weekday+1)
+	return t.Truncate(24*time.Hour).AddDate(0, 0, -weekday+1)
 }
 
 // calculateStreakDays calculates the current streak of consecutive days with activity.

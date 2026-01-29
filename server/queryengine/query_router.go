@@ -10,36 +10,23 @@ import (
 	"time"
 )
 
-// UTC 时区常量，统一使用 UTC 避免时区混淆
+// UTC 时区常量，统一使用 UTC 避免时区混淆.
 var (
 	utcLocation = time.UTC
 )
 
-// QueryRouter 智能查询路由器
-// 根据查询内容自动选择最优的检索策略
-// P2 改进：添加配置支持和并发控制
+// P2 改进：添加配置支持和并发控制.
 type QueryRouter struct {
-	// 配置
-	config      *Config
-	configMutex sync.RWMutex // P2 改进：并发控制
-
-	// 时间关键词库
-	timeKeywords map[string]timeRangeCalculator
-
-	// 笔记关键词库
-	memoKeywords []string
-
-	// 专有名词检测正则
+	config          *Config
+	timeKeywords    map[string]timeRangeCalculator
 	properNounRegex *regexp.Regexp
-
-	// 疑问词列表
-	questionWords []string
-
-	// 停用词列表
-	stopWords []string
+	memoKeywords    []string
+	questionWords   []string
+	stopWords       []string
+	configMutex     sync.RWMutex
 }
 
-// ScheduleQueryMode 日程查询模式
+// ScheduleQueryMode 日程查询模式.
 type ScheduleQueryMode int32
 
 const (
@@ -48,17 +35,17 @@ const (
 	StrictQueryMode   ScheduleQueryMode = 2 // 严格模式：只返回完全在范围内的日程
 )
 
-// RouteDecision 路由决策
+// RouteDecision 路由决策.
 type RouteDecision struct {
-	Strategy          string  // 路由策略名称
-	Confidence        float32 // 置信度 (0.0-1.0)
 	TimeRange         *TimeRange
-	SemanticQuery     string            // 清理后的语义查询
-	NeedsReranker     bool              // 是否需要重排序
-	ScheduleQueryMode ScheduleQueryMode // 日程查询模式（P1 新增）
+	Strategy          string
+	SemanticQuery     string
+	Confidence        float32
+	ScheduleQueryMode ScheduleQueryMode
+	NeedsReranker     bool
 }
 
-// TimeRange 时间范围
+// TimeRange 时间范围.
 type TimeRange struct {
 	Start time.Time
 	End   time.Time
@@ -67,13 +54,12 @@ type TimeRange struct {
 
 type timeRangeCalculator func(time.Time) *TimeRange
 
-// NewQueryRouter 创建新的查询路由器
+// NewQueryRouter 创建新的查询路由器.
 func NewQueryRouter() *QueryRouter {
 	return NewQueryRouterWithConfig(DefaultConfig())
 }
 
-// NewQueryRouterWithConfig 使用指定配置创建查询路由器
-// P2 改进：支持自定义配置
+// P2 改进：支持自定义配置.
 func NewQueryRouterWithConfig(config *Config) *QueryRouter {
 	// 验证配置
 	if err := ValidateConfig(config); err != nil {
@@ -105,9 +91,7 @@ func NewQueryRouterWithConfig(config *Config) *QueryRouter {
 	return router
 }
 
-// initTimeKeywords 初始化时间关键词映射
-// P1 改进：统一使用 UTC 时区，避免时区混淆
-// 举一反三优化：系统性扩展时间关键词库，覆盖所有常见时间表达
+// 举一反三优化：系统性扩展时间关键词库，覆盖所有常见时间表达.
 func (r *QueryRouter) initTimeKeywords() {
 	// 将当前时间转换为 UTC
 	now := time.Now().In(utcLocation)
@@ -464,7 +448,7 @@ func (r *QueryRouter) Route(_ context.Context, query string, userTimezone *time.
 	return r.defaultDecision()
 }
 
-// quickMatchWithTimezone 快速规则匹配（带时区支持）
+// quickMatchWithTimezone 快速规则匹配（带时区支持）.
 func (r *QueryRouter) quickMatchWithTimezone(query string, userTimezone *time.Location) *RouteDecision {
 	// P1 改进：保留原始查询用于内容提取
 	queryLower := strings.ToLower(strings.TrimSpace(query))
@@ -551,9 +535,7 @@ func (r *QueryRouter) quickMatchWithTimezone(query string, userTimezone *time.Lo
 	return nil
 }
 
-// detectTimeRange 检测时间范围
-// P1 改进：统一使用 UTC 时区
-// P2 改进：支持具体日期解析（"1月21日"、"1-21"等）
+// P2 改进：支持具体日期解析（"1月21日"、"1-21"等）.
 func (r *QueryRouter) detectTimeRange(query string) *TimeRange {
 	// 使用 UTC 时间
 	now := time.Now().In(utcLocation)
@@ -639,10 +621,7 @@ func (r *QueryRouter) detectTimeRange(query string) *TimeRange {
 	return nil
 }
 
-// determineScheduleQueryMode 确定日程查询模式（P1 新增）
-// 自动选择规则：
-// - 相对时间（今天、明天、本周）→ 标准模式
-// - 绝对时间（1月21日、2025-01-21）→ 严格模式
+// - 绝对时间（1月21日、2025-01-21）→ 严格模式.
 func (r *QueryRouter) determineScheduleQueryMode(query string, timeRange *TimeRange) ScheduleQueryMode {
 	if timeRange == nil {
 		return StandardQueryMode // 默认标准模式
@@ -674,8 +653,7 @@ func (r *QueryRouter) determineScheduleQueryMode(query string, timeRange *TimeRa
 	return StrictQueryMode
 }
 
-// detectTimeRangeWithTimezone 检测时间范围（带时区支持）
-// P2 改进：使用用户时区而非 UTC
+// P2 改进：使用用户时区而非 UTC.
 func (r *QueryRouter) detectTimeRangeWithTimezone(query string, userTimezone *time.Location) *TimeRange {
 	// 使用用户时区，如果为 nil 则使用 UTC
 	if userTimezone == nil {
@@ -821,7 +799,7 @@ func (r *QueryRouter) detectTimeRangeWithTimezone(query string, userTimezone *ti
 	return nil
 }
 
-// hasMemoKeyword 检测笔记关键词
+// hasMemoKeyword 检测笔记关键词.
 func (r *QueryRouter) hasMemoKeyword(query string) bool {
 	for _, keyword := range r.memoKeywords {
 		if strings.Contains(query, keyword) {
@@ -831,7 +809,7 @@ func (r *QueryRouter) hasMemoKeyword(query string) bool {
 	return false
 }
 
-// CheckMostlyProperNouns 判断查询是否主要由专有名词组成
+// CheckMostlyProperNouns 判断查询是否主要由专有名词组成.
 func (r *QueryRouter) CheckMostlyProperNouns(query string) bool {
 	matches := r.properNounRegex.FindAllString(query, -1)
 
@@ -845,7 +823,7 @@ func (r *QueryRouter) CheckMostlyProperNouns(query string) bool {
 	return len(matches) > len(words)/2
 }
 
-// isGeneralQuestion 检测通用问答
+// isGeneralQuestion 检测通用问答.
 func (r *QueryRouter) isGeneralQuestion(query string) bool {
 	for _, word := range r.questionWords {
 		if strings.Contains(query, word) {
@@ -855,8 +833,7 @@ func (r *QueryRouter) isGeneralQuestion(query string) bool {
 	return false
 }
 
-// extractContentQuery 提取内容查询（去除时间词和停用词）
-// 举一反三优化：扩展时间词列表，覆盖所有新增的时间关键词
+// 举一反三优化：扩展时间词列表，覆盖所有新增的时间关键词.
 func (r *QueryRouter) extractContentQuery(query string) string {
 	contentQuery := query
 
@@ -899,7 +876,7 @@ func (r *QueryRouter) extractContentQuery(query string) string {
 	return strings.TrimSpace(contentQuery)
 }
 
-// defaultDecision 默认决策
+// defaultDecision 默认决策.
 func (r *QueryRouter) defaultDecision() *RouteDecision {
 	return &RouteDecision{
 		Strategy:      "hybrid_standard",
@@ -909,7 +886,7 @@ func (r *QueryRouter) defaultDecision() *RouteDecision {
 	}
 }
 
-// GetStrategyDescription 获取策略描述
+// GetStrategyDescription 获取策略描述.
 func (r *QueryRouter) GetStrategyDescription(strategy string) string {
 	descriptions := map[string]string{
 		"schedule_bm25_only":          "纯日程查询（BM25 + 时间过滤）",
@@ -927,8 +904,7 @@ func (r *QueryRouter) GetStrategyDescription(strategy string) string {
 	return fmt.Sprintf("未知策略: %s", strategy)
 }
 
-// ValidateTimeRange 验证时间范围是否有效
-// P2 改进：使用配置值
+// P2 改进：使用配置值.
 func (tr *TimeRange) ValidateTimeRange() bool {
 	if tr.Start.IsZero() || tr.End.IsZero() {
 		return false
@@ -954,12 +930,12 @@ func (tr *TimeRange) ValidateTimeRange() bool {
 	return tr.Duration() <= maxDuration
 }
 
-// Contains 检查给定时间是否在范围内
+// Contains 检查给定时间是否在范围内.
 func (tr *TimeRange) Contains(t time.Time) bool {
 	return t.After(tr.Start) && t.Before(tr.End)
 }
 
-// Duration 获取时间范围持续时间
+// Duration 获取时间范围持续时间.
 func (tr *TimeRange) Duration() time.Duration {
 	return tr.End.Sub(tr.Start)
 }

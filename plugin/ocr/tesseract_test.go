@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDefaultConfig tests the default configuration
+// TestDefaultConfig tests the default configuration.
 func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
@@ -17,7 +17,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, "chi_sim+eng", config.Languages)
 }
 
-// TestNewClient tests client creation
+// TestNewClient tests client creation.
 func TestNewClient(t *testing.T) {
 	t.Run("with nil config", func(t *testing.T) {
 		client := NewClient(nil)
@@ -37,7 +37,7 @@ func TestNewClient(t *testing.T) {
 	})
 }
 
-// TestIsSupported tests MIME type support checking
+// TestIsSupported tests MIME type support checking.
 func TestIsSupported(t *testing.T) {
 	client := NewClient(nil)
 
@@ -70,7 +70,7 @@ func TestIsSupported(t *testing.T) {
 	}
 }
 
-// TestGetLanguageName tests language code to name mapping
+// TestGetLanguageName tests language code to name mapping.
 func TestGetLanguageName(t *testing.T) {
 	tests := []struct {
 		code     string
@@ -98,7 +98,7 @@ func TestGetLanguageName(t *testing.T) {
 	}
 }
 
-// TestResultValidate tests OCR result validation
+// TestResultValidate tests OCR result validation.
 func TestResultValidate(t *testing.T) {
 	t.Run("valid result", func(t *testing.T) {
 		result := &Result{Text: "Some text"}
@@ -114,7 +114,7 @@ func TestResultValidate(t *testing.T) {
 	})
 }
 
-// TestMerge tests merging multiple OCR results
+// TestMerge tests merging multiple OCR results.
 func TestMerge(t *testing.T) {
 	t.Run("empty slice", func(t *testing.T) {
 		result := Merge([]*Result{})
@@ -141,7 +141,7 @@ func TestMerge(t *testing.T) {
 	})
 }
 
-// TestFormatOutput tests output formatting
+// TestFormatOutput tests output formatting.
 func TestFormatOutput(t *testing.T) {
 	result := &Result{
 		Text:      "Sample text",
@@ -174,7 +174,7 @@ func TestFormatOutput(t *testing.T) {
 	})
 }
 
-// TestParseHOCR tests hOCR parsing
+// TestParseHOCR tests hOCR parsing.
 func TestParseHOCR(t *testing.T) {
 	hocr := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -200,7 +200,7 @@ func TestParseHOCR(t *testing.T) {
 	assert.Contains(t, result.Text, "World")
 }
 
-// TestExtractText_UnsupportedMIMEType tests error handling for unsupported types
+// TestExtractText_UnsupportedMIMEType tests error handling for unsupported types.
 func TestExtractText_UnsupportedMIMEType(t *testing.T) {
 	client := NewClient(nil)
 	ctx := context.Background()
@@ -210,7 +210,7 @@ func TestExtractText_UnsupportedMIMEType(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported")
 }
 
-// TestSupportedMimeTypes tests the supported MIME types constant
+// TestSupportedMimeTypes tests the supported MIME types constant.
 func TestSupportedMimeTypes(t *testing.T) {
 	expected := []string{
 		"image/png",
@@ -224,7 +224,7 @@ func TestSupportedMimeTypes(t *testing.T) {
 	assert.Equal(t, expected, SupportedMimeTypes)
 }
 
-// BenchmarkIsSupported benchmarks MIME type checking
+// BenchmarkIsSupported benchmarks MIME type checking.
 func BenchmarkIsSupported(b *testing.B) {
 	client := NewClient(nil)
 	mimeTypes := []string{

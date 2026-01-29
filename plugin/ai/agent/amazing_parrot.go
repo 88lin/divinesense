@@ -23,26 +23,26 @@ import (
 type AmazingParrot struct {
 	llm                ai.LLMService
 	cache              *LRUCache
-	userID             int32
 	memoSearchTool     *tools.MemoSearchTool
 	scheduleQueryTool  *tools.ScheduleQueryTool
 	scheduleAddTool    *tools.ScheduleAddTool
 	findFreeTimeTool   *tools.FindFreeTimeTool
 	scheduleUpdateTool *tools.ScheduleUpdateTool
+	userID             int32
 }
 
 // retrievalPlan represents the plan for concurrent retrieval.
 type retrievalPlan struct {
-	needsMemoSearch     bool
 	memoSearchQuery     string
-	needsScheduleQuery  bool
 	scheduleStartTime   string
 	scheduleEndTime     string
+	freeTimeDate        string
+	needsMemoSearch     bool
+	needsScheduleQuery  bool
 	needsScheduleAdd    bool
 	needsFreeTime       bool
-	freeTimeDate        string
 	needsScheduleUpdate bool
-	needsDirectAnswer   bool // If true, skip retrieval and answer directly
+	needsDirectAnswer   bool
 }
 
 // NewAmazingParrot creates a new amazing parrot agent.
@@ -413,11 +413,11 @@ func (p *AmazingParrot) executeConcurrentRetrieval(ctx context.Context, plan *re
 						scheduleItems = append(scheduleItems, UIScheduleItem{
 							UID:      s.UID,
 							Title:    s.Title,
-							StartTs:   s.StartTs,
-							EndTs:     s.EndTs,
-							AllDay:    s.AllDay,
-							Location:  s.Location,
-							Status:    s.Status,
+							StartTs:  s.StartTs,
+							EndTs:    s.EndTs,
+							AllDay:   s.AllDay,
+							Location: s.Location,
+							Status:   s.Status,
 						})
 					}
 					scheduleListData := UIScheduleListData{

@@ -36,20 +36,20 @@ const (
 
 // Rule represents a parsed recurrence rule.
 type Rule struct {
-	Frequency  Frequency // FREQ
-	Interval   int       // INTERVAL (default 1)
-	Count      int       // COUNT (number of occurrences)
-	Until      time.Time // UNTIL (end date)
-	BySecond   []int     // BYSECOND
-	ByMinute   []int     // BYMINUTE
-	ByHour     []int     // BYHOUR
-	ByDay      []Weekday // BYDAY
-	ByMonthDay []int     // BYMONTHDAY
-	ByYearDay  []int     // BYYEARDAY
-	ByWeekNo   []int     // BYWEEKNO
-	ByMonth    []int     // BYMONTH
-	BySetPos   []int     // BYSETPOS
-	Wkst       Weekday   // WKST (week start)
+	Until      time.Time
+	Wkst       Weekday
+	Frequency  Frequency
+	ByHour     []int
+	BySecond   []int
+	ByMinute   []int
+	ByDay      []Weekday
+	ByMonthDay []int
+	ByYearDay  []int
+	ByWeekNo   []int
+	ByMonth    []int
+	BySetPos   []int
+	Count      int
+	Interval   int
 }
 
 // Parser parses RRULE strings.
@@ -60,8 +60,7 @@ func NewParser() *Parser {
 	return &Parser{}
 }
 
-// Parse parses an RRULE string into a Rule struct.
-// Example: "FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10"
+// Example: "FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10".
 func (p *Parser) Parse(rrule string) (*Rule, error) {
 	rule := &Rule{
 		Interval: 1, // Default interval
@@ -147,8 +146,8 @@ func parseIntList(value string) []int {
 
 // Generator generates occurrences from a recurrence rule.
 type Generator struct {
-	rule    *Rule
-	start   time.Time // Start date of the recurrence
+	rule     *Rule
+	start    time.Time // Start date of the recurrence
 	timezone *time.Location
 }
 

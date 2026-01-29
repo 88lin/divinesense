@@ -62,10 +62,10 @@ func SetUserInContext(ctx context.Context, user *store.User, accessToken string)
 
 // UserClaims represents authenticated user info from access token.
 type UserClaims struct {
-	UserID   int32
 	Username string
 	Role     string
 	Status   string
+	UserID   int32
 }
 
 // GetUserClaims retrieves the user claims from context.

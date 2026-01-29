@@ -16,9 +16,9 @@ import (
 type RelatedMemo struct {
 	Name       string   `json:"name"`
 	Title      string   `json:"title"`
-	Similarity float32  `json:"similarity"`
 	SharedTags []string `json:"shared_tags"`
 	CreatedTs  int64    `json:"created_ts"`
+	Similarity float32  `json:"similarity"`
 }
 
 // RelatedService provides related memo recommendations.

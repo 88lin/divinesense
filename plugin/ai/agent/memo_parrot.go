@@ -14,23 +14,23 @@ import (
 	"github.com/hrygo/divinesense/server/retrieval"
 )
 
-// Constants for MemoParrot configuration
+// Constants for MemoParrot configuration.
 const (
-	// DefaultCacheEntries is the default maximum number of cache entries
+	// DefaultCacheEntries is the default maximum number of cache entries.
 	DefaultCacheEntries = 100
 
-	// DefaultCacheTTL is the default time-to-live for cache entries
+	// DefaultCacheTTL is the default time-to-live for cache entries.
 	DefaultCacheTTL = 5 * time.Minute
 )
 
 // MemoParrot is the note-taking assistant parrot (🦜 灰灰).
 // MemoParrot 是笔记助手鹦鹉（🦜 灰灰）。
 type MemoParrot struct {
-	retriever      *retrieval.AdaptiveRetriever
 	llm            ai.LLMService
+	retriever      *retrieval.AdaptiveRetriever
 	cache          *LRUCache
-	userID         int32
 	memoSearchTool *tools.MemoSearchTool
+	userID         int32
 }
 
 // NewMemoParrot creates a new memo parrot agent.

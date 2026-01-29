@@ -1,4 +1,4 @@
-import { Terminal, Cpu } from "lucide-react";
+import { Cpu, Terminal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -19,10 +19,7 @@ interface MobileGeekModeToggleProps {
  * - Pulsing animation
  * - Scanline effect on touch
  */
-export function MobileGeekModeToggle({
-  enabled,
-  onToggle,
-}: MobileGeekModeToggleProps) {
+export function MobileGeekModeToggle({ enabled, onToggle }: MobileGeekModeToggleProps) {
   const { t } = useTranslation();
 
   return (
@@ -46,23 +43,15 @@ export function MobileGeekModeToggle({
       aria-label={enabled ? t("ai.geek_mode.disable_label") : t("ai.geek_mode.enable_label")}
     >
       {/* Scanline effect when enabled */}
-      {enabled && (
-        <span className="absolute inset-0 rounded-full overflow-hidden opacity-30 geek-scanlines" />
-      )}
+      {enabled && <span className="absolute inset-0 rounded-full overflow-hidden opacity-30 geek-scanlines" />}
 
       {/* Icon */}
       <span className={cn("relative z-10", enabled && "geek-text-glow")}>
-        {enabled ? (
-          <Terminal className="w-6 h-6 animate-pulse" />
-        ) : (
-          <Cpu className="w-6 h-6 text-muted-foreground" />
-        )}
+        {enabled ? <Terminal className="w-6 h-6 animate-pulse" /> : <Cpu className="w-6 h-6 text-muted-foreground" />}
       </span>
 
       {/* Status ring */}
-      {enabled && (
-        <span className="absolute -inset-1 rounded-full border border-primary/20 animate-ping" />
-      )}
+      {enabled && <span className="absolute -inset-1 rounded-full border border-primary/20 animate-ping" />}
     </button>
   );
 }

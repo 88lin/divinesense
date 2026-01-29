@@ -5,11 +5,11 @@ import "time"
 // TimePickerData represents data for a time picker component.
 type TimePickerData struct {
 	Label       string `json:"label"`
-	DefaultDate int64  `json:"default_date,omitempty"` // Unix timestamp
-	MinDate     int64  `json:"min_date,omitempty"`     // Unix timestamp
-	MaxDate     int64  `json:"max_date,omitempty"`     // Unix timestamp
+	Format      string `json:"format,omitempty"`
+	DefaultDate int64  `json:"default_date,omitempty"`
+	MinDate     int64  `json:"min_date,omitempty"`
+	MaxDate     int64  `json:"max_date,omitempty"`
 	ShowTime    bool   `json:"show_time"`
-	Format      string `json:"format,omitempty"` // Display format hint
 }
 
 // NewTimePicker creates a new time picker component.

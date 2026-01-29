@@ -66,10 +66,10 @@ func TestExtractTitle(t *testing.T) {
 
 func TestComputePageRank(t *testing.T) {
 	tests := []struct {
-		name          string
 		graph         *KnowledgeGraph
+		name          string
+		checkHighest  string
 		expectNonZero bool
-		checkHighest  string // node ID that should have highest score
 	}{
 		{
 			name: "empty graph",
@@ -161,8 +161,8 @@ func TestComputePageRank(t *testing.T) {
 
 func TestDetectCommunities(t *testing.T) {
 	tests := []struct {
-		name                string
 		graph               *KnowledgeGraph
+		name                string
 		expectedMinClusters int
 		expectedMaxClusters int
 	}{
@@ -256,8 +256,8 @@ func TestApplyFilter(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
 		filter        GraphFilter
+		name          string
 		expectedNodes int
 		expectedEdges int
 	}{

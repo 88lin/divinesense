@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// MetricsService defines the evaluation metrics service interface.
-// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement)
+// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement).
 type MetricsService interface {
 	// RecordRequest records request metrics.
 	RecordRequest(ctx context.Context, agentType string, latency time.Duration, success bool)
@@ -28,12 +27,12 @@ type TimeRange struct {
 
 // AgentMetrics represents aggregated agent metrics.
 type AgentMetrics struct {
+	AgentStats   map[string]*AgentStat `json:"agent_stats"`
+	ErrorsByType map[string]int64      `json:"errors_by_type"`
 	RequestCount int64                 `json:"request_count"`
 	SuccessCount int64                 `json:"success_count"`
 	LatencyP50   time.Duration         `json:"latency_p50"`
 	LatencyP95   time.Duration         `json:"latency_p95"`
-	AgentStats   map[string]*AgentStat `json:"agent_stats"`
-	ErrorsByType map[string]int64      `json:"errors_by_type"`
 }
 
 // AgentStat represents statistics for a single agent.

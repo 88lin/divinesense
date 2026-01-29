@@ -1,7 +1,7 @@
 // Package rag provides Self-RAG optimization.
 package rag
 
-// Constants for result evaluation
+// Constants for result evaluation.
 const (
 	UsefulScoreThreshold = 0.6  // Top1 score threshold for "useful"
 	MinResultsForRerank  = 5    // Minimum results to consider reranking
@@ -19,19 +19,19 @@ const (
 
 // EvaluationResult contains the evaluation of retrieval results.
 type EvaluationResult struct {
-	IsUseful        bool
 	Reason          string
 	SuggestedAction SuggestedAction
 	TopScore        float32
-	ScoreSpread     float32 // Difference between top scores
+	ScoreSpread     float32
+	IsUseful        bool
 }
 
 // SearchResult represents a single search result.
 type SearchResult struct {
 	ID      string
 	Content string
+	Source  string
 	Score   float32
-	Source  string // "bm25", "vector", "hybrid"
 }
 
 // ResultEvaluator evaluates the usefulness of retrieval results.

@@ -42,8 +42,8 @@ func (s *sessionStore) SaveContext(ctx context.Context, sessionID string, contex
 
 	// Serialize context data (messages + metadata)
 	contextData := struct {
-		Messages []Message      `json:"messages"`
 		Metadata map[string]any `json:"metadata"`
+		Messages []Message      `json:"messages"`
 	}{
 		Messages: context.Messages,
 		Metadata: context.Metadata,
@@ -111,8 +111,8 @@ func (s *sessionStore) LoadContext(ctx context.Context, sessionID string) (*Conv
 
 	// Deserialize context data
 	var contextData struct {
-		Messages []Message      `json:"messages"`
 		Metadata map[string]any `json:"metadata"`
+		Messages []Message      `json:"messages"`
 	}
 	if err := json.Unmarshal(data, &contextData); err != nil {
 		slog.Warn("failed to unmarshal context data", "session_id", sessionID, "error", err)
@@ -264,5 +264,5 @@ func (s *sessionStore) invalidateCache(ctx context.Context, sessionID string) {
 	}
 }
 
-// Ensure sessionStore implements SessionService
+// Ensure sessionStore implements SessionService.
 var _ SessionService = (*sessionStore)(nil)

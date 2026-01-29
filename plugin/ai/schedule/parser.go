@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// Validation constants
+	// Validation constants.
 	MaxInputLength = 500 // characters
 )
 
@@ -48,15 +48,15 @@ func NewParser(llmService ai.LLMService, timezone string) (*Parser, error) {
 
 // ParseResult represents the parsed schedule information.
 type ParseResult struct {
+	Recurrence  *RecurrenceRule
 	Title       string
 	Description string
 	Location    string
+	Timezone    string
+	Reminders   []*v1pb.Reminder
 	StartTs     int64
 	EndTs       int64
 	AllDay      bool
-	Timezone    string
-	Reminders   []*v1pb.Reminder
-	Recurrence  *RecurrenceRule
 }
 
 // Parse parses natural language text and returns schedule information.
@@ -75,16 +75,16 @@ func (p *Parser) Parse(ctx context.Context, text string) (*ParseResult, error) {
 	return p.parseWithLLM(ctx, text)
 }
 
-// llmScheduleResponse is the intermediate JSON structure for LLM output
+// llmScheduleResponse is the intermediate JSON structure for LLM output.
 type llmScheduleResponse struct {
+	Recurrence  *RecurrenceRule  `json:"recurrence"`
 	Title       string           `json:"title"`
 	Description string           `json:"description"`
 	Location    string           `json:"location"`
-	StartTime   string           `json:"start_time"` // Format: YYYY-MM-DD HH:mm:ss
-	EndTime     string           `json:"end_time"`   // Format: YYYY-MM-DD HH:mm:ss
-	AllDay      bool             `json:"all_day"`
+	StartTime   string           `json:"start_time"`
+	EndTime     string           `json:"end_time"`
 	Reminders   []*v1pb.Reminder `json:"reminders"`
-	Recurrence  *RecurrenceRule  `json:"recurrence"`
+	AllDay      bool             `json:"all_day"`
 }
 
 // parseWithLLM uses LLM to parse complex natural language.

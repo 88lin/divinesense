@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 import { SearchIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/lib/utils";
 import { useParseScheduleQuery } from "@/hooks/useScheduleQueries";
+import { cn } from "@/lib/utils";
 import type { Schedule } from "@/types/proto/api/v1/schedule_service_pb";
 import { useTranslate } from "@/utils/i18n";
 
@@ -25,12 +25,13 @@ export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChan
   useEffect(() => {
     const timer = setTimeout(async () => {
       const query = searchQuery.trim();
-      if (!query || query.length < 4) { // Only parse if enough context
+      if (!query || query.length < 4) {
+        // Only parse if enough context
         setSemanticFilter(null);
         return;
       }
 
-      // If simple text match works well, maybe don't force AI? 
+      // If simple text match works well, maybe don't force AI?
       // But user wants "Next week".
       try {
         const parsed = await parseQuery(query);
@@ -43,7 +44,7 @@ export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChan
         } else {
           setSemanticFilter(null);
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore parse errors, treat as pure text
         setSemanticFilter(null);
       }
@@ -58,9 +59,9 @@ export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChan
 
     // 1. Semantic Time Filter (Overlap)
     if (semanticFilter) {
-      result = result.filter(s => {
+      result = result.filter((s) => {
         // Check overlap
-        // Semantic window usually is the specific time detected. 
+        // Semantic window usually is the specific time detected.
         // If user says "Next week", AI might give specific slot.
         // We'll trust AI's specific slot for now or just use it as a "focus"
         // Logic: Schedule STARTs within the semantic window OR overlaps?
@@ -79,7 +80,7 @@ export const ScheduleSearchBar = ({ schedules, onFilteredChange, onHasFilterChan
         // Spec says: "Display parsed time range Tag".
 
         // Let's being conservative: If semantic filter is active, we PRIORITIZE it but maybe showing it as filter is better.
-        return (sStart < fEnd && sEnd > fStart);
+        return sStart < fEnd && sEnd > fStart;
       });
       // If result is empty after semantic, maybe fallback to text?
       if (result.length === 0) result = schedules;

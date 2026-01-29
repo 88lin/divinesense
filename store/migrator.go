@@ -382,12 +382,7 @@ func (s *Store) executeMultiStmt(ctx context.Context, tx *sql.Tx, sql string) er
 	return nil
 }
 
-// splitSQL splits a multi-statement SQL string into individual statements.
-// It handles:
-// - Dollar-quoted strings ($$...$$) for PostgreSQL function bodies
-// - Single-quoted strings ('...')
-// - SQL comments (-- ... and /* ... */)
-// - Preserves function definitions with $$ delimiters
+// - Preserves function definitions with $$ delimiters.
 func (s *Store) splitSQL(sql string) []string {
 	var statements []string
 	var currentStmt strings.Builder

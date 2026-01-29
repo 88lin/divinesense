@@ -224,12 +224,12 @@ const (
 
 // DSTTransition represents a DST transition event.
 type DSTTransition struct {
-	Time        time.Time         // When the transition occurs
-	Type        DSTTransitionType // Spring forward or fall back
-	FromOffset  int               // Offset before transition (seconds)
-	ToOffset    int               // Offset after transition (seconds)
-	ZoneName    string            // Zone name before transition
-	ZoneNameNew string            // Zone name after transition
+	Time        time.Time
+	ZoneName    string
+	ZoneNameNew string
+	Type        DSTTransitionType
+	FromOffset  int
+	ToOffset    int
 }
 
 // String returns a human-readable description of the transition.

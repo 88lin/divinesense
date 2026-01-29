@@ -108,10 +108,10 @@ NO RESULTS: "No memos found matching query: xxx"`
 // MemoSearchInput represents the input for memo search.
 // MemoSearchInput 表示笔记搜索的输入。
 type MemoSearchInput struct {
-	Query     string  `json:"query"`              // Search query (required)
-	Limit     int     `json:"limit,omitempty"`    // Maximum number of results (default: 10)
-	MinScore  float32 `json:"min_score,omitempty"` // Minimum relevance score (default: 0.5)
-	Strategy  string  `json:"strategy,omitempty"`  // Retrieval strategy (optional)
+	Query    string  `json:"query"`
+	Strategy string  `json:"strategy,omitempty"`
+	Limit    int     `json:"limit,omitempty"`
+	MinScore float32 `json:"min_score,omitempty"`
 }
 
 // Run executes the memo search tool.
@@ -210,9 +210,9 @@ type MemoSummary struct {
 // MemoSearchToolResult represents the structured result of memo search.
 // MemoSearchToolResult 表示笔记搜索的结构化结果。
 type MemoSearchToolResult struct {
-	Query string         `json:"query"`
-	Memos []MemoSummary  `json:"memos"`
-	Count int            `json:"count"`
+	Query string        `json:"query"`
+	Memos []MemoSummary `json:"memos"`
+	Count int           `json:"count"`
 }
 
 // RunWithStructuredResult executes the tool and returns a structured result.

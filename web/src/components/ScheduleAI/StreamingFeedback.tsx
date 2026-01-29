@@ -195,10 +195,7 @@ export function StreamingFeedback({ events, isStreaming, className }: StreamingF
           return (
             <div
               key={`${event.type}-${idx}`}
-              className={cn(
-                "flex items-start gap-2 text-sm",
-                isLatest ? "text-foreground" : "text-muted-foreground",
-              )}
+              className={cn("flex items-start gap-2 text-sm", isLatest ? "text-foreground" : "text-muted-foreground")}
             >
               <div
                 className={cn(

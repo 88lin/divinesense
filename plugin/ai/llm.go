@@ -306,17 +306,17 @@ func convertMessages(messages []Message) []openai.ChatCompletionMessage {
 	return llmMessages
 }
 
-// Helper for creating system prompts
+// Helper for creating system prompts.
 func SystemPrompt(content string) Message {
 	return Message{Role: "system", Content: content}
 }
 
-// Helper for creating user messages
+// Helper for creating user messages.
 func UserMessage(content string) Message {
 	return Message{Role: "user", Content: content}
 }
 
-// Helper for creating assistant messages
+// Helper for creating assistant messages.
 func AssistantMessage(content string) Message {
 	return Message{Role: "assistant", Content: content}
 }

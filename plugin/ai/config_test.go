@@ -78,10 +78,10 @@ func TestNewConfigFromProfile_OpenAI(t *testing.T) {
 		AIEnabled:           true,
 		AIEmbeddingProvider: "openai",
 		AIEmbeddingModel:    "text-embedding-3-small",
-		AIOpenAIAPIKey:    "openai-key",
-		AIOpenAIBaseURL:   "https://api.openai.com/v1",
-		AILLMProvider:     "openai",
-		AILLMModel:        "gpt-4",
+		AIOpenAIAPIKey:      "openai-key",
+		AIOpenAIBaseURL:     "https://api.openai.com/v1",
+		AILLMProvider:       "openai",
+		AILLMModel:          "gpt-4",
 	}
 
 	cfg := NewConfigFromProfile(prof)
@@ -145,8 +145,8 @@ func TestNewConfigFromProfile_Disabled(t *testing.T) {
 // TestValidate tests configuration validation.
 func TestValidate(t *testing.T) {
 	tests := []struct {
-		name        string
 		cfg         *Config
+		name        string
 		expectError bool
 	}{
 		{

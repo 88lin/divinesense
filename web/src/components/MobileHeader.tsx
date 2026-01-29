@@ -25,9 +25,7 @@ const MobileHeader = (props: Props) => {
         className,
       )}
     >
-      <div className="absolute left-4 top-0 bottom-0 flex items-center">
-        {!sm && <NavigationDrawer />}
-      </div>
+      <div className="absolute left-4 top-0 bottom-0 flex items-center">{!sm && <NavigationDrawer />}</div>
       <div className="w-full flex justify-center items-center">
         <RouteHeaderImage />
       </div>

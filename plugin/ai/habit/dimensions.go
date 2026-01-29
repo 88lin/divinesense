@@ -19,34 +19,27 @@ type TimeHabits struct {
 
 // ScheduleHabits represents learned schedule-related habits.
 type ScheduleHabits struct {
-	// DefaultDuration is the typical meeting/event duration in minutes
-	DefaultDuration int `json:"default_duration"`
-	// PreferredSlots are preferred time slots (e.g., "morning", "afternoon")
-	PreferredSlots []string `json:"preferred_slots"`
-	// FrequentLocations are commonly used locations
+	PreferredSlots    []string `json:"preferred_slots"`
 	FrequentLocations []string `json:"frequent_locations"`
-	// TitlePatterns are common title patterns/keywords
-	TitlePatterns []string `json:"title_patterns"`
+	TitlePatterns     []string `json:"title_patterns"`
+	DefaultDuration   int      `json:"default_duration"`
 }
 
 // SearchHabits represents learned search-related habits.
 type SearchHabits struct {
-	// FrequentKeywords are commonly used search keywords
+	SearchMode       string   `json:"search_mode"`
+	ResultPreference string   `json:"result_preference"`
 	FrequentKeywords []string `json:"frequent_keywords"`
-	// SearchMode is the preferred search mode ("exact" or "fuzzy")
-	SearchMode string `json:"search_mode"`
-	// ResultPreference indicates preferred result type
-	ResultPreference string `json:"result_preference"`
 }
 
 // UserHabits aggregates all learned habits for a user.
 type UserHabits struct {
-	UserID    int32           `json:"user_id"`
+	UpdatedAt time.Time       `json:"updated_at"`
 	Time      *TimeHabits     `json:"time"`
 	Schedule  *ScheduleHabits `json:"schedule"`
 	Search    *SearchHabits   `json:"search"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Version   int             `json:"version"` // For optimistic locking
+	Version   int             `json:"version"`
+	UserID    int32           `json:"user_id"`
 }
 
 // DefaultTimeHabits returns sensible defaults for time habits.

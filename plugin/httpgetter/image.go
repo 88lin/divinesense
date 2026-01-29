@@ -9,8 +9,8 @@ import (
 )
 
 type Image struct {
-	Blob      []byte
 	Mediatype string
+	Blob      []byte
 }
 
 func GetImage(urlStr string) (*Image, error) {

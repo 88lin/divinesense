@@ -11,11 +11,11 @@ func TestSnippetExtractor_ExtractSnippet(t *testing.T) {
 	tests := []struct {
 		name         string
 		content      string
+		wantPrefix   string
+		wantSuffix   string
 		matches      []Highlight
 		contextChars int
-		wantPrefix   string // Expected prefix (for partial match)
-		wantSuffix   string // Expected suffix (for partial match)
-		wantEllipsis bool   // Whether ellipsis should be present
+		wantEllipsis bool
 	}{
 		{
 			name:         "No matches - returns beginning",
@@ -110,9 +110,9 @@ func TestSnippetExtractor_ExtractSnippet_HighlightPositions(t *testing.T) {
 	tests := []struct {
 		name              string
 		content           string
+		wantHighlightText string
 		matches           []Highlight
 		contextChars      int
-		wantHighlightText string // Text at adjusted highlight position
 	}{
 		{
 			name:    "Highlight position adjusted for prefix ellipsis",
@@ -357,7 +357,7 @@ func TestSnippetExtractor_NoEllipsis(t *testing.T) {
 	}
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkSnippetExtractor_ExtractSnippet(b *testing.B) {
 	extractor := NewSnippetExtractor()
 

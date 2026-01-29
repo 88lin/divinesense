@@ -9,19 +9,17 @@ import (
 // ShortTermMemory manages in-memory session messages with a sliding window.
 // Thread-safe for concurrent access.
 type ShortTermMemory struct {
-	mu       sync.RWMutex
+	ctx      context.Context
 	sessions map[string]*sessionData
-	maxSize  int // Maximum messages per session
-
-	// Lifecycle management
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
+	maxSize  int
+	mu       sync.RWMutex
 }
 
 type sessionData struct {
-	messages   []Message
 	lastAccess time.Time
+	messages   []Message
 }
 
 // NewShortTermMemory creates a new short-term memory store.

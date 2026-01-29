@@ -10,8 +10,8 @@ import (
 
 func TestParseRecurrenceRule(t *testing.T) {
 	tests := []struct {
-		input    string
 		expected *RecurrenceRule
+		input    string
 		hasError bool
 	}{
 		// Daily patterns

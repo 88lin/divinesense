@@ -6,64 +6,64 @@ import (
 	"time"
 )
 
-// TestQueryRouter_Route 测试查询路由功能
+// TestQueryRouter_Route 测试查询路由功能.
 func TestQueryRouter_Route(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
 
 	tests := []struct {
-		name          string
-		query         string
+		name             string
+		query            string
 		expectedStrategy string
-		minConfidence float32
+		minConfidence    float32
 	}{
 		{
-			name:          "纯日程查询 - 今天",
-			query:         "今天有什么安排",
+			name:             "纯日程查询 - 今天",
+			query:            "今天有什么安排",
 			expectedStrategy: "schedule_bm25_only",
-			minConfidence: 0.90,
+			minConfidence:    0.90,
 		},
 		{
-			name:          "纯日程查询 - 明天",
-			query:         "明天的日程",
+			name:             "纯日程查询 - 明天",
+			query:            "明天的日程",
 			expectedStrategy: "schedule_bm25_only",
-			minConfidence: 0.90,
+			minConfidence:    0.90,
 		},
 		{
-			name:          "纯日程查询 - 本周",
-			query:         "本周有什么事",
+			name:             "纯日程查询 - 本周",
+			query:            "本周有什么事",
 			expectedStrategy: "schedule_bm25_only",
-			minConfidence: 0.90,
+			minConfidence:    0.90,
 		},
 		{
-			name:          "混合查询 - 今天下午会议",
-			query:         "今天下午关于AI项目的会议",
+			name:             "混合查询 - 今天下午会议",
+			query:            "今天下午关于AI项目的会议",
 			expectedStrategy: "hybrid_with_time_filter",
-			minConfidence: 0.85,
+			minConfidence:    0.85,
 		},
 		{
-			name:          "笔记查询 - 搜索笔记",
-			query:         "搜索关于Python的笔记",
+			name:             "笔记查询 - 搜索笔记",
+			query:            "搜索关于Python的笔记",
 			expectedStrategy: "hybrid_bm25_weighted",
-			minConfidence: 0.85,
+			minConfidence:    0.85,
 		},
 		{
-			name:          "笔记查询 - 包含专有名词",
-			query:         "查找关于React和Vue的笔记",
+			name:             "笔记查询 - 包含专有名词",
+			query:            "查找关于React和Vue的笔记",
 			expectedStrategy: "hybrid_bm25_weighted",
-			minConfidence: 0.80,
+			minConfidence:    0.80,
 		},
 		{
-			name:          "通用问答 - 总结",
-			query:         "总结一下我的工作计划",
+			name:             "通用问答 - 总结",
+			query:            "总结一下我的工作计划",
 			expectedStrategy: "full_pipeline_with_reranker",
-			minConfidence: 0.60,
+			minConfidence:    0.60,
 		},
 		{
-			name:          "默认查询",
-			query:         "帮我看看",
+			name:             "默认查询",
+			query:            "帮我看看",
 			expectedStrategy: "hybrid_standard",
-			minConfidence: 0.70,
+			minConfidence:    0.70,
 		},
 	}
 
@@ -92,15 +92,15 @@ func TestQueryRouter_Route(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_DetectTimeRange 测试时间范围检测
+// TestQueryRouter_DetectTimeRange 测试时间范围检测.
 func TestQueryRouter_DetectTimeRange(t *testing.T) {
 	router := NewQueryRouter()
 
 	tests := []struct {
-		name         string
-		query        string
-		expectLabel  string
-		expectRange  bool // 是否应该有有效的时间范围
+		name        string
+		query       string
+		expectLabel string
+		expectRange bool // 是否应该有有效的时间范围
 	}{
 		{
 			name:        "今天",
@@ -209,7 +209,7 @@ func TestQueryRouter_DetectTimeRange(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_ExtractContentQuery 测试内容查询提取
+// TestQueryRouter_ExtractContentQuery 测试内容查询提取.
 func TestQueryRouter_ExtractContentQuery(t *testing.T) {
 	router := NewQueryRouter()
 
@@ -257,7 +257,7 @@ func TestQueryRouter_ExtractContentQuery(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_Performance 测试路由性能
+// TestQueryRouter_Performance 测试路由性能.
 func TestQueryRouter_Performance(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -297,7 +297,7 @@ func TestQueryRouter_Performance(t *testing.T) {
 	}
 }
 
-// TestTimeRange_Contains 测试时间范围包含检查
+// TestTimeRange_Contains 测试时间范围包含检查.
 func TestTimeRange_Contains(t *testing.T) {
 	now := time.Now()
 	start := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, now.Location())
@@ -310,8 +310,8 @@ func TestTimeRange_Contains(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
 		testTime time.Time
+		name     string
 		expected bool
 	}{
 		{

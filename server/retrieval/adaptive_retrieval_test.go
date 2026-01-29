@@ -13,7 +13,7 @@ import (
 	"github.com/hrygo/divinesense/store"
 )
 
-// MockEmbeddingService is a mock for EmbeddingService
+// MockEmbeddingService is a mock for EmbeddingService.
 type MockEmbeddingService struct {
 	mock.Mock
 }
@@ -42,7 +42,7 @@ func (m *MockEmbeddingService) IsEnabled() bool {
 	return true
 }
 
-// MockRerankerService is a mock for RerankerService
+// MockRerankerService is a mock for RerankerService.
 type MockRerankerService struct {
 	mock.Mock
 }
@@ -60,7 +60,7 @@ func (m *MockRerankerService) IsEnabled() bool {
 	return args.Bool(0)
 }
 
-// MockStore is a mock for Store
+// MockStore is a mock for Store.
 type MockStore struct {
 	mock.Mock
 	vectorSearchResults  []*store.MemoWithScore
@@ -83,7 +83,7 @@ func (m *MockStore) ListSchedules(ctx context.Context, find *store.FindSchedule)
 	return args.Get(0).([]*store.Schedule), args.Error(1)
 }
 
-// TestAdaptiveRetriever_EvaluateQuality 测试结果质量评估
+// TestAdaptiveRetriever_EvaluateQuality 测试结果质量评估.
 func TestAdaptiveRetriever_EvaluateQuality(t *testing.T) {
 	retriever := &AdaptiveRetriever{}
 
@@ -141,7 +141,7 @@ func TestAdaptiveRetriever_EvaluateQuality(t *testing.T) {
 	}
 }
 
-// TestAdaptiveRetriever_ShouldRerank 测试是否应该重排
+// TestAdaptiveRetriever_ShouldRerank 测试是否应该重排.
 func TestAdaptiveRetriever_ShouldRerank(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -212,7 +212,7 @@ func TestAdaptiveRetriever_ShouldRerank(t *testing.T) {
 	}
 }
 
-// TestAdaptiveRetriever_IsSimpleKeywordQuery 测试简单关键词查询判断
+// TestAdaptiveRetriever_IsSimpleKeywordQuery 测试简单关键词查询判断.
 func TestAdaptiveRetriever_IsSimpleKeywordQuery(t *testing.T) {
 	retriever := &AdaptiveRetriever{}
 
@@ -263,7 +263,7 @@ func TestAdaptiveRetriever_IsSimpleKeywordQuery(t *testing.T) {
 	}
 }
 
-// TestAdaptiveRetriever_FilterByScore 测试按分数过滤
+// TestAdaptiveRetriever_FilterByScore 测试按分数过滤.
 func TestAdaptiveRetriever_FilterByScore(t *testing.T) {
 	retriever := &AdaptiveRetriever{}
 
@@ -311,7 +311,7 @@ func TestAdaptiveRetriever_FilterByScore(t *testing.T) {
 	}
 }
 
-// TestAdaptiveRetriever_TruncateResults 测试结果截断
+// TestAdaptiveRetriever_TruncateResults 测试结果截断.
 func TestAdaptiveRetriever_TruncateResults(t *testing.T) {
 	retriever := &AdaptiveRetriever{}
 
@@ -357,7 +357,7 @@ func TestAdaptiveRetriever_TruncateResults(t *testing.T) {
 	}
 }
 
-// TestAdaptiveRetriever_MergeResults 测试结果合并
+// TestAdaptiveRetriever_MergeResults 测试结果合并.
 func TestAdaptiveRetriever_MergeResults(t *testing.T) {
 	retriever := &AdaptiveRetriever{}
 
@@ -398,7 +398,7 @@ func TestAdaptiveRetriever_MergeResults(t *testing.T) {
 	}
 }
 
-// TestAdaptiveRetriever_Retrieve_ScheduleBM25Only 测试日程 BM25 检索
+// TestAdaptiveRetriever_Retrieve_ScheduleBM25Only 测试日程 BM25 检索.
 func TestAdaptiveRetriever_Retrieve_ScheduleBM25Only(t *testing.T) {
 	// This test would require a more complete mock setup
 	// For now, just verify the strategy routing works
@@ -429,7 +429,7 @@ func TestAdaptiveRetriever_Retrieve_ScheduleBM25Only(t *testing.T) {
 	_ = mockStore
 }
 
-// TestQualityLevel_String 测试质量级别字符串表示
+// TestQualityLevel_String 测试质量级别字符串表示.
 func TestQualityLevel_String(t *testing.T) {
 	tests := []struct {
 		level    QualityLevel
@@ -448,7 +448,7 @@ func TestQualityLevel_String(t *testing.T) {
 	}
 }
 
-// BenchmarkQueryRouter_Route 性能基准测试
+// BenchmarkQueryRouter_Route 性能基准测试.
 func BenchmarkQueryRouter_Route(b *testing.B) {
 	router := queryengine.NewQueryRouter()
 	ctx := context.Background()
@@ -466,7 +466,7 @@ func BenchmarkQueryRouter_Route(b *testing.B) {
 	}
 }
 
-// TestRRFFusion tests the RRF (Reciprocal Rank Fusion) algorithm
+// TestRRFFusion tests the RRF (Reciprocal Rank Fusion) algorithm.
 func TestRRFFusion(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -559,7 +559,7 @@ func TestRRFFusion(t *testing.T) {
 	}
 }
 
-// TestRRFScoreCalculation tests the RRF score calculation
+// TestRRFScoreCalculation tests the RRF score calculation.
 func TestRRFScoreCalculation(t *testing.T) {
 	// RRF formula: RRF(d) = weight / (k + rank)
 	// where k = 60
@@ -582,7 +582,7 @@ func TestRRFScoreCalculation(t *testing.T) {
 	}
 }
 
-// TestRRFEmptyResults tests RRF with empty inputs
+// TestRRFEmptyResults tests RRF with empty inputs.
 func TestRRFEmptyResults(t *testing.T) {
 	retriever := &AdaptiveRetriever{}
 
@@ -592,7 +592,7 @@ func TestRRFEmptyResults(t *testing.T) {
 	}
 }
 
-// TestRRFUniqueResults tests RRF when all results are unique (no overlap)
+// TestRRFUniqueResults tests RRF when all results are unique (no overlap).
 func TestRRFUniqueResults(t *testing.T) {
 	vectorResults := createMockVectorResults([]int64{1, 2, 3})
 	bm25Results := createMockBM25Results([]int64{4, 5, 6})

@@ -74,58 +74,34 @@ export function ChatHeader({
       {/* Left Section */}
       <div className="flex items-center gap-2.5">
         {/* Avatar with subtle geek mode border */}
-        <div className={cn(
-          "w-9 h-9 flex items-center justify-center rounded-lg transition-all",
-          geekMode && "border border-green-500/30 bg-green-500/10"
-        )}>
-          <img
-            src="/assistant-avatar.webp"
-            alt={assistantName}
-            className="h-9 w-auto object-contain"
-          />
+        <div
+          className={cn(
+            "w-9 h-9 flex items-center justify-center rounded-lg transition-all",
+            geekMode && "border border-green-500/30 bg-green-500/10",
+          )}
+        >
+          <img src="/assistant-avatar.webp" alt={assistantName} className="h-9 w-auto object-contain" />
         </div>
         <div className="flex flex-col">
-          <h1 className={cn(
-            "font-semibold text-foreground text-sm leading-tight",
-            geekMode && "font-mono"
-          )}>
-            {assistantName}
-          </h1>
+          <h1 className={cn("font-semibold text-foreground text-sm leading-tight", geekMode && "font-mono")}>{assistantName}</h1>
           {/* Status */}
           {actionDescription ? (
-            <span className={cn(
-              "text-xs flex items-center gap-1.5",
-              geekMode ? "text-green-600 dark:text-green-400" : "text-primary"
-            )}>
-              {geekMode && (
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              )}
+            <span className={cn("text-xs flex items-center gap-1.5", geekMode ? "text-green-600 dark:text-green-400" : "text-primary")}>
+              {geekMode && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
               {actionDescription}
             </span>
           ) : (
-            <span className={cn(
-              "text-xs text-muted-foreground",
-              geekMode && "font-mono"
-            )}>
-              {geekMode ? "$ ready" : t("ai.ready")}
-            </span>
+            <span className={cn("text-xs text-muted-foreground", geekMode && "font-mono")}>{geekMode ? "$ ready" : t("ai.ready")}</span>
           )}
         </div>
       </div>
 
       {/* Right Section - Geek Mode Toggle + Thinking indicator */}
       <div className="flex items-center gap-2">
-        <GeekModeToggle
-          enabled={geekMode}
-          onToggle={onGeekModeToggle ?? (() => {})}
-          variant="header"
-        />
+        <GeekModeToggle enabled={geekMode} onToggle={onGeekModeToggle ?? (() => {})} variant="header" />
         {isThinking && (
           <div className="flex items-center gap-1.5 text-sm">
-            <Sparkles className={cn(
-              "w-4 h-4 animate-pulse",
-              geekMode ? "text-green-600 dark:text-green-400" : "text-primary"
-            )} />
+            <Sparkles className={cn("w-4 h-4 animate-pulse", geekMode ? "text-green-600 dark:text-green-400" : "text-primary")} />
           </div>
         )}
       </div>

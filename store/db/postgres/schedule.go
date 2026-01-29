@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lib/pq"
 	"github.com/hrygo/divinesense/store"
+	"github.com/lib/pq"
 )
 
 func (d *DB) CreateSchedule(ctx context.Context, create *store.Schedule) (*store.Schedule, error) {
@@ -46,7 +46,7 @@ func (d *DB) CreateSchedule(ctx context.Context, create *store.Schedule) (*store
 		// Check for EXCLUDE constraint violation (conflict detection)
 		if isConflictConstraintError(err) {
 			return nil, &ConflictConstraintError{
-				Err: err,
+				Err:     err,
 				Message: "schedule conflicts with an existing schedule",
 			}
 		}

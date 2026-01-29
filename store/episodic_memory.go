@@ -4,15 +4,15 @@ import "time"
 
 // EpisodicMemory represents an episodic memory record for AI learning.
 type EpisodicMemory struct {
-	ID         int64
-	UserID     int32
 	Timestamp  time.Time
-	AgentType  string // memo/schedule/amazing/assistant
+	AgentType  string
 	UserInput  string
-	Outcome    string // success/failure
+	Outcome    string
 	Summary    string
-	Importance float32 // 0-1
+	ID         int64
 	CreatedTs  int64
+	UserID     int32
+	Importance float32
 }
 
 // FindEpisodicMemory specifies the conditions for finding episodic memories.

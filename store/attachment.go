@@ -13,74 +13,60 @@ import (
 )
 
 type Attachment struct {
-	// ID is the system generated unique identifier for the attachment.
-	ID int32
-	// UID is the user defined unique identifier for the attachment.
-	UID string
-
-	// Standard fields
-	CreatorID int32
-	CreatedTs int64
-	UpdatedTs int64
-	RowStatus string
-
-	// Domain specific fields
-	Filename    string
-	Blob        []byte
-	Type        string
-	Size        int64
-	StorageType storepb.AttachmentStorageType
-	Reference   string
-	Payload     *storepb.AttachmentPayload
-
-	// File storage
-	FilePath string
-
-	// OCR and full-text extraction
-	ThumbnailPath  string
-	ExtractedText string // Text extracted from PDF/Office via Tika
-	OCRText       string // Text extracted from images via Tesseract
-
-	// The related memo ID.
-	MemoID *int32
-
-	// Composed field
-	MemoUID *string
+	Payload       *storepb.AttachmentPayload
+	MemoUID       *string
+	MemoID        *int32
+	Type          string
+	FilePath      string
+	RowStatus     string
+	Filename      string
+	UID           string
+	OCRText       string
+	ExtractedText string
+	ThumbnailPath string
+	Reference     string
+	Blob          []byte
+	CreatedTs     int64
+	Size          int64
+	UpdatedTs     int64
+	StorageType   storepb.AttachmentStorageType
+	ID            int32
+	CreatorID     int32
 }
 
 type FindAttachment struct {
-	GetBlob        bool
+	MemoID         *int32
 	ID             *int32
 	UID            *string
 	CreatorID      *int32
 	Filename       *string
 	FilenameSearch *string
-	MemoID         *int32
-	MemoIDList     []int32
-	HasRelatedMemo bool
 	StorageType    *storepb.AttachmentStorageType
-	Filters        []string
 	Limit          *int
 	Offset         *int
+	MemoIDList     []int32
+	Filters        []string
+	GetBlob        bool
+	HasRelatedMemo bool
 }
 
 type UpdateAttachment struct {
-	ID             int32
-	UID            *string
-	UpdatedTs      *int64
-	Filename       *string
-	MemoID         *int32
-	Reference      *string
-	Payload        *storepb.AttachmentPayload
-	RowStatus      *string
-	ExtractedText  *string
-	OCRText        *string
-	ThumbnailPath  *string
+	UID           *string
+	UpdatedTs     *int64
+	Filename      *string
+	MemoID        *int32
+	Reference     *string
+	Payload       *storepb.AttachmentPayload
+	RowStatus     *string
+	ExtractedText *string
+	OCRText       *string
+	ThumbnailPath *string
+	ID            int32
 }
 
 type DeleteAttachment struct {
-	ID     int32
 	MemoID *int32
+	ID     int32
 }
 
 func (s *Store) CreateAttachment(ctx context.Context, create *Attachment) (*Attachment, error) {

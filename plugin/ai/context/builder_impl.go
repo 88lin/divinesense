@@ -312,5 +312,5 @@ func (s *Service) assembleResult(segments []*ContextSegment, budget *TokenBudget
 	return result
 }
 
-// Ensure Service implements ContextBuilder
+// Ensure Service implements ContextBuilder.
 var _ ContextBuilder = (*Service)(nil)

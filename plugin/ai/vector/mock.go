@@ -10,13 +10,13 @@ import (
 
 // MockVectorService is a mock implementation of VectorService for testing.
 type MockVectorService struct {
-	mu         sync.RWMutex
 	embeddings map[string]*storedEmbedding
+	mu         sync.RWMutex
 }
 
 type storedEmbedding struct {
-	Vector   []float32
 	Metadata map[string]any
+	Vector   []float32
 }
 
 // NewMockVectorService creates a new MockVectorService with sample data.
@@ -32,9 +32,9 @@ func NewMockVectorService() *MockVectorService {
 func (m *MockVectorService) seedData() {
 	// Sample embeddings (simplified 8-dimensional vectors for testing)
 	sampleData := []struct {
+		metadata map[string]any
 		docID    string
 		vector   []float32
-		metadata map[string]any
 	}{
 		{
 			docID:  "memo-001",
@@ -114,9 +114,9 @@ func (m *MockVectorService) SearchSimilar(ctx context.Context, vector []float32,
 	defer m.mu.RUnlock()
 
 	type scoredResult struct {
+		metadata map[string]any
 		docID    string
 		score    float32
-		metadata map[string]any
 	}
 
 	var results []scoredResult
@@ -171,8 +171,8 @@ func (m *MockVectorService) HybridSearch(ctx context.Context, query string, limi
 	type scoredResult struct {
 		docID     string
 		content   string
-		score     float32
 		matchType string
+		score     float32
 	}
 
 	var results []scoredResult
@@ -288,5 +288,5 @@ func cosineSimilarity(a, b []float32) float32 {
 	return float32(raw)
 }
 
-// Ensure MockVectorService implements VectorService
+// Ensure MockVectorService implements VectorService.
 var _ VectorService = (*MockVectorService)(nil)

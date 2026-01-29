@@ -5,12 +5,11 @@ import (
 )
 
 type Reaction struct {
-	ID        int32
-	CreatedTs int64
-	CreatorID int32
-	// ContentID is the id of the content that the reaction is for.
 	ContentID    string
 	ReactionType string
+	CreatedTs    int64
+	ID           int32
+	CreatorID    int32
 }
 
 type FindReaction struct {

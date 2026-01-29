@@ -34,11 +34,11 @@ func TestSend(t *testing.T) {
 
 func TestSendValidation(t *testing.T) {
 	tests := []struct {
-		name    string
 		config  *Config
 		message *Message
-		wantErr bool
+		name    string
 		errMsg  string
+		wantErr bool
 	}{
 		{
 			name:    "nil config",

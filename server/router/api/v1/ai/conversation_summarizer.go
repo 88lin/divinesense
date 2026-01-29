@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lithammer/shortuuid/v4"
 	"github.com/hrygo/divinesense/plugin/ai"
 	"github.com/hrygo/divinesense/store"
+	"github.com/lithammer/shortuuid/v4"
 	"log/slog"
 )
 
@@ -47,7 +47,10 @@ func NewConversationSummarizer(reader MessageReader, writer MessageWriter, llm a
 
 // NewConversationSummarizerWithStore creates a summarizer with a single store for both read and write.
 // The store must implement both MessageReader and MessageWriter.
-func NewConversationSummarizerWithStore(store interface{ MessageReader; MessageWriter }, llm ai.LLMService, threshold int) *ConversationSummarizer {
+func NewConversationSummarizerWithStore(store interface {
+	MessageReader
+	MessageWriter
+}, llm ai.LLMService, threshold int) *ConversationSummarizer {
 	if threshold <= 0 {
 		threshold = 11
 	}

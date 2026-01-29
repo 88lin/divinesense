@@ -54,10 +54,10 @@ func TestParseCronExpression(t *testing.T) {
 
 func TestScheduleNext(t *testing.T) {
 	tests := []struct {
-		name     string
-		expr     string
 		from     time.Time
 		expected time.Time
+		name     string
+		expr     string
 	}{
 		{
 			name:     "every minute from start of hour",

@@ -7,23 +7,23 @@ import (
 
 // Schedule is the object representing a schedule.
 type Schedule struct {
-	ID              int32
-	UID             string
-	CreatorID       int32
-	RowStatus       RowStatus
-	CreatedTs       int64
-	UpdatedTs       int64
+	EndTs           *int64
+	Payload         *string
+	Reminders       *string
+	RecurrenceEndTs *int64
+	RecurrenceRule  *string
+	Timezone        string
 	Title           string
 	Description     string
 	Location        string
+	RowStatus       RowStatus
+	UID             string
 	StartTs         int64
-	EndTs           *int64
+	UpdatedTs       int64
+	CreatedTs       int64
+	ID              int32
+	CreatorID       int32
 	AllDay          bool
-	Timezone        string
-	RecurrenceRule  *string
-	RecurrenceEndTs *int64
-	Reminders       *string
-	Payload         *string
 }
 
 // FindSchedule is the find condition for schedule.
@@ -52,22 +52,22 @@ type FindSchedule struct {
 
 // UpdateSchedule is the update request for schedule.
 type UpdateSchedule struct {
-	ID              int32
-	UID             *string
+	StartTs         *int64
+	EndTs           *int64
 	CreatedTs       *int64
 	UpdatedTs       *int64
 	RowStatus       *RowStatus
 	Title           *string
+	UID             *string
 	Description     *string
+	Payload         *string
 	Location        *string
-	StartTs         *int64
-	EndTs           *int64
 	AllDay          *bool
 	Timezone        *string
 	RecurrenceRule  *string
 	RecurrenceEndTs *int64
 	Reminders       *string
-	Payload         *string
+	ID              int32
 }
 
 // DeleteSchedule is the delete request for schedule.

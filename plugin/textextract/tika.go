@@ -20,7 +20,7 @@ import (
 	"log/slog"
 )
 
-// Supported MIME types for text extraction
+// Supported MIME types for text extraction.
 var SupportedMimeTypes = []string{
 	"application/pdf",
 	"application/msword",
@@ -34,7 +34,7 @@ var SupportedMimeTypes = []string{
 	"text/rtf",
 }
 
-// Config holds the text extraction configuration
+// Config holds the text extraction configuration.
 type Config struct {
 	// TikaServerURL is the URL of the Tika server (e.g., http://localhost:9998)
 	TikaServerURL string
@@ -48,7 +48,7 @@ type Config struct {
 	UseEmbedded bool
 }
 
-// DefaultConfig returns the default text extraction configuration
+// DefaultConfig returns the default text extraction configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		TikaServerURL: "http://localhost:9998",
@@ -59,7 +59,7 @@ func DefaultConfig() *Config {
 	}
 }
 
-// ConfigFromEnv creates extraction config from environment variables
+// ConfigFromEnv creates extraction config from environment variables.
 func ConfigFromEnv() *Config {
 	config := DefaultConfig()
 
@@ -84,13 +84,13 @@ func ConfigFromEnv() *Config {
 	return config
 }
 
-// Client provides text extraction functionality
+// Client provides text extraction functionality.
 type Client struct {
 	config     *Config
 	httpClient *http.Client
 }
 
-// NewClient creates a new text extraction client
+// NewClient creates a new text extraction client.
 func NewClient(config *Config) *Client {
 	if config == nil {
 		config = DefaultConfig()
@@ -104,7 +104,7 @@ func NewClient(config *Config) *Client {
 	}
 }
 
-// Result represents the extraction result with metadata
+// Result represents the extraction result with metadata.
 type Result struct {
 	Text        string            `json:"text"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
@@ -118,7 +118,7 @@ type Result struct {
 	CharCount   int               `json:"char_count,omitempty"`
 }
 
-// ExtractText extracts text from a document
+// ExtractText extracts text from a document.
 func (c *Client) ExtractText(ctx context.Context, data []byte, contentType string) (*Result, error) {
 	if !c.IsSupported(contentType) {
 		return nil, errors.Errorf("unsupported content type: %s", contentType)
@@ -131,7 +131,7 @@ func (c *Client) ExtractText(ctx context.Context, data []byte, contentType strin
 	return c.extractFromServer(ctx, data, contentType)
 }
 
-// extractFromServer extracts text using Tika server
+// extractFromServer extracts text using Tika server.
 func (c *Client) extractFromServer(ctx context.Context, data []byte, contentType string) (*Result, error) {
 	// Try Tika server first
 	if c.config.TikaServerURL != "" {
@@ -194,7 +194,7 @@ func (c *Client) extractFromServer(ctx context.Context, data []byte, contentType
 	return nil, errors.New("no Tika server or jar available")
 }
 
-// extractEmbedded extracts text using embedded Tika (java -jar tika-app.jar)
+// extractEmbedded extracts text using embedded Tika (java -jar tika-app.jar).
 func (c *Client) extractEmbedded(ctx context.Context, data []byte, contentType string) (*Result, error) {
 	// Create temp files
 	inputFile, err := os.CreateTemp("", "tika_input_*")
@@ -245,7 +245,7 @@ func (c *Client) extractEmbedded(ctx context.Context, data []byte, contentType s
 	return result, nil
 }
 
-// getMetadata retrieves document metadata from Tika
+// getMetadata retrieves document metadata from Tika.
 func (c *Client) getMetadata(ctx context.Context, data []byte, contentType string) (map[string]string, error) {
 	req, err := http.NewRequestWithContext(ctx, "PUT",
 		c.config.TikaServerURL+"/meta",
@@ -286,7 +286,7 @@ func (c *Client) getMetadata(ctx context.Context, data []byte, contentType strin
 	return result, nil
 }
 
-// ExtractTextFromFile extracts text from a file
+// ExtractTextFromFile extracts text from a file.
 func (c *Client) ExtractTextFromFile(ctx context.Context, filePath string) (*Result, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -297,11 +297,11 @@ func (c *Client) ExtractTextFromFile(ctx context.Context, filePath string) (*Res
 	return c.ExtractText(ctx, data, contentType)
 }
 
-// IsAvailable checks if Tika is available
+// IsAvailable checks if Tika is available.
 func (c *Client) IsAvailable(ctx context.Context) bool {
 	// Try server first
 	if c.config.TikaServerURL != "" {
-		req, _ := http.NewRequestWithContext(ctx, "GET", c.config.TikaServerURL, nil)
+		req, _ := http.NewRequestWithContext(ctx, "GET", c.config.TikaServerURL, http.NoBody)
 		resp, err := c.httpClient.Do(req)
 		if err == nil {
 			resp.Body.Close()
@@ -321,7 +321,7 @@ func (c *Client) IsAvailable(ctx context.Context) bool {
 	return false
 }
 
-// IsSupported checks if a MIME type is supported
+// IsSupported checks if a MIME type is supported.
 func (c *Client) IsSupported(contentType string) bool {
 	for _, supported := range SupportedMimeTypes {
 		if strings.EqualFold(contentType, supported) {
@@ -331,12 +331,12 @@ func (c *Client) IsSupported(contentType string) bool {
 	return false
 }
 
-// GetSupportedMimeTypes returns the list of supported MIME types
+// GetSupportedMimeTypes returns the list of supported MIME types.
 func GetSupportedMimeTypes() []string {
 	return SupportedMimeTypes
 }
 
-// detectContentType detects the content type of a file
+// detectContentType detects the content type of a file.
 func (c *Client) detectContentType(filePath string, data []byte) string {
 	// Try by extension first
 	ext := strings.ToLower(filepath.Ext(filePath))
@@ -348,13 +348,13 @@ func (c *Client) detectContentType(filePath string, data []byte) string {
 	return http.DetectContentType(data)
 }
 
-// calculateStats calculates word and character counts
+// calculateStats calculates word and character counts.
 func (r *Result) calculateStats() {
 	r.CharCount = len(r.Text)
 	r.WordCount = len(strings.Fields(r.Text))
 }
 
-// GetSummary returns a summary of the extracted text
+// GetSummary returns a summary of the extracted text.
 func (r *Result) GetSummary(maxLength int) string {
 	if maxLength <= 0 || len(r.Text) <= maxLength {
 		return r.Text
@@ -370,19 +370,19 @@ func (r *Result) GetSummary(maxLength int) string {
 	return text + "..."
 }
 
-// MarshalJSON implements custom JSON marshaling
+// MarshalJSON implements custom JSON marshaling.
 func (r *Result) MarshalJSON() ([]byte, error) {
 	type Alias Result
 	return json.Marshal(&struct {
-		SizeBytes int `json:"size_bytes,omitempty"`
 		*Alias
+		SizeBytes int `json:"size_bytes,omitempty"`
 	}{
 		SizeBytes: len(r.Text),
 		Alias:     (*Alias)(r),
 	})
 }
 
-// parseIntSafely parses an integer safely
+// parseIntSafely parses an integer safely.
 func parseIntSafely(s string) int {
 	var i int
 	if _, err := fmt.Sscanf(s, "%d", &i); err != nil {
@@ -391,7 +391,7 @@ func parseIntSafely(s string) int {
 	return i
 }
 
-// DetectDocumentType detects the type of document from content type
+// DetectDocumentType detects the type of document from content type.
 func DetectDocumentType(contentType string) string {
 	switch {
 	case strings.HasPrefix(contentType, "application/pdf"):
@@ -409,7 +409,7 @@ func DetectDocumentType(contentType string) string {
 	}
 }
 
-// Merge merges multiple extraction results
+// Merge merges multiple extraction results.
 func Merge(results []*Result) *Result {
 	if len(results) == 0 {
 		return &Result{}

@@ -236,5 +236,5 @@ func (m *MockTimeService) now() time.Time {
 	return time.Now()
 }
 
-// Ensure MockTimeService implements TimeService
+// Ensure MockTimeService implements TimeService.
 var _ TimeService = (*MockTimeService)(nil)

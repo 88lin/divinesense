@@ -18,16 +18,13 @@ import (
 type ErrorClass int
 
 const (
-	// ErrorClassTransient indicates a temporary error that should be retried.
-	// Examples: network timeout, temporary service unavailability
+	// Examples: network timeout, temporary service unavailability.
 	ErrorClassTransient ErrorClass = iota
 
-	// ErrorClassPermanent indicates a non-retryable error.
-	// Examples: validation failures, permission denied, invalid input
+	// Examples: validation failures, permission denied, invalid input.
 	ErrorClassPermanent
 
-	// ErrorClassConflict indicates a schedule conflict requiring special handling.
-	// Examples: schedule overlap, duplicate booking
+	// Examples: schedule overlap, duplicate booking.
 	ErrorClassConflict
 )
 
@@ -47,10 +44,10 @@ func (e ErrorClass) String() string {
 
 // ClassifiedError wraps an error with its classification and retry guidance.
 type ClassifiedError struct {
-	Class      ErrorClass
 	Original   error
-	RetryAfter time.Duration // Suggested delay before retry (for transient errors)
-	ActionHint string        // Suggested action for conflict errors
+	ActionHint string
+	Class      ErrorClass
+	RetryAfter time.Duration
 }
 
 // Error returns a formatted error message.

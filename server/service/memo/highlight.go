@@ -10,18 +10,18 @@ import (
 
 // Highlight represents a highlighted match in the content.
 type Highlight struct {
+	MatchedText string `json:"matched_text"`
 	Start       int    `json:"start"`
 	End         int    `json:"end"`
-	MatchedText string `json:"matched_text"`
 }
 
 // HighlightedMemo represents a memo with highlighted search matches.
 type HighlightedMemo struct {
 	Name       string      `json:"name"`
 	Snippet    string      `json:"snippet"`
-	Score      float32     `json:"score"`
 	Highlights []Highlight `json:"highlights"`
 	CreatedTs  int64       `json:"created_ts"`
+	Score      float32     `json:"score"`
 }
 
 // HighlightService provides search highlighting functionality.

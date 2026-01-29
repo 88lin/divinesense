@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { Activity, BarChart3, Clock, TrendingUp } from "lucide-react";
-import { useTranslate } from "@/utils/i18n";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { metricsService, type MetricsOverview } from "@/services/metrics";
+import { type MetricsOverview, metricsService } from "@/services/metrics";
+import { useTranslate } from "@/utils/i18n";
 
 export { MetricsDashboard };
 
@@ -56,9 +56,7 @@ function MetricsDashboard() {
               onClick={() => setTimeRange(range.value)}
               className={cn(
                 "px-3 py-1 text-xs font-medium rounded-md transition-colors",
-                timeRange === range.value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                timeRange === range.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {range.label}
@@ -122,9 +120,7 @@ function MetricsDashboard() {
 
       {metrics && metrics.is_mock && (
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-          <p className="text-xs text-amber-600 dark:text-amber-400">
-            Mock data - Metrics service not yet implemented
-          </p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">Mock data - Metrics service not yet implemented</p>
         </div>
       )}
     </div>

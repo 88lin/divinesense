@@ -8,7 +8,6 @@ interface Props {
   collapsed?: boolean;
 }
 
-
 function MemosLogo(props: Props) {
   const { collapsed } = props;
   const { generalSetting: instanceGeneralSetting } = useInstance();

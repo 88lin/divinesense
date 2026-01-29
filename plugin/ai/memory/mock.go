@@ -11,11 +11,11 @@ import (
 
 // MockMemoryService is a mock implementation of MemoryService for testing.
 type MockMemoryService struct {
-	mu          sync.RWMutex
 	messages    map[string][]Message
-	episodes    []EpisodicMemory
 	preferences map[int32]*UserPreferences
+	episodes    []EpisodicMemory
 	nextID      int64
+	mu          sync.RWMutex
 }
 
 // NewMockMemoryService creates a new MockMemoryService with sample data.
@@ -224,5 +224,5 @@ func (m *MockMemoryService) UpdatePreferences(ctx context.Context, userID int32,
 	return nil
 }
 
-// Ensure MockMemoryService implements MemoryService
+// Ensure MockMemoryService implements MemoryService.
 var _ MemoryService = (*MockMemoryService)(nil)

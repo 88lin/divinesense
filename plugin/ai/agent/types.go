@@ -25,83 +25,38 @@ type ParrotAgent interface {
 // ParrotSelfCognition represents a parrot's metacognitive understanding of itself.
 // ParrotSelfCognition 表示鹦鹉对自己的元认知理解。
 type ParrotSelfCognition struct {
-	// Name is the parrot's name
-	Name string `json:"name"`
-
-	// Emoji is the parrot's visual representation
-	Emoji string `json:"emoji"`
-
-	// Title is the parrot's formal title
-	Title string `json:"title"`
-
-	// AvianIdentity describes the parrot's cognition of being a bird
-	// 鸟类身份认知 - "我是一只鹦鹉"
-	AvianIdentity *AvianIdentity `json:"avian_identity"`
-
-	// EmotionalExpression describes how the parrot expresses emotions
-	// 情感表达 - 拟声词、口头禅、情感触发
+	AvianIdentity       *AvianIdentity       `json:"avian_identity"`
 	EmotionalExpression *EmotionalExpression `json:"emotional_expression,omitempty"`
-
-	// AvianBehaviors describes bird-like behaviors the parrot exhibits
-	// 鸟类行为 - 描述鹦鹉展示的鸟类行为
-	AvianBehaviors []string `json:"avian_behaviors,omitempty"`
-
-	// Personality describes the parrot's character traits
-	Personality []string `json:"personality"`
-
-	// Capabilities lists what the parrot can do
-	Capabilities []string `json:"capabilities"`
-
-	// Limitations describes what the parrot cannot do
-	Limitations []string `json:"limitations"`
-
-	// WorkingStyle describes how the parrot approaches tasks
-	WorkingStyle string `json:"working_style"`
-
-	// FavoriteTools lists tools the parrot frequently uses
-	FavoriteTools []string `json:"favorite_tools"`
-
-	// SelfIntroduction is a first-person introduction
-	SelfIntroduction string `json:"self_introduction"`
-
-	// FunFact is an interesting fact about the parrot
-	FunFact string `json:"fun_fact"`
+	WorkingStyle        string               `json:"working_style"`
+	Title               string               `json:"title"`
+	Emoji               string               `json:"emoji"`
+	Name                string               `json:"name"`
+	SelfIntroduction    string               `json:"self_introduction"`
+	FunFact             string               `json:"fun_fact"`
+	AvianBehaviors      []string             `json:"avian_behaviors,omitempty"`
+	Personality         []string             `json:"personality"`
+	Capabilities        []string             `json:"capabilities"`
+	Limitations         []string             `json:"limitations"`
+	FavoriteTools       []string             `json:"favorite_tools"`
 }
 
 // AvianIdentity represents the parrot's cognition of its avian nature.
 // AvianIdentity 表示鹦鹉对其鸟类本质的认知。
 type AvianIdentity struct {
-	// Species is the type of parrot
-	Species string `json:"species"` // e.g., "非洲灰鹦鹉", "金刚鹦鹉"
-
-	// Origin describes where this species comes from
-	Origin string `json:"origin"` // e.g., "非洲热带雨林", "亚马逊雨林"
-
-	// NaturalAbilities are abilities real parrots have in nature
-	NaturalAbilities []string `json:"natural_abilities"` // e.g., "模仿语音", "飞行", "使用工具"
-
-	// SymbolicMeaning is what the parrot represents as a symbol
-	SymbolicMeaning string `json:"symbolic_meaning"` // e.g., "智慧", "自由", "沟通"
-
-	// AvianPhilosophy is the parrot's philosophy about being a bird AI
-	AvianPhilosophy string `json:"avian_philosophy"` // e.g., "我是一只飞在数据世界中的鹦鹉"
+	Species          string   `json:"species"`
+	Origin           string   `json:"origin"`
+	SymbolicMeaning  string   `json:"symbolic_meaning"`
+	AvianPhilosophy  string   `json:"avian_philosophy"`
+	NaturalAbilities []string `json:"natural_abilities"`
 }
 
 // EmotionalExpression defines how a parrot expresses emotions.
 // EmotionalExpression 定义鹦鹉的情感表达方式。
 type EmotionalExpression struct {
-	// DefaultMood is the parrot's baseline emotional state
-	DefaultMood string `json:"default_mood"` // e.g., "focused", "curious", "happy"
-
-	// SoundEffects are onomatopoeic sounds the parrot makes
-	// Sounds are keyed by context (e.g., "thinking", "searching", "found")
 	SoundEffects map[string]string `json:"sound_effects"`
-
-	// Catchphrases are recurring phrases the parrot uses
-	Catchphrases []string `json:"catchphrases"`
-
-	// MoodTriggers map events to emotional responses
 	MoodTriggers map[string]string `json:"mood_triggers,omitempty"`
+	DefaultMood  string            `json:"default_mood"`
+	Catchphrases []string          `json:"catchphrases"`
 }
 
 // EventCallback is the callback function type for agent events.
@@ -114,8 +69,7 @@ type EmotionalExpression struct {
 // 返回错误将中止代理执行。
 type EventCallback func(eventType string, eventData interface{}) error
 
-// Common event types
-// 常用事件类型
+// 常用事件类型.
 const (
 	EventTypeThinking   = "thinking"    // Agent is thinking
 	EventTypeToolUse    = "tool_use"    // Agent is using a tool
@@ -123,28 +77,27 @@ const (
 	EventTypeAnswer     = "answer"      // Final answer from agent
 	EventTypeError      = "error"       // Error occurred
 
-	// Memo-specific events
+	// Memo-specific events.
 	EventTypeMemoQueryResult = "memo_query_result" // Memo search results
 
-	// Schedule-specific events
+	// Schedule-specific events.
 	EventTypeScheduleQueryResult = "schedule_query_result" // Schedule query results
 	EventTypeScheduleUpdated     = "schedule_updated"      // Schedule created/updated
 
-	// UI Tool events - for generative UI
-	// UI 工具事件 - 用于生成式 UI
+	// UI 工具事件 - 用于生成式 UI.
 	EventTypeUIScheduleSuggestion = "ui_schedule_suggestion" // Suggested schedule for confirmation
-	EventTypeUITimeSlotPicker     = "ui_time_slot_picker"     // Time slot selection
-	EventTypeUIConflictResolution = "ui_conflict_resolution"  // Conflict resolution options
-	EventTypeUIQuickActions       = "ui_quick_actions"        // Quick action buttons
-	EventTypeUIMemoPreview        = "ui_memo_preview"         // Memo preview cards
-	EventTypeUIScheduleList       = "ui_schedule_list"        // Schedule list display
+	EventTypeUITimeSlotPicker     = "ui_time_slot_picker"    // Time slot selection
+	EventTypeUIConflictResolution = "ui_conflict_resolution" // Conflict resolution options
+	EventTypeUIQuickActions       = "ui_quick_actions"       // Quick action buttons
+	EventTypeUIMemoPreview        = "ui_memo_preview"        // Memo preview cards
+	EventTypeUIScheduleList       = "ui_schedule_list"       // Schedule list display
 )
 
 // MemoQueryResultData represents the result of a memo search.
 // MemoQueryResultData 表示笔记搜索的结果。
 type MemoQueryResultData struct {
-	Memos []MemoSummary `json:"memos"`
 	Query string        `json:"query"`
+	Memos []MemoSummary `json:"memos"`
 	Count int           `json:"count"`
 }
 
@@ -159,11 +112,11 @@ type MemoSummary struct {
 // ScheduleQueryResultData represents the result of a schedule query.
 // ScheduleQueryResultData 表示日程查询的结果。
 type ScheduleQueryResultData struct {
-	Schedules            []ScheduleSummary `json:"schedules"`
 	Query                string            `json:"query"`
-	Count                int               `json:"count"`
 	TimeRangeDescription string            `json:"time_range_description"`
-	QueryType            string            `json:"query_type"` // e.g., "upcoming", "range", "filter"
+	QueryType            string            `json:"query_type"`
+	Schedules            []ScheduleSummary `json:"schedules"`
+	Count                int               `json:"count"`
 }
 
 // ScheduleSummary represents a simplified schedule for query results.
@@ -171,11 +124,11 @@ type ScheduleQueryResultData struct {
 type ScheduleSummary struct {
 	UID            string `json:"uid"`
 	Title          string `json:"title"`
+	Location       string `json:"location,omitempty"`
+	Status         string `json:"status"`
 	StartTimestamp int64  `json:"start_ts"`
 	EndTimestamp   int64  `json:"end_ts"`
 	AllDay         bool   `json:"all_day"`
-	Location       string `json:"location,omitempty"`
-	Status         string `json:"status"`
 }
 
 // ParrotStream is the interface for streaming responses to the client.
@@ -224,9 +177,9 @@ func (a *ParrotStreamAdapter) Close() error {
 // ParrotError represents an error from a parrot agent.
 // ParrotError 表示来自鹦鹉代理的错误。
 type ParrotError struct {
-	AgentName string // Name of the agent that produced the error
-	Operation string // Operation being performed when error occurred
-	Err       error  // Underlying error
+	Err       error
+	AgentName string
+	Operation string
 }
 
 // Error implements the error interface.
@@ -264,110 +217,110 @@ func NewParrotError(agentName, operation string, err error) *ParrotError {
 // UIScheduleSuggestionData 表示需要用户确认的建议日程。
 type UIScheduleSuggestionData struct {
 	Title       string  `json:"title"`
-	StartTs     int64   `json:"start_ts"`
-	EndTs       int64   `json:"end_ts"`
 	Location    string  `json:"location,omitempty"`
 	Description string  `json:"description,omitempty"`
-	AllDay      bool    `json:"all_day"`
+	Reason      string  `json:"reason,omitempty"`
+	SessionID   string  `json:"session_id,omitempty"`
+	StartTs     int64   `json:"start_ts"`
+	EndTs       int64   `json:"end_ts"`
 	Confidence  float32 `json:"confidence"`
-	Reason      string  `json:"reason,omitempty"`      // Why this schedule was suggested
-	SessionID   string  `json:"session_id,omitempty"`  // For tracking the conversation
+	AllDay      bool    `json:"all_day"`
 }
 
 // UITimeSlotData represents a single time slot option.
 // UITimeSlotData 表示单个时间槽选项。
 type UITimeSlotData struct {
-	Label    string  `json:"label"`     // Human-readable label e.g. "Tomorrow 3pm"
-	StartTs  int64   `json:"start_ts"`  // Start timestamp
-	EndTs    int64   `json:"end_ts"`    // End timestamp
-	Duration int     `json:"duration"`  // Duration in minutes
-	Reason   string  `json:"reason"`    // Why this slot is suggested
+	Label    string `json:"label"`
+	Reason   string `json:"reason"`
+	StartTs  int64  `json:"start_ts"`
+	EndTs    int64  `json:"end_ts"`
+	Duration int    `json:"duration"`
 }
 
 // UITimeSlotPickerData represents time slot options for user selection.
 // UITimeSlotPickerData 表示供用户选择的时间槽选项。
 type UITimeSlotPickerData struct {
-	Slots      []UITimeSlotData `json:"slots"`       // Available time slots
-	DefaultIdx int             `json:"default_idx"` // Default selected index
-	Reason     string          `json:"reason"`      // Why asking user to pick
-	SessionID  string          `json:"session_id,omitempty"`
+	Reason     string           `json:"reason"`
+	SessionID  string           `json:"session_id,omitempty"`
+	Slots      []UITimeSlotData `json:"slots"`
+	DefaultIdx int              `json:"default_idx"`
 }
 
 // UIConflictSchedule represents a conflicting schedule.
 // UIConflictSchedule 表示冲突的日程。
 type UIConflictSchedule struct {
-	UID        string `json:"uid"`
-	Title      string `json:"title"`
-	StartTime  int64  `json:"start_time"`
-	EndTime    int64  `json:"end_time"`
-	Location   string `json:"location,omitempty"`
-	AllDay     bool   `json:"all_day"`
+	UID       string `json:"uid"`
+	Title     string `json:"title"`
+	Location  string `json:"location,omitempty"`
+	StartTime int64  `json:"start_time"`
+	EndTime   int64  `json:"end_time"`
+	AllDay    bool   `json:"all_day"`
 }
 
 // UIConflictResolutionData represents conflict resolution options.
 // UIConflictResolutionData 表示冲突解决选项。
 type UIConflictResolutionData struct {
-	NewSchedule          UIScheduleSuggestionData `json:"new_schedule"`              // The schedule that caused conflict
-	ConflictingSchedules []UIConflictSchedule     `json:"conflicting_schedules"`     // Existing conflicting schedules
-	SuggestedSlots       []UITimeSlotData         `json:"suggested_slots"`           // Alternative time slots
-	Actions              []string                 `json:"actions"`                  // Available actions: "override", "reschedule", "cancel"
-	AutoResolved         *UITimeSlotData          `json:"auto_resolved,omitempty"`  // Auto-resolved slot (if applicable)
+	AutoResolved         *UITimeSlotData          `json:"auto_resolved,omitempty"`
+	NewSchedule          UIScheduleSuggestionData `json:"new_schedule"`
 	SessionID            string                   `json:"session_id,omitempty"`
+	ConflictingSchedules []UIConflictSchedule     `json:"conflicting_schedules"`
+	SuggestedSlots       []UITimeSlotData         `json:"suggested_slots"`
+	Actions              []string                 `json:"actions"`
 }
 
 // UIQuickActionData represents a quick action button.
 // UIQuickActionData 表示快捷操作按钮。
 type UIQuickActionData struct {
-	ID          string `json:"id"`           // Action ID
-	Label       string `json:"label"`        // Button label
-	Description string `json:"description"`  // Action description
+	ID          string `json:"id"`             // Action ID
+	Label       string `json:"label"`          // Button label
+	Description string `json:"description"`    // Action description
 	Icon        string `json:"icon,omitempty"` // Optional icon name
-	Prompt      string `json:"prompt"`       // What to send when clicked
+	Prompt      string `json:"prompt"`         // What to send when clicked
 }
 
 // UIQuickActionsData represents quick action buttons for user.
 // UIQuickActionsData 表示给用户的快捷操作按钮。
 type UIQuickActionsData struct {
-	Title       string             `json:"title"`       // Section title
-	Description string             `json:"description"` // Section description
-	Actions     []UIQuickActionData `json:"actions"`    // Action buttons
-	SessionID   string             `json:"session_id,omitempty"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	SessionID   string              `json:"session_id,omitempty"`
+	Actions     []UIQuickActionData `json:"actions"`
 }
 
 // UIMemoPreviewData represents a memo preview card for generative UI.
 // UIMemoPreviewData 表示生成式 UI 的笔记预览卡片。
 type UIMemoPreviewData struct {
-	UID        string   `json:"uid,omitempty"`         // Memo UID for linking
-	Title      string   `json:"title"`                // Card title
-	Content    string   `json:"content"`              // Memo content
-	Tags       []string `json:"tags,omitempty"`       // Optional tags
-	Confidence float32  `json:"confidence"`           // Confidence score (0-1)
-	Reason     string   `json:"reason,omitempty"`     // Why this memo is suggested
-	SessionID  string   `json:"session_id,omitempty"` // For tracking
+	UID        string   `json:"uid,omitempty"`
+	Title      string   `json:"title"`
+	Content    string   `json:"content"`
+	Reason     string   `json:"reason,omitempty"`
+	SessionID  string   `json:"session_id,omitempty"`
+	Tags       []string `json:"tags,omitempty"`
+	Confidence float32  `json:"confidence"`
 }
 
 // UIScheduleItem represents a single schedule item for display.
 // UIScheduleItem 表示用于展示的单个日程项。
 type UIScheduleItem struct {
-	UID        string  `json:"uid"`                  // Schedule UID
-	Title      string  `json:"title"`                // Schedule title
-	StartTs    int64   `json:"start_ts"`             // Start timestamp
-	EndTs      int64   `json:"end_ts"`               // End timestamp
-	AllDay     bool    `json:"all_day"`              // Is all-day event
-	Location   string  `json:"location,omitempty"`   // Location
-	Status     string  `json:"status,omitempty"`      // Status
+	UID      string `json:"uid"`
+	Title    string `json:"title"`
+	Location string `json:"location,omitempty"`
+	Status   string `json:"status,omitempty"`
+	StartTs  int64  `json:"start_ts"`
+	EndTs    int64  `json:"end_ts"`
+	AllDay   bool   `json:"all_day"`
 }
 
 // UIScheduleListData represents a list of schedules for display.
 // UIScheduleListData 表示用于展示的日程列表。
 type UIScheduleListData struct {
-	Title        string            `json:"title"`        // List title, e.g. "Today's Schedule"
-	Query        string            `json:"query"`        // Original query
-	Count        int               `json:"count"`        // Number of schedules
-	Schedules    []UIScheduleItem  `json:"schedules"`    // Schedule items
-	TimeRange    string            `json:"time_range,omitempty"`   // Time range description
-	Reason       string            `json:"reason,omitempty"`      // Why these schedules are shown
-	SessionID    string            `json:"session_id,omitempty"`   // For tracking
+	Title     string           `json:"title"`
+	Query     string           `json:"query"`
+	TimeRange string           `json:"time_range,omitempty"`
+	Reason    string           `json:"reason,omitempty"`
+	SessionID string           `json:"session_id,omitempty"`
+	Schedules []UIScheduleItem `json:"schedules"`
+	Count     int              `json:"count"`
 }
 
 // GenerateCacheKey creates a cache key from agent name, userID and userInput using SHA256 hash.

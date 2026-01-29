@@ -5,18 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/hrygo/divinesense/server/service/schedule"
 	"github.com/hrygo/divinesense/store"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // MockScheduleService is a mock implementation of schedule.Service for testing.
 type MockScheduleService struct {
-	findSchedulesResult  []*schedule.ScheduleInstance
 	findSchedulesError   error
-	createScheduleResult *store.Schedule
 	createScheduleError  error
+	createScheduleResult *store.Schedule
+	findSchedulesResult  []*schedule.ScheduleInstance
 }
 
 func (m *MockScheduleService) FindSchedules(ctx context.Context, userID int32, start, end time.Time) ([]*schedule.ScheduleInstance, error) {

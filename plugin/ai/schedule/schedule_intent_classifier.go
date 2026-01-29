@@ -43,7 +43,7 @@ func (i ScheduleIntent) String() string {
 
 // Pre-compiled regex patterns for intent classification.
 var (
-	// Create patterns: time + action/event
+	// Create patterns: time + action/event.
 	createPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(明天|后天|下周|今天|大后天).*(点|时).*(开会|会议|面试|约|见|做|去)`),
 		regexp.MustCompile(`(上午|下午|晚上|早上|中午).*(安排|约|预约|开会|会议)`),
@@ -53,7 +53,7 @@ var (
 		regexp.MustCompile(`(\d{1,2})[点时:].*(开会|会议|面试|约|见|做)`),
 	}
 
-	// Query patterns: question words + time
+	// Query patterns: question words + time.
 	queryPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(今天|明天|这周|下周|本周|后天).*(有什么|什么安排|忙吗|有空|空闲|安排了什么)`),
 		regexp.MustCompile(`(查|看|显示|列出).*(日程|安排|计划|会议)`),
@@ -64,7 +64,7 @@ var (
 		regexp.MustCompile(`\?$|？$`), // Ends with question mark
 	}
 
-	// Update patterns: modification verbs + target
+	// Update patterns: modification verbs + target.
 	updatePatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(改|换|调|推迟|提前|取消|删除|延后|调整).*(会议|日程|安排|时间)`),
 		regexp.MustCompile(`把.*(改|换|调|移)到`),
@@ -73,7 +73,7 @@ var (
 		regexp.MustCompile(`(会议|日程).*(延后|推迟|提前)`),
 	}
 
-	// Batch patterns: repetition keywords
+	// Batch patterns: repetition keywords.
 	batchPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`每(天|日|周|月|年)`),
 		regexp.MustCompile(`工作日`),
@@ -83,12 +83,12 @@ var (
 		regexp.MustCompile(`(从|自).*(到|至).*每`),
 	}
 
-	// Pre-compiled patterns for hasTimeAndAction
+	// Pre-compiled patterns for hasTimeAndAction.
 	viewPattern         = regexp.MustCompile(`(查|看|显示|列出).*(安排|日程)`)
 	arrangeVerbPattern  = regexp.MustCompile(`安排.*(会议|面试|约会|活动|事情|一下)`)
 	specificTimePattern = regexp.MustCompile(`\d{1,2}[点时:]`)
 
-	// Keywords for fallback detection
+	// Keywords for fallback detection.
 	timeKeywords   = []string{"今天", "明天", "后天", "下周", "本周", "这周", "上午", "下午", "晚上", "早上", "中午", "点", "时"}
 	createKeywords = []string{"开会", "会议", "面试", "约", "安排", "预约", "创建", "添加", "新建"}
 	queryKeywords  = []string{"有什么", "什么安排", "忙吗", "有空", "查", "看", "显示", "列出", "有没有"}

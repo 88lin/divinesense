@@ -8,30 +8,29 @@ import (
 
 // Config represents AI configuration.
 type Config struct {
-	Enabled bool
-
 	Embedding        EmbeddingConfig
 	Reranker         RerankerConfig
-	LLM              LLMConfig
 	IntentClassifier IntentClassifierConfig
+	LLM              LLMConfig
+	Enabled          bool
 }
 
 // EmbeddingConfig represents vector embedding configuration.
 type EmbeddingConfig struct {
-	Provider   string // siliconflow, openai, ollama
-	Model      string // BAAI/bge-m3
-	Dimensions int    // 1024
+	Provider   string
+	Model      string
 	APIKey     string
 	BaseURL    string
+	Dimensions int
 }
 
 // RerankerConfig represents reranker configuration.
 type RerankerConfig struct {
-	Enabled  bool
-	Provider string // siliconflow, cohere
-	Model    string // BAAI/bge-reranker-v2-m3
+	Provider string
+	Model    string
 	APIKey   string
 	BaseURL  string
+	Enabled  bool
 }
 
 // LLMConfig represents LLM configuration.
@@ -47,10 +46,10 @@ type LLMConfig struct {
 // IntentClassifierConfig represents intent classification LLM configuration.
 // Uses a lightweight model for fast, cost-effective classification.
 type IntentClassifierConfig struct {
-	Enabled bool
-	Model   string // default: Qwen/Qwen2.5-7B-Instruct
+	Model   string
 	APIKey  string
 	BaseURL string
+	Enabled bool
 }
 
 // NewConfigFromProfile creates AI config from profile.

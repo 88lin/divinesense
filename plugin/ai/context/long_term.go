@@ -34,8 +34,8 @@ type PreferenceProvider interface {
 
 // LongTermContext contains extracted long-term context.
 type LongTermContext struct {
-	Episodes    []*EpisodicMemory
 	Preferences *UserPreferences
+	Episodes    []*EpisodicMemory
 }
 
 // Extract extracts long-term context for the user.

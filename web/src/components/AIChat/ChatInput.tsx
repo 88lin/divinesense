@@ -3,8 +3,8 @@ import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { GeekModeToggle } from "./GeekModeToggle";
 import { cn } from "@/lib/utils";
+import { GeekModeToggle } from "./GeekModeToggle";
 
 interface ChatInputProps {
   value: string;
@@ -74,8 +74,11 @@ export function ChatInput({
 
   const handleInput = useCallback((e: React.FormEvent<HTMLTextAreaElement>) => {
     const target = e.target as HTMLTextAreaElement;
+    // Standard auto-resize logic: reset height to auto to get correct scrollHeight,
+    // then set to scrollHeight (capped by max-height)
     target.style.height = "auto";
-    target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+    const newHeight = Math.min(target.scrollHeight, 120);
+    target.style.height = `${newHeight}px`;
   }, []);
 
   // Reset height when value changes externally
@@ -86,16 +89,11 @@ export function ChatInput({
   }, [value]);
 
   // Use geek-specific placeholder in geek mode, otherwise use default
-  const placeholderText = geekMode
-    ? t("ai.parrot.geek-chat-placeholder")
-    : (placeholder || t("ai.parrot.chat-default-placeholder"));
+  const placeholderText = geekMode ? t("ai.parrot.geek-chat-placeholder") : placeholder || t("ai.parrot.chat-default-placeholder");
 
   return (
     <div
-      className={cn(
-        "shrink-0 p-3 md:p-4 border-t border-border bg-background transition-all",
-        className,
-      )}
+      className={cn("shrink-0 p-3 md:p-4 border-t border-border bg-background", className)}
       style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : "max(16px, env(safe-area-inset-bottom))" }}
     >
       <div className="max-w-3xl mx-auto">
@@ -156,20 +154,14 @@ export function ChatInput({
             {/* Spacer to push geek mode toggle to the right */}
             <div className="flex-1" />
             {/* Geek Mode Toggle - always shown in toolbar on all screen sizes */}
-            {onGeekModeToggle && (
-              <GeekModeToggle
-                enabled={geekMode}
-                onToggle={onGeekModeToggle}
-                variant="toolbar"
-              />
-            )}
+            {onGeekModeToggle && <GeekModeToggle enabled={geekMode} onToggle={onGeekModeToggle} variant="toolbar" />}
           </div>
         )}
 
         {/* Input Box */}
         <div
           className={cn(
-            "flex items-end gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl border transition-all",
+            "flex items-end gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl border",
             "focus-within:ring-2 focus-within:ring-offset-2 shadow-sm",
             "bg-card border-border focus-within:ring-ring",
             // Geek mode styles
@@ -207,11 +199,7 @@ export function ChatInput({
             disabled={!value.trim() || isTyping || disabled}
             aria-label={t("ai.send-shortcut")}
           >
-            {geekMode && value.trim() ? (
-              <Terminal className="w-5 h-5" />
-            ) : (
-              <SendIcon className="w-5 h-5" />
-            )}
+            {geekMode && value.trim() ? <Terminal className="w-5 h-5" /> : <SendIcon className="w-5 h-5" />}
           </Button>
         </div>
       </div>

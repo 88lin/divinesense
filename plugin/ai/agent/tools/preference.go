@@ -47,17 +47,17 @@ type UserPreferenceOutput struct {
 
 // PreferredTimeSlot represents a preferred time slot.
 type PreferredTimeSlot struct {
+	DayOfWeek string `json:"day_of_week,omitempty"`
 	Hour      int    `json:"hour"`
 	Frequency int    `json:"frequency"`
-	DayOfWeek string `json:"day_of_week,omitempty"`
 }
 
 // ActivityPattern represents a detected activity pattern.
 type ActivityPattern struct {
 	Title           string `json:"title"`
+	TypicalLocation string `json:"typical_location,omitempty"`
 	TypicalDuration int    `json:"typical_duration_minutes"`
 	TypicalHour     int    `json:"typical_hour"`
-	TypicalLocation string `json:"typical_location,omitempty"`
 	Frequency       int    `json:"frequency"`
 }
 
@@ -319,10 +319,10 @@ func (t *UserPreferenceTool) filterOutput(output *UserPreferenceOutput, queryTyp
 // Helper types and functions
 
 type activityStats struct {
+	locations map[string]int
 	title     string
 	durations []int
 	hours     []int
-	locations map[string]int
 }
 
 func containsIgnoreCase(s, substr string) bool {

@@ -10,21 +10,21 @@ import (
 type TaskIntent string
 
 const (
-	// Schedule-related intents
-	IntentSimpleCreate TaskIntent = "schedule_create" // 创建单个日程
-	IntentSimpleQuery  TaskIntent = "schedule_query" // 查询日程/空闲
-	IntentSimpleUpdate TaskIntent = "schedule_update" // 修改/删除日程
-	IntentBatchCreate  TaskIntent = "schedule_batch"  // 重复日程
+	// Schedule-related intents.
+	IntentSimpleCreate    TaskIntent = "schedule_create"   // 创建单个日程
+	IntentSimpleQuery     TaskIntent = "schedule_query"    // 查询日程/空闲
+	IntentSimpleUpdate    TaskIntent = "schedule_update"   // 修改/删除日程
+	IntentBatchCreate     TaskIntent = "schedule_batch"    // 重复日程
 	IntentConflictResolve TaskIntent = "schedule_conflict" // 处理冲突
 
-	// Memo-related intents
+	// Memo-related intents.
 	IntentMemoSearch TaskIntent = "memo_search" // 搜索笔记
 	IntentMemoCreate TaskIntent = "memo_create" // 创建笔记
 
-	// Amazing agent intent
+	// Amazing agent intent.
 	IntentAmazing TaskIntent = "amazing" // 综合分析
 
-	// Legacy aliases for backward compatibility
+	// Legacy aliases for backward compatibility.
 	IntentScheduleQuery  TaskIntent = "schedule_query"
 	IntentScheduleCreate TaskIntent = "schedule_create"
 	IntentScheduleUpdate TaskIntent = "schedule_update"
@@ -32,10 +32,7 @@ const (
 	IntentMultiQuery     TaskIntent = "amazing" // Alias to amazing
 )
 
-// IntentClassifier classifies user input into task intents.
-// This is used to route requests to the appropriate execution mode:
-// - Simple tasks (IntentSimpleCreate, IntentSimpleQuery, IntentSimpleUpdate) → ReAct mode
-// - Batch tasks (IntentBatchCreate) → Plan-Execute mode
+// - Batch tasks (IntentBatchCreate) → Plan-Execute mode.
 type IntentClassifier struct {
 	// Batch keywords that trigger Plan-Execute mode
 	batchKeywords []string
@@ -209,9 +206,7 @@ func (ic *IntentClassifier) hasTimeAndAction(input string) bool {
 	return false
 }
 
-// hasNegation checks if the input contains negation words.
-// Negation usually indicates a query or clarification rather than an action.
-// Examples: "不要创建", "别安排", "不是今天", "不用开会"
+// Examples: "不要创建", "别安排", "不是今天", "不用开会".
 func (ic *IntentClassifier) hasNegation(input, lowerInput string) bool {
 	negationWords := []string{
 		// Chinese

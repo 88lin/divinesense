@@ -444,11 +444,11 @@ func (b *GraphBuilder) GetFilteredGraph(ctx context.Context, userID int32, filte
 
 // GraphFilter contains filter criteria for graph visualization.
 type GraphFilter struct {
-	Tags          []string   // Filter by tags
-	MinImportance float64    // Minimum importance score
-	Clusters      []int      // Filter by cluster IDs
-	StartDate     *time.Time // Filter by date range
+	StartDate     *time.Time
 	EndDate       *time.Time
+	Tags          []string
+	Clusters      []int
+	MinImportance float64
 }
 
 // ApplyFilter filters the graph based on criteria.

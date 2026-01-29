@@ -38,24 +38,20 @@ func (s *SimpleTokenCounter) CountTokens(text string) int {
 
 // ContextControl specifies how to build the conversation context.
 type ContextControl struct {
-	// MaxMessages limits the number of messages to include (0 = no limit)
-	MaxMessages int
-	// MaxTokens limits the total token count (0 = use default)
-	MaxTokens int
-	// IgnoreSeparator bypasses SEPARATOR filtering (use with caution)
-	IgnoreSeparator bool
-	// PendingMessages are messages not yet persisted to DB (e.g., from EventBus)
 	PendingMessages []Message
+	MaxMessages     int
+	MaxTokens       int
+	IgnoreSeparator bool
 }
 
 // BuiltContext represents the result of context building.
 type BuiltContext struct {
-	Messages      []string
-	MessageCount  int
-	TokenCount    int
-	WasTruncated  bool
-	SeparatorPos  int  // -1 if no separator found
-	HasPending    bool // Whether pending messages were included
+	Messages     []string
+	MessageCount int
+	TokenCount   int
+	SeparatorPos int
+	WasTruncated bool
+	HasPending   bool
 }
 
 // ContextBuilder builds conversation context from stored messages.
@@ -70,18 +66,18 @@ type BuiltContext struct {
 // a race condition: the next message may be sent before the previous
 // message is written to the database.
 type ContextBuilder struct {
-	store       MessageStore
+	store        MessageStore
 	tokenCounter TokenCounter
-	maxTokens   int // Default max tokens (approx 8000 for most models)
-	mu          sync.RWMutex
+	maxTokens    int // Default max tokens (approx 8000 for most models)
+	mu           sync.RWMutex
 }
 
 // NewContextBuilder creates a new ContextBuilder.
 func NewContextBuilder(store MessageStore) *ContextBuilder {
 	return &ContextBuilder{
-		store:       store,
+		store:        store,
 		tokenCounter: &SimpleTokenCounter{},
-		maxTokens:   8000, // Default context window
+		maxTokens:    8000, // Default context window
 	}
 }
 
@@ -281,4 +277,3 @@ func (b *ContextBuilder) truncateByCount(messages []string, maxCount int) []stri
 	start := len(messages) - maxCount
 	return messages[start:]
 }
-

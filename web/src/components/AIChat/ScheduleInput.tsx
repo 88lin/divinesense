@@ -10,14 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  useCheckConflict,
-  useCreateSchedule,
-  useDeleteSchedule,
-  useUpdateSchedule,
-} from "@/hooks/useScheduleQueries";
+import { useCheckConflict, useCreateSchedule, useDeleteSchedule, useUpdateSchedule } from "@/hooks/useScheduleQueries";
 import { cn } from "@/lib/utils";
-import { ScheduleSchema, type Schedule } from "@/types/proto/api/v1/schedule_service_pb";
+import { type Schedule, ScheduleSchema } from "@/types/proto/api/v1/schedule_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { ScheduleConflictAlert } from "./ScheduleConflictAlert";
 import { ScheduleErrorBoundary } from "./ScheduleErrorBoundary";
@@ -57,15 +52,17 @@ export const ScheduleInput = ({ open, onOpenChange, editSchedule, onSuccess }: S
         const end = start.add(1, "hour");
 
         // We initialize as a Partial/compatible object and cast since we handle creation later
-        setParsedSchedule(create(ScheduleSchema, {
-          title: "",
-          startTs: BigInt(start.unix()),
-          endTs: BigInt(end.unix()),
-          location: "",
-          description: "",
-          reminders: [],
-          name: "",
-        }));
+        setParsedSchedule(
+          create(ScheduleSchema, {
+            title: "",
+            startTs: BigInt(start.unix()),
+            endTs: BigInt(end.unix()),
+            location: "",
+            description: "",
+            reminders: [],
+            name: "",
+          }),
+        );
       }
       setConflicts([]);
       setShowConflictAlert(false);
@@ -139,7 +136,7 @@ export const ScheduleInput = ({ open, onOpenChange, editSchedule, onSuccess }: S
       }
 
       await executeCreate();
-    } catch (error) {
+    } catch (_error) {
       await executeCreate();
     }
   };
@@ -203,7 +200,9 @@ export const ScheduleInput = ({ open, onOpenChange, editSchedule, onSuccess }: S
                       <Label className="text-xs text-muted-foreground">{t("schedule.start-time")}</Label>
                       <Input
                         type="datetime-local"
-                        value={dayjs(timestampDate(create(TimestampSchema, { seconds: parsedSchedule.startTs, nanos: 0 }))).format("YYYY-MM-DDTHH:mm")}
+                        value={dayjs(timestampDate(create(TimestampSchema, { seconds: parsedSchedule.startTs, nanos: 0 }))).format(
+                          "YYYY-MM-DDTHH:mm",
+                        )}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val) setParsedSchedule({ ...parsedSchedule, startTs: BigInt(dayjs(val).unix()) });
@@ -215,7 +214,9 @@ export const ScheduleInput = ({ open, onOpenChange, editSchedule, onSuccess }: S
                       <Label className="text-xs text-muted-foreground">{t("schedule.end-time")}</Label>
                       <Input
                         type="datetime-local"
-                        value={dayjs(timestampDate(create(TimestampSchema, { seconds: parsedSchedule.endTs, nanos: 0 }))).format("YYYY-MM-DDTHH:mm")}
+                        value={dayjs(timestampDate(create(TimestampSchema, { seconds: parsedSchedule.endTs, nanos: 0 }))).format(
+                          "YYYY-MM-DDTHH:mm",
+                        )}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val) setParsedSchedule({ ...parsedSchedule, endTs: BigInt(dayjs(val).unix()) });
@@ -249,11 +250,7 @@ export const ScheduleInput = ({ open, onOpenChange, editSchedule, onSuccess }: S
                   {/* Footer Actions */}
                   <div className={cn("flex justify-between gap-3 pt-4 border-t", isEditMode ? "" : "justify-end")}>
                     {isEditMode && (
-                      <Button
-                        variant="ghost"
-                        onClick={handleDeleteClick}
-                        className="text-destructive hover:bg-destructive/10 px-2"
-                      >
+                      <Button variant="ghost" onClick={handleDeleteClick} className="text-destructive hover:bg-destructive/10 px-2">
                         <Trash2 className="h-4 w-4 mr-2" />
                         {t("common.delete")}
                       </Button>

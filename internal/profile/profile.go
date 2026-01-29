@@ -13,47 +13,34 @@ import (
 
 // Profile is the configuration to start main server.
 type Profile struct {
-	// Mode can be "prod" or "dev" or "demo"
-	Mode string
-	// Addr is the binding address for server
-	Addr string
-	// Port is the binding port for server
-	Port int
-	// UNIXSock is the IPC binding path. Overrides Addr and Port
-	UNIXSock string
-	// Data is the data directory
-	Data string
-	// DSN points to where divinesense stores its own data
-	DSN string
-	// Driver is the database driver (sqlite or postgres)
-	Driver string
-	// Version is the current version of server
-	Version string
-	// InstanceURL is the url of your divinesense instance.
-	InstanceURL string
-
-	// AI Configuration
-	AIEnabled            bool   // DIVINESENSE_AI_ENABLED (legacy: MEMOS_AI_ENABLED)
-	AIEmbeddingProvider  string // MEMOS_AI_EMBEDDING_PROVIDER (default: siliconflow)
-	AILLMProvider        string // MEMOS_AI_LLM_PROVIDER (default: deepseek)
-	AISiliconFlowAPIKey  string // MEMOS_AI_SILICONFLOW_API_KEY
-	AISiliconFlowBaseURL string // MEMOS_AI_SILICONFLOW_BASE_URL (default: https://api.siliconflow.cn/v1)
-	AIDeepSeekAPIKey     string // MEMOS_AI_DEEPSEEK_API_KEY
-	AIDeepSeekBaseURL    string // MEMOS_AI_DEEPSEEK_BASE_URL (default: https://api.deepseek.com)
-	AIOpenAIAPIKey       string // MEMOS_AI_OPENAI_API_KEY
-	AIOpenAIBaseURL      string // MEMOS_AI_OPENAI_BASE_URL (default: https://api.openai.com/v1)
-	AIOllamaBaseURL      string // MEMOS_AI_OLLAMA_BASE_URL (default: http://localhost:11434)
-	AIEmbeddingModel     string // MEMOS_AI_EMBEDDING_MODEL (default: BAAI/bge-m3)
-	AIRerankModel        string // MEMOS_AI_RERANK_MODEL (default: BAAI/bge-reranker-v2-m3)
-	AILLMModel           string // MEMOS_AI_LLM_MODEL (default: deepseek-chat)
-
-	// Attachment Processing Configuration
-	OCREnabled         bool   // MEMOS_OCR_ENABLED (default: false)
-	TextExtractEnabled bool   // MEMOS_TEXTEXTRACT_ENABLED (default: false)
-	TesseractPath      string // MEMOS_OCR_TESSERACT_PATH (default: tesseract)
-	TessdataPath       string // MEMOS_OCR_TESSDATA_PATH (default: "")
-	OCRLanguages       string // MEMOS_OCR_LANGUAGES (default: chi_sim+eng)
-	TikaServerURL      string // MEMOS_TEXTEXTRACT_TIKA_URL (default: http://localhost:9998)
+	AIDeepSeekAPIKey     string
+	AIEmbeddingModel     string
+	TikaServerURL        string
+	UNIXSock             string
+	Mode                 string
+	DSN                  string
+	Driver               string
+	Version              string
+	InstanceURL          string
+	OCRLanguages         string
+	AIEmbeddingProvider  string
+	AILLMProvider        string
+	Addr                 string
+	TessdataPath         string
+	Data                 string
+	AIDeepSeekBaseURL    string
+	AIOpenAIAPIKey       string
+	AIOpenAIBaseURL      string
+	AIOllamaBaseURL      string
+	AISiliconFlowAPIKey  string
+	AIRerankModel        string
+	AILLMModel           string
+	TesseractPath        string
+	AISiliconFlowBaseURL string
+	Port                 int
+	OCREnabled           bool
+	TextExtractEnabled   bool
+	AIEnabled            bool
 }
 
 func (p *Profile) IsDev() bool {

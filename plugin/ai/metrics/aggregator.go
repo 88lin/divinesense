@@ -8,21 +8,17 @@ import (
 
 // Aggregator aggregates metrics in memory before persisting to database.
 type Aggregator struct {
-	mu sync.RWMutex
-
-	// Agent metrics: key = "hourBucket|agentType"
 	agentMetrics map[string]*agentBucket
-
-	// Tool metrics: key = "hourBucket|toolName"
-	toolMetrics map[string]*toolBucket
+	toolMetrics  map[string]*toolBucket
+	mu           sync.RWMutex
 }
 
 type agentBucket struct {
 	hourBucket   time.Time
 	agentType    string
+	latencies    []int64
 	requestCount int64
 	successCount int64
-	latencies    []int64 // in milliseconds, capped at maxLatencySamples
 }
 
 const maxLatencySamples = 10000 // Cap latency samples to prevent memory bloat

@@ -25,28 +25,25 @@ func NewAnalyzer(st *store.Store) *Analyzer {
 
 // Suggestion represents a time slot suggestion with confidence.
 type Suggestion struct {
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Confidence  float32   `json:"confidence"`
-	Reason      string    `json:"reason"`
-	IsAvailable bool      `json:"is_available"`
-	ConflictCount int    `json:"conflict_count"`
+	StartTime     time.Time `json:"start_time"`
+	EndTime       time.Time `json:"end_time"`
+	Reason        string    `json:"reason"`
+	ConflictCount int       `json:"conflict_count"`
+	Confidence    float32   `json:"confidence"`
+	IsAvailable   bool      `json:"is_available"`
 }
 
 // SuggestionOptions holds options for generating suggestions.
 type SuggestionOptions struct {
-	UserID        int32
-	StartDate     time.Time
-	EndDate       time.Time
-	Duration      time.Duration // Desired duration
-	PreferredTime []string      // Preferred time slots (e.g., "morning", "afternoon")
+	StartDate      time.Time
+	EndDate        time.Time
+	PreferredTime  []string
+	Duration       time.Duration
+	UserID         int32
 	ExcludeWeekend bool
 }
 
-// GenerateSuggestions generates time slot suggestions based on:
-// 1. Historical patterns (when user usually schedules)
-// 2. Current schedule load
-// 3. Preferred time windows
+// 3. Preferred time windows.
 func (a *Analyzer) GenerateSuggestions(ctx context.Context, opts *SuggestionOptions) ([]*Suggestion, error) {
 	// Default to 7 days if no range specified
 	if opts.StartDate.IsZero() {
@@ -94,12 +91,12 @@ func (a *Analyzer) GenerateSuggestions(ctx context.Context, opts *SuggestionOpti
 
 // SchedulePattern represents learned scheduling patterns.
 type SchedulePattern struct {
-	HourOfDay      map[int]int    // Hour -> count
-	DayOfWeek      map[time.Weekday]int
+	LastScheduled   time.Time
+	HourOfDay       map[int]int
+	DayOfWeek       map[time.Weekday]int
+	PreferredDays   []time.Weekday
+	BusyHours       []string
 	AverageDuration time.Duration
-	PreferredDays  []time.Weekday
-	BusyHours      []string
-	LastScheduled  time.Time
 }
 
 func (a *Analyzer) analyzePatterns(schedules []*store.Schedule) *SchedulePattern {
@@ -194,10 +191,10 @@ func (a *Analyzer) generateTimeSlots(opts *SuggestionOptions, schedules []*store
 			isPreferredTime := a.isPreferredTime(hour, opts.PreferredTime)
 
 			suggestion := &Suggestion{
-				StartTime:      slotStart,
-				EndTime:        slotEnd,
-				IsAvailable:    conflicts == 0,
-				ConflictCount:  conflicts,
+				StartTime:     slotStart,
+				EndTime:       slotEnd,
+				IsAvailable:   conflicts == 0,
+				ConflictCount: conflicts,
 			}
 
 			// Generate reason

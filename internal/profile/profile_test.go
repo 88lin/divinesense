@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestAIProfileDefaults 测试 AI 配置的默认值
+// TestAIProfileDefaults 测试 AI 配置的默认值.
 func TestAIProfileDefaults(t *testing.T) {
 	// 清除环境变量
 	clearAIEnvVars()
@@ -40,7 +40,7 @@ func TestAIProfileDefaults(t *testing.T) {
 	}
 }
 
-// TestAIProfileFromEnv 测试从环境变量读取 AI 配置
+// TestAIProfileFromEnv 测试从环境变量读取 AI 配置.
 func TestAIProfileFromEnv(t *testing.T) {
 	// 清除环境变量
 	clearAIEnvVars()
@@ -140,11 +140,11 @@ func TestAIProfileFromEnv(t *testing.T) {
 	}
 }
 
-// TestIsAIEnabled 测试 IsAIEnabled 逻辑
+// TestIsAIEnabled 测试 IsAIEnabled 逻辑.
 func TestIsAIEnabled(t *testing.T) {
 	tests := []struct {
-		name           string
 		setup          func(*Profile)
+		name           string
 		expectedResult bool
 	}{
 		{

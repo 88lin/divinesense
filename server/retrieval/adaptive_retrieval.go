@@ -14,45 +14,43 @@ import (
 	"github.com/hrygo/divinesense/store"
 )
 
-// RRF constants
+// RRF constants.
 const (
-	// RRFK is the damping factor for Reciprocal Rank Fusion
-	// A value of 60 is commonly used in information retrieval
+	// A value of 60 is commonly used in information retrieval.
 	RRFK = 60
 )
 
-// AdaptiveRetriever 自适应检索器
-// 根据查询复杂度和结果质量动态调整检索策略
+// 根据查询复杂度和结果质量动态调整检索策略.
 type AdaptiveRetriever struct {
 	store            *store.Store
 	embeddingService ai.EmbeddingService
 	rerankerService  ai.RerankerService
 }
 
-// SearchResult 检索结果
+// SearchResult 检索结果.
 type SearchResult struct {
-	ID       int64
-	Type     string // "memo" or "schedule"
-	Score    float32
-	Content  string
 	Memo     *store.Memo
 	Schedule *store.Schedule
+	Type     string
+	Content  string
+	ID       int64
+	Score    float32
 }
 
-// RetrievalOptions 检索选项
+// RetrievalOptions 检索选项.
 type RetrievalOptions struct {
-	Query            string
-	UserID           int32
-	Strategy         string
-	TimeRange        *queryengine.TimeRange
-	MinScore         float32
-	Limit            int
-	RequestID        string // 请求追踪 ID
-	Logger           *slog.Logger // 结构化日志记录器
-	ScheduleQueryMode queryengine.ScheduleQueryMode // P1: 日程查询模式
+	TimeRange         *queryengine.TimeRange
+	Logger            *slog.Logger
+	Query             string
+	Strategy          string
+	RequestID         string
+	Limit             int
+	UserID            int32
+	MinScore          float32
+	ScheduleQueryMode queryengine.ScheduleQueryMode
 }
 
-// NewAdaptiveRetriever 创建自适应检索器
+// NewAdaptiveRetriever 创建自适应检索器.
 func NewAdaptiveRetriever(
 	st *store.Store,
 	embeddingService ai.EmbeddingService,
@@ -65,7 +63,7 @@ func NewAdaptiveRetriever(
 	}
 }
 
-// Retrieve 自适应检索主入口
+// Retrieve 自适应检索主入口.
 func (r *AdaptiveRetriever) Retrieve(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	if opts == nil {
 		opts = &RetrievalOptions{
@@ -114,7 +112,7 @@ func (r *AdaptiveRetriever) Retrieve(ctx context.Context, opts *RetrievalOptions
 	}
 }
 
-// scheduleBM25Only 纯日程查询（BM25 + 时间过滤）
+// scheduleBM25Only 纯日程查询（BM25 + 时间过滤）.
 func (r *AdaptiveRetriever) scheduleBM25Only(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	opts.Logger.InfoContext(ctx, "Using retrieval strategy",
 		"request_id", opts.RequestID,
@@ -191,7 +189,7 @@ func (r *AdaptiveRetriever) scheduleBM25Only(ctx context.Context, opts *Retrieva
 	return results, nil
 }
 
-// memoSemanticOnly 纯笔记查询（语义向量）
+// memoSemanticOnly 纯笔记查询（语义向量）.
 func (r *AdaptiveRetriever) memoSemanticOnly(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	opts.Logger.InfoContext(ctx, "Using retrieval strategy",
 		"request_id", opts.RequestID,
@@ -268,7 +266,7 @@ func (r *AdaptiveRetriever) memoSemanticOnly(ctx context.Context, opts *Retrieva
 	return filtered, nil
 }
 
-// hybridBM25Weighted 混合检索（BM25 加权）
+// hybridBM25Weighted 混合检索（BM25 加权）.
 func (r *AdaptiveRetriever) hybridBM25Weighted(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	opts.Logger.InfoContext(ctx, "Using retrieval strategy",
 		"request_id", opts.RequestID,
@@ -280,7 +278,7 @@ func (r *AdaptiveRetriever) hybridBM25Weighted(ctx context.Context, opts *Retrie
 	return r.hybridSearch(ctx, opts, 0.3)
 }
 
-// hybridWithTimeFilter 混合检索（时间过滤）
+// hybridWithTimeFilter 混合检索（时间过滤）.
 func (r *AdaptiveRetriever) hybridWithTimeFilter(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	opts.Logger.InfoContext(ctx, "Using retrieval strategy",
 		"request_id", opts.RequestID,
@@ -315,7 +313,7 @@ func (r *AdaptiveRetriever) hybridWithTimeFilter(ctx context.Context, opts *Retr
 	return results, nil
 }
 
-// hybridStandard 标准混合检索（BM25 + 语义）
+// hybridStandard 标准混合检索（BM25 + 语义）.
 func (r *AdaptiveRetriever) hybridStandard(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	opts.Logger.InfoContext(ctx, "Using retrieval strategy",
 		"request_id", opts.RequestID,
@@ -327,7 +325,7 @@ func (r *AdaptiveRetriever) hybridStandard(ctx context.Context, opts *RetrievalO
 	return r.hybridSearch(ctx, opts, 0.5)
 }
 
-// fullPipelineWithReranker 完整流程（混合检索 + Reranker）
+// fullPipelineWithReranker 完整流程（混合检索 + Reranker）.
 func (r *AdaptiveRetriever) fullPipelineWithReranker(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error) {
 	opts.Logger.InfoContext(ctx, "Using retrieval strategy",
 		"request_id", opts.RequestID,
@@ -406,17 +404,16 @@ func (r *AdaptiveRetriever) fullPipelineWithReranker(ctx context.Context, opts *
 	return reordered, nil
 }
 
-// hybridSearch 混合检索实现
-// 使用 RRF (Reciprocal Rank Fusion) 融合 BM25 和向量检索结果
+// 使用 RRF (Reciprocal Rank Fusion) 融合 BM25 和向量检索结果.
 func (r *AdaptiveRetriever) hybridSearch(ctx context.Context, opts *RetrievalOptions, semanticWeight float32) ([]*SearchResult, error) {
 	// 并行执行 BM25 和向量检索
 	type vectorResult struct {
-		results []*store.MemoWithScore
 		err     error
+		results []*store.MemoWithScore
 	}
 	type bm25Result struct {
-		results []*store.BM25Result
 		err     error
+		results []*store.BM25Result
 	}
 
 	vectorCh := make(chan vectorResult, 1)
@@ -429,7 +426,10 @@ func (r *AdaptiveRetriever) hybridSearch(ctx context.Context, opts *RetrievalOpt
 			select {
 			case <-ctx.Done():
 				return
-			case vectorCh <- vectorResult{nil, fmt.Errorf("failed to embed query: %w", err)}:
+			case vectorCh <- vectorResult{
+				err:     fmt.Errorf("failed to embed query: %w", err),
+				results: nil,
+			}:
 			}
 			return
 		}
@@ -441,7 +441,10 @@ func (r *AdaptiveRetriever) hybridSearch(ctx context.Context, opts *RetrievalOpt
 		})
 		select {
 		case <-ctx.Done():
-		case vectorCh <- vectorResult{results, err}:
+		case vectorCh <- vectorResult{
+			err:     err,
+			results: results,
+		}:
 		}
 	}()
 
@@ -455,7 +458,10 @@ func (r *AdaptiveRetriever) hybridSearch(ctx context.Context, opts *RetrievalOpt
 		})
 		select {
 		case <-ctx.Done():
-		case bm25Ch <- bm25Result{results, err}:
+		case bm25Ch <- bm25Result{
+			err:     err,
+			results: results,
+		}:
 		}
 	}()
 
@@ -465,7 +471,7 @@ func (r *AdaptiveRetriever) hybridSearch(ctx context.Context, opts *RetrievalOpt
 
 	// 处理错误
 	if vectorRes.err != nil && bm25Res.err != nil {
-		return nil, fmt.Errorf("both vector and BM25 search failed: vector=%v, bm25=%v", vectorRes.err, bm25Res.err)
+		return nil, fmt.Errorf("both vector and BM25 search failed: vector=%w, bm25=%w", vectorRes.err, bm25Res.err)
 	}
 
 	// 如果其中一个失败，使用另一个的结果
@@ -490,7 +496,7 @@ func (r *AdaptiveRetriever) hybridSearch(ctx context.Context, opts *RetrievalOpt
 	return results, nil
 }
 
-// convertVectorResults 转换向量检索结果
+// convertVectorResults 转换向量检索结果.
 func (r *AdaptiveRetriever) convertVectorResults(results []*store.MemoWithScore) []*SearchResult {
 	searchResults := make([]*SearchResult, len(results))
 	for i, r := range results {
@@ -505,7 +511,7 @@ func (r *AdaptiveRetriever) convertVectorResults(results []*store.MemoWithScore)
 	return searchResults
 }
 
-// convertBM25Results 转换 BM25 检索结果
+// convertBM25Results 转换 BM25 检索结果.
 func (r *AdaptiveRetriever) convertBM25Results(results []*store.BM25Result) []*SearchResult {
 	searchResults := make([]*SearchResult, len(results))
 	for i, r := range results {
@@ -520,17 +526,15 @@ func (r *AdaptiveRetriever) convertBM25Results(results []*store.BM25Result) []*S
 	return searchResults
 }
 
-// rrfFusion 使用 Reciprocal Rank Fusion 算法融合向量检索和 BM25 检索结果
-// RRF 公式: RRF(d) = Σ weight_i / (k + rank_i(d))
-// 其中 k 是常数 (通常取 60)，rank_i(d) 是文档在第 i 个列表中的排名
+// 其中 k 是常数 (通常取 60)，rank_i(d) 是文档在第 i 个列表中的排名.
 func (r *AdaptiveRetriever) rrfFusion(vectorResults []*store.MemoWithScore, bm25Results []*store.BM25Result, semanticWeight float32) []*SearchResult {
 	// 用于存储每个文档的 RRF 分数
 	type rrfScore struct {
-		id        int64
-		score     float32
-		memo      *store.Memo
-		vectorRank int    // 向量检索中的排名
-		bm25Rank   int    // BM25 检索中的排名
+		memo       *store.Memo
+		id         int64
+		vectorRank int
+		bm25Rank   int
+		score      float32
 	}
 
 	scores := make(map[int64]*rrfScore)
@@ -601,7 +605,7 @@ func (r *AdaptiveRetriever) rrfFusion(vectorResults []*store.MemoWithScore, bm25
 	return results
 }
 
-// QualityLevel 结果质量等级
+// QualityLevel 结果质量等级.
 type QualityLevel int
 
 const (
@@ -610,7 +614,7 @@ const (
 	HighQuality
 )
 
-// String 返回质量等级的字符串表示
+// String 返回质量等级的字符串表示.
 func (q QualityLevel) String() string {
 	switch q {
 	case LowQuality:
@@ -624,7 +628,7 @@ func (q QualityLevel) String() string {
 	}
 }
 
-// evaluateQuality 评估结果质量
+// evaluateQuality 评估结果质量.
 func (r *AdaptiveRetriever) evaluateQuality(results []*SearchResult) QualityLevel {
 	if len(results) == 0 {
 		return LowQuality
@@ -654,7 +658,7 @@ func (r *AdaptiveRetriever) evaluateQuality(results []*SearchResult) QualityLeve
 	return LowQuality
 }
 
-// mergeResults 合并结果（去重，按分数排序）
+// mergeResults 合并结果（去重，按分数排序）.
 func (r *AdaptiveRetriever) mergeResults(results1, results2 []*SearchResult, topK int) []*SearchResult {
 	// 去重（基于 ID）
 	seen := make(map[int64]bool)
@@ -683,7 +687,7 @@ func (r *AdaptiveRetriever) mergeResults(results1, results2 []*SearchResult, top
 	return r.truncateResults(merged, topK)
 }
 
-// shouldRerank 判断是否需要重排
+// shouldRerank 判断是否需要重排.
 func (r *AdaptiveRetriever) shouldRerank(query string, results []*SearchResult) bool {
 	// 检查 Reranker 是否启用
 	if r.rerankerService == nil || !r.rerankerService.IsEnabled() {
@@ -711,7 +715,7 @@ func (r *AdaptiveRetriever) shouldRerank(query string, results []*SearchResult) 
 	return true
 }
 
-// isSimpleKeywordQuery 判断是否为简单关键词查询
+// isSimpleKeywordQuery 判断是否为简单关键词查询.
 func (r *AdaptiveRetriever) isSimpleKeywordQuery(query string) bool {
 	// 简单查询特征：
 	// 1. 查询短（<10个字符）
@@ -730,7 +734,7 @@ func (r *AdaptiveRetriever) isSimpleKeywordQuery(query string) bool {
 	return true
 }
 
-// filterByScore 过滤低分结果
+// filterByScore 过滤低分结果.
 func (r *AdaptiveRetriever) filterByScore(results []*SearchResult, minScore float32) []*SearchResult {
 	if minScore <= 0 {
 		return results
@@ -745,7 +749,7 @@ func (r *AdaptiveRetriever) filterByScore(results []*SearchResult, minScore floa
 	return filtered
 }
 
-// truncateResults 截断结果到指定数量
+// truncateResults 截断结果到指定数量.
 func (r *AdaptiveRetriever) truncateResults(results []*SearchResult, limit int) []*SearchResult {
 	if limit <= 0 || len(results) <= limit {
 		return results
@@ -753,7 +757,7 @@ func (r *AdaptiveRetriever) truncateResults(results []*SearchResult, limit int) 
 	return results[:limit]
 }
 
-// generateRequestID 生成唯一的请求 ID
+// generateRequestID 生成唯一的请求 ID.
 func generateRequestID() string {
 	b := make([]byte, 8)
 	rand.Read(b)

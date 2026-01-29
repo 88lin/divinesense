@@ -21,12 +21,7 @@ interface GeekModeToggleProps {
  * - Green color when active to indicate state
  * - Consistent across all variants
  */
-export function GeekModeToggle({
-  enabled,
-  onToggle,
-  disabled = false,
-  variant = "header",
-}: GeekModeToggleProps) {
+export function GeekModeToggle({ enabled, onToggle, disabled = false, variant = "header" }: GeekModeToggleProps) {
   const { t } = useTranslation();
 
   const isToolbar = variant === "toolbar";
@@ -71,12 +66,7 @@ export function GeekModeToggle({
 
       {/* Label */}
       {isToolbar || isHeader ? (
-        <span className={cn(
-          isHeader && "hidden sm:inline",
-          isToolbar && "ml-1 whitespace-nowrap",
-        )}>
-          {label}
-        </span>
+        <span className={cn(isHeader && "hidden sm:inline", isToolbar && "ml-1 whitespace-nowrap")}>{label}</span>
       ) : null}
     </button>
   );

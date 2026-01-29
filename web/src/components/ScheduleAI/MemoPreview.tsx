@@ -1,5 +1,5 @@
 import { Check, FileText, Hash, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
 import type { MemoPreviewProps } from "./types";
@@ -61,11 +61,7 @@ export function MemoPreview({ data, onConfirm, onDismiss, isLoading = false }: M
           <h4 className="font-semibold text-foreground">{titleText}</h4>
         </div>
         {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <button type="button" onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -75,9 +71,7 @@ export function MemoPreview({ data, onConfirm, onDismiss, isLoading = false }: M
         {/* Title */}
         <div>
           <h5 className="font-medium text-base text-foreground mb-1">{data.title}</h5>
-          {data.reason && (
-            <p className="text-xs text-muted-foreground">{data.reason}</p>
-          )}
+          {data.reason && <p className="text-xs text-muted-foreground">{data.reason}</p>}
         </div>
 
         {/* Content */}
@@ -98,10 +92,7 @@ export function MemoPreview({ data, onConfirm, onDismiss, isLoading = false }: M
             </label>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {data.tags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-primary/10 text-primary"
-                >
+                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-primary/10 text-primary">
                   #{tag}
                 </span>
               ))}
@@ -116,7 +107,11 @@ export function MemoPreview({ data, onConfirm, onDismiss, isLoading = false }: M
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-300",
-                confidencePercent >= CONFIDENCE_HIGH * 100 ? "bg-green-500" : confidencePercent >= CONFIDENCE_MEDIUM * 100 ? "bg-yellow-500" : "bg-orange-500",
+                confidencePercent >= CONFIDENCE_HIGH * 100
+                  ? "bg-green-500"
+                  : confidencePercent >= CONFIDENCE_MEDIUM * 100
+                    ? "bg-yellow-500"
+                    : "bg-orange-500",
               )}
               style={{ width: `${confidencePercent}%` }}
             />

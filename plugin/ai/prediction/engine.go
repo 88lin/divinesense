@@ -35,12 +35,12 @@ const (
 
 // Prediction represents a predicted user action.
 type Prediction struct {
+	Payload    any            `json:"payload,omitempty"`
 	Type       PredictionType `json:"type"`
 	Label      string         `json:"label"`
-	Confidence float64        `json:"confidence"`
 	Action     ActionType     `json:"action"`
-	Payload    any            `json:"payload,omitempty"`
-	Reason     string         `json:"reason,omitempty"` // Why this was predicted
+	Reason     string         `json:"reason,omitempty"`
+	Confidence float64        `json:"confidence"`
 }
 
 // TriggerType defines what triggered the prediction.
@@ -54,9 +54,9 @@ const (
 
 // ContextEvent represents a recent user action for context-based prediction.
 type ContextEvent struct {
-	Type      string    `json:"type"` // "schedule_created", "memo_viewed", etc.
-	TargetID  string    `json:"target_id"`
 	Timestamp time.Time `json:"timestamp"`
+	Type      string    `json:"type"`
+	TargetID  string    `json:"target_id"`
 }
 
 // Engine provides prediction capabilities based on user habits and context.

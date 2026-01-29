@@ -19,8 +19,8 @@ import (
 
 // ExtractedData contains all metadata extracted from markdown in a single pass.
 type ExtractedData struct {
-	Tags     []string
 	Property *storepb.MemoPayload_Property
+	Tags     []string
 }
 
 // Service handles markdown metadata extraction.

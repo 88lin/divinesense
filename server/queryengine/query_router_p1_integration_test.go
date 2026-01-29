@@ -8,17 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestQueryRouter_P1_Integration 测试 P1: 查询模式集成
-// 验证从 RouteDecision 到 RetrievalOptions 的模式传递
+// 验证从 RouteDecision 到 RetrievalOptions 的模式传递.
 func TestQueryRouter_P1_Integration(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
 
 	tests := []struct {
-		name             string
-		query            string
-		expectedMode     ScheduleQueryMode
-		hasTimeRange     bool
+		name         string
+		query        string
+		expectedMode ScheduleQueryMode
+		hasTimeRange bool
 	}{
 		{
 			name:         "相对时间-今天",
@@ -75,8 +74,7 @@ func TestQueryRouter_P1_Integration(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_P1_ModeMapping 测试 P1: 模式到 int32 的映射
-// 验证 ScheduleQueryMode 可以正确转换为 store.FindSchedule 的 QueryMode 字段
+// 验证 ScheduleQueryMode 可以正确转换为 store.FindSchedule 的 QueryMode 字段.
 func TestQueryRouter_P1_ModeMapping(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -98,8 +96,7 @@ func TestQueryRouter_P1_ModeMapping(t *testing.T) {
 	}
 }
 
-// BenchmarkQueryRouter_P1_CompleteRoute P1 完整路由性能测试
-// 包含模式选择和明确年份解析的性能
+// 包含模式选择和明确年份解析的性能.
 func BenchmarkQueryRouter_P1_CompleteRoute(b *testing.B) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -119,7 +116,7 @@ func BenchmarkQueryRouter_P1_CompleteRoute(b *testing.B) {
 	}
 }
 
-// TestP1_FeatureComplete P1 功能完整性检查
+// TestP1_FeatureComplete P1 功能完整性检查.
 func TestP1_FeatureComplete(t *testing.T) {
 	// 这个测试验证 P1 的所有核心功能是否已实现
 

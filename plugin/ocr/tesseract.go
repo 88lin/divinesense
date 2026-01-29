@@ -16,7 +16,7 @@ import (
 	"log/slog"
 )
 
-// Supported image MIME types for OCR
+// Supported image MIME types for OCR.
 var SupportedMimeTypes = []string{
 	"image/png",
 	"image/jpeg",
@@ -26,7 +26,7 @@ var SupportedMimeTypes = []string{
 	"image/webp",
 }
 
-// Config holds the OCR configuration
+// Config holds the OCR configuration.
 type Config struct {
 	// TesseractPath is the path to the tesseract executable
 	TesseractPath string
@@ -36,7 +36,7 @@ type Config struct {
 	Languages string
 }
 
-// DefaultConfig returns the default OCR configuration
+// DefaultConfig returns the default OCR configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		TesseractPath: "tesseract",
@@ -45,12 +45,12 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Client provides OCR functionality
+// Client provides OCR functionality.
 type Client struct {
 	config *Config
 }
 
-// NewClient creates a new OCR client
+// NewClient creates a new OCR client.
 func NewClient(config *Config) *Client {
 	if config == nil {
 		config = DefaultConfig()
@@ -58,7 +58,7 @@ func NewClient(config *Config) *Client {
 	return &Client{config: config}
 }
 
-// ExtractText extracts text from an image using Tesseract OCR
+// ExtractText extracts text from an image using Tesseract OCR.
 func (c *Client) ExtractText(ctx context.Context, image []byte, mimeType string) (string, error) {
 	if !c.isSupported(mimeType) {
 		return "", errors.Errorf("unsupported MIME type: %s", mimeType)
@@ -121,7 +121,7 @@ func (c *Client) ExtractText(ctx context.Context, image []byte, mimeType string)
 	return result, nil
 }
 
-// ExtractTextWithLayout extracts text with layout information (boxes)
+// ExtractTextWithLayout extracts text with layout information (boxes).
 func (c *Client) ExtractTextWithLayout(ctx context.Context, image []byte, mimeType string) (*Result, error) {
 	text, err := c.ExtractText(ctx, image, mimeType)
 	if err != nil {
@@ -129,13 +129,13 @@ func (c *Client) ExtractTextWithLayout(ctx context.Context, image []byte, mimeTy
 	}
 
 	return &Result{
-		Text:     text,
+		Text:       text,
 		Confidence: 0, // Tesseract doesn't provide overall confidence without hocr
-		Languages: c.config.Languages,
+		Languages:  c.config.Languages,
 	}, nil
 }
 
-// ExtractTextToHOCR extracts text with hOCR format (HTML with position info)
+// ExtractTextToHOCR extracts text with hOCR format (HTML with position info).
 func (c *Client) ExtractTextToHOCR(ctx context.Context, image []byte, mimeType string) (string, error) {
 	if !c.isSupported(mimeType) {
 		return "", errors.Errorf("unsupported MIME type: %s", mimeType)
@@ -184,7 +184,7 @@ func (c *Client) ExtractTextToHOCR(ctx context.Context, image []byte, mimeType s
 	return string(hocr), nil
 }
 
-// IsAvailable checks if Tesseract is available
+// IsAvailable checks if Tesseract is available.
 func (c *Client) IsAvailable(ctx context.Context) bool {
 	cmd := exec.CommandContext(ctx, c.config.TesseractPath, "--version")
 	if err := cmd.Run(); err != nil {
@@ -193,7 +193,7 @@ func (c *Client) IsAvailable(ctx context.Context) bool {
 	return true
 }
 
-// GetVersion returns the Tesseract version
+// GetVersion returns the Tesseract version.
 func (c *Client) GetVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, c.config.TesseractPath, "--version")
 	var stdout bytes.Buffer
@@ -204,7 +204,7 @@ func (c *Client) GetVersion(ctx context.Context) (string, error) {
 	return strings.TrimSpace(stdout.String()), nil
 }
 
-// GetAvailableLanguages returns the list of available languages
+// GetAvailableLanguages returns the list of available languages.
 func (c *Client) GetAvailableLanguages(ctx context.Context) ([]string, error) {
 	// Build tesseract command with --list-langs
 	args := []string{"--list-langs"}
@@ -234,30 +234,30 @@ func (c *Client) GetAvailableLanguages(ctx context.Context) ([]string, error) {
 	return langs, nil
 }
 
-// Result represents the OCR result with metadata
+// Result represents the OCR result with metadata.
 type Result struct {
-	Text       string   `json:"text"`
-	Confidence float64  `json:"confidence,omitempty"`
-	Languages  string   `json:"languages,omitempty"`
-	Words      []Word   `json:"words,omitempty"`
-	Lines      []Line   `json:"lines,omitempty"`
+	Text       string  `json:"text"`
+	Languages  string  `json:"languages,omitempty"`
+	Words      []Word  `json:"words,omitempty"`
+	Lines      []Line  `json:"lines,omitempty"`
+	Confidence float64 `json:"confidence,omitempty"`
 }
 
-// Word represents a single word with position
+// Word represents a single word with position.
 type Word struct {
+	BoundingBox *Box    `json:"bounding_box,omitempty"`
 	Text        string  `json:"text"`
 	Confidence  float64 `json:"confidence,omitempty"`
-	BoundingBox *Box    `json:"bounding_box,omitempty"`
 }
 
-// Line represents a line of text
+// Line represents a line of text.
 type Line struct {
-	Text       string  `json:"text"`
-	Words      []Word  `json:"words,omitempty"`
 	BoundingBox *Box   `json:"bounding_box,omitempty"`
+	Text        string `json:"text"`
+	Words       []Word `json:"words,omitempty"`
 }
 
-// Box represents a bounding box
+// Box represents a bounding box.
 type Box struct {
 	X      int32 `json:"x"`
 	Y      int32 `json:"y"`
@@ -265,7 +265,7 @@ type Box struct {
 	Height int32 `json:"height"`
 }
 
-// IsSupported checks if a MIME type is supported for OCR
+// IsSupported checks if a MIME type is supported for OCR.
 func (c *Client) IsSupported(mimeType string) bool {
 	return c.isSupported(mimeType)
 }
@@ -279,7 +279,7 @@ func (c *Client) isSupported(mimeType string) bool {
 	return false
 }
 
-// ParseHOCR parses hOCR output and returns structured data
+// ParseHOCR parses hOCR output and returns structured data.
 func ParseHOCR(hocr string) (*Result, error) {
 	// Simplified hOCR parsing
 	// In production, use a proper HTML parser
@@ -316,20 +316,20 @@ func ParseHOCR(hocr string) (*Result, error) {
 	return result, nil
 }
 
-// GetLanguageName returns the full name of a language code
+// GetLanguageName returns the full name of a language code.
 func GetLanguageName(code string) string {
 	names := map[string]string{
-		"eng":      "English",
-		"chi_sim":  "Chinese Simplified",
-		"chi_tra":  "Chinese Traditional",
-		"jpn":      "Japanese",
-		"kor":      "Korean",
-		"fra":      "French",
-		"deu":      "German",
-		"spa":      "Spanish",
-		"rus":      "Russian",
-		"ara":      "Arabic",
-		"hin":      "Hindi",
+		"eng":     "English",
+		"chi_sim": "Chinese Simplified",
+		"chi_tra": "Chinese Traditional",
+		"jpn":     "Japanese",
+		"kor":     "Korean",
+		"fra":     "French",
+		"deu":     "German",
+		"spa":     "Spanish",
+		"rus":     "Russian",
+		"ara":     "Arabic",
+		"hin":     "Hindi",
 	}
 	if name, ok := names[code]; ok {
 		return name
@@ -337,7 +337,7 @@ func GetLanguageName(code string) string {
 	return code
 }
 
-// ConfigFromEnv creates OCR config from environment variables
+// ConfigFromEnv creates OCR config from environment variables.
 func ConfigFromEnv() *Config {
 	config := DefaultConfig()
 
@@ -354,19 +354,19 @@ func ConfigFromEnv() *Config {
 	return config
 }
 
-// MarshalJSON implements custom JSON marshaling
+// MarshalJSON implements custom JSON marshaling.
 func (r *Result) MarshalJSON() ([]byte, error) {
 	type Alias Result
 	return json.Marshal(&struct {
-		WordCount int `json:"word_count,omitempty"`
 		*Alias
+		WordCount int `json:"word_count,omitempty"`
 	}{
 		WordCount: len(strings.Fields(r.Text)),
 		Alias:     (*Alias)(r),
 	})
 }
 
-// Validate validates the OCR result
+// Validate validates the OCR result.
 func (r *Result) Validate() error {
 	if r.Text == "" {
 		return errors.New("OCR result is empty")
@@ -374,7 +374,7 @@ func (r *Result) Validate() error {
 	return nil
 }
 
-// Merge merges multiple OCR results
+// Merge merges multiple OCR results.
 func Merge(results []*Result) *Result {
 	if len(results) == 0 {
 		return &Result{}
@@ -399,7 +399,7 @@ func Merge(results []*Result) *Result {
 	return merged
 }
 
-// FormatOutput formats the OCR output
+// FormatOutput formats the OCR output.
 func FormatOutput(result *Result, format string) (string, error) {
 	switch format {
 	case "text", "":

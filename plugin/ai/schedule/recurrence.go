@@ -40,10 +40,10 @@ func (rt RecurrenceType) String() string {
 // RecurrenceRule represents a simplified recurrence rule.
 // We use a custom JSON format instead of full RFC 5545 RRULE for simplicity.
 type RecurrenceRule struct {
-	Type     RecurrenceType `json:"type"`      // "daily", "weekly", "monthly"
-	Interval int            `json:"interval"`  // Every N days/weeks/months
-	Weekdays []int          `json:"weekdays"`  // Only for type="weekly": [1,2,3,4,5] (Mon-Fri)
-	MonthDay int            `json:"month_day"` // Only for type="monthly": day of month (1-31)
+	Type     RecurrenceType `json:"type"`
+	Weekdays []int          `json:"weekdays"`
+	Interval int            `json:"interval"`
+	MonthDay int            `json:"month_day"`
 }
 
 // Validate checks if the recurrence rule is valid.
@@ -347,12 +347,12 @@ func parseInt(s string) int {
 // This is more memory-efficient than generating all instances upfront.
 type RecurrenceIterator struct {
 	rule       *RecurrenceRule
-	startTs    int64
 	cache      []int64
-	cacheEndTs int64 // The timestamp covered by the end of the cache
+	startTs    int64
+	cacheEndTs int64
+	maxCache   int
 	mu         sync.Mutex
-	maxCache   int  // Maximum cache size
-	exhausted  bool // True if no more instances can be generated
+	exhausted  bool
 }
 
 // Iterator creates a new iterator for this recurrence rule.

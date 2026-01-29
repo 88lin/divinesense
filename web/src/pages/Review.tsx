@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Brain, CheckCircle2, ChevronRight, Clock, RefreshCw, Sparkles, Target, Trophy } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { aiServiceClient } from "@/connect";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { aiServiceClient } from "@/connect";
 import useMediaQuery from "@/hooks/useMediaQuery";
+import { cn } from "@/lib/utils";
 import { ReviewQuality } from "@/types/proto/api/v1/ai_service_pb";
 import { useTranslate } from "@/utils/i18n";
 
@@ -17,7 +17,12 @@ const Review = () => {
   const [showAnswer, setShowAnswer] = useState(false);
 
   // Fetch due reviews
-  const { data: dueReviews, isLoading: isLoadingReviews, isError: isErrorReviews, refetch: refetchReviews } = useQuery({
+  const {
+    data: dueReviews,
+    isLoading: isLoadingReviews,
+    isError: isErrorReviews,
+    refetch: refetchReviews,
+  } = useQuery({
     queryKey: ["reviews", "due"],
     queryFn: async () => {
       const response = await aiServiceClient.getDueReviews({ limit: 20 });
@@ -26,7 +31,12 @@ const Review = () => {
   });
 
   // Fetch review stats
-  const { data: stats, isLoading: isLoadingStats, isError: isErrorStats, refetch: refetchStats } = useQuery({
+  const {
+    data: stats,
+    isLoading: isLoadingStats,
+    isError: isErrorStats,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ["reviews", "stats"],
     queryFn: async () => {
       const response = await aiServiceClient.getReviewStats({});
@@ -58,10 +68,30 @@ const Review = () => {
   };
 
   const qualityButtons = [
-    { quality: ReviewQuality.AGAIN, label: t("review.quality.again"), color: "bg-red-500 hover:bg-red-600", desc: t("review.quality.again-desc") },
-    { quality: ReviewQuality.HARD, label: t("review.quality.hard"), color: "bg-orange-500 hover:bg-orange-600", desc: t("review.quality.hard-desc") },
-    { quality: ReviewQuality.GOOD, label: t("review.quality.good"), color: "bg-green-500 hover:bg-green-600", desc: t("review.quality.good-desc") },
-    { quality: ReviewQuality.EASY, label: t("review.quality.easy"), color: "bg-blue-500 hover:bg-blue-600", desc: t("review.quality.easy-desc") },
+    {
+      quality: ReviewQuality.AGAIN,
+      label: t("review.quality.again"),
+      color: "bg-red-500 hover:bg-red-600",
+      desc: t("review.quality.again-desc"),
+    },
+    {
+      quality: ReviewQuality.HARD,
+      label: t("review.quality.hard"),
+      color: "bg-orange-500 hover:bg-orange-600",
+      desc: t("review.quality.hard-desc"),
+    },
+    {
+      quality: ReviewQuality.GOOD,
+      label: t("review.quality.good"),
+      color: "bg-green-500 hover:bg-green-600",
+      desc: t("review.quality.good-desc"),
+    },
+    {
+      quality: ReviewQuality.EASY,
+      label: t("review.quality.easy"),
+      color: "bg-blue-500 hover:bg-blue-600",
+      desc: t("review.quality.easy-desc"),
+    },
   ];
 
   if (isLoadingReviews || isLoadingStats) {
@@ -77,7 +107,12 @@ const Review = () => {
       <div className="w-full h-full flex flex-col items-center justify-center gap-4">
         <AlertCircle className="w-12 h-12 text-destructive" />
         <p className="text-muted-foreground">{t("review.load-error")}</p>
-        <Button onClick={() => { refetchReviews(); refetchStats(); }}>
+        <Button
+          onClick={() => {
+            refetchReviews();
+            refetchStats();
+          }}
+        >
           {t("common.retry") || "Retry"}
         </Button>
       </div>
@@ -157,23 +192,17 @@ const Review = () => {
             <div className="space-y-1">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{t("review.progress")}</span>
-                <span className="font-medium">{currentIndex + 1} / {totalDue}</span>
+                <span className="font-medium">
+                  {currentIndex + 1} / {totalDue}
+                </span>
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
               </div>
             </div>
 
             {/* Content Preview */}
-            <div
-              className={cn(
-                "p-4 bg-muted/50 rounded-lg min-h-[120px] transition-all",
-                !showAnswer && "blur-sm select-none"
-              )}
-            >
+            <div className={cn("p-4 bg-muted/50 rounded-lg min-h-[120px] transition-all", !showAnswer && "blur-sm select-none")}>
               <p className="text-sm whitespace-pre-wrap">{currentItem.snippet}</p>
             </div>
 

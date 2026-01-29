@@ -23,13 +23,7 @@ export function ConversationItem({ conversation, isActive, onSelect, onDelete, c
   const displayMessageCount = isLoaded ? conversation.messageCount : "...";
 
   return (
-    <div
-      className={cn(
-        "group relative rounded-lg transition-all",
-        isActive ? "bg-accent" : "hover:bg-muted",
-        className,
-      )}
-    >
+    <div className={cn("group relative rounded-lg transition-all", isActive ? "bg-accent" : "hover:bg-muted", className)}>
       <button
         onClick={() => onSelect(conversation.id)}
         className="w-full text-left px-3 py-2.5 pr-12"

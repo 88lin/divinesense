@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-// RRF (Reciprocal Rank Fusion) constants
+// RRF (Reciprocal Rank Fusion) constants.
 const (
 	RRFDampingFactor = 60 // k = 60 is a common default
 )
@@ -22,8 +22,7 @@ func DefaultRRFConfig() RRFConfig {
 	}
 }
 
-// FuseWithRRF fuses multiple result lists using Reciprocal Rank Fusion.
-// RRF(d) = Σ weight_i / (k + rank_i(d))
+// RRF(d) = Σ weight_i / (k + rank_i(d)).
 func FuseWithRRF(bm25Results, vectorResults []*SearchResult, config StrategyConfig) []*SearchResult {
 	return FuseWithRRFConfig(bm25Results, vectorResults, config, DefaultRRFConfig())
 }

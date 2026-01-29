@@ -4,8 +4,7 @@ package session
 
 import "context"
 
-// SessionService defines the session persistence service interface.
-// Consumers: Team B (Assistant+Schedule)
+// Consumers: Team B (Assistant+Schedule).
 type SessionService interface {
 	// SaveContext saves the conversation context.
 	SaveContext(ctx context.Context, sessionID string, context *ConversationContext) error
@@ -26,13 +25,13 @@ type SessionService interface {
 
 // ConversationContext represents the conversation context.
 type ConversationContext struct {
+	Metadata  map[string]any `json:"metadata"`
 	SessionID string         `json:"session_id"`
-	UserID    int32          `json:"user_id"`
 	AgentType string         `json:"agent_type"`
 	Messages  []Message      `json:"messages"`
-	Metadata  map[string]any `json:"metadata"`
 	CreatedAt int64          `json:"created_at"`
 	UpdatedAt int64          `json:"updated_at"`
+	UserID    int32          `json:"user_id"`
 }
 
 // Message represents a conversation message (reused from memory package).

@@ -37,9 +37,9 @@ type TimeSlot struct {
 type ConflictResolution struct {
 	OriginalStart time.Time           `json:"original_start"`
 	OriginalEnd   time.Time           `json:"original_end"`
+	AutoResolved  *TimeSlot           `json:"auto_resolved"`
 	Conflicts     []*ScheduleInstance `json:"conflicts"`
-	Alternatives  []TimeSlot          `json:"alternatives"`  // Recommended alternative times
-	AutoResolved  *TimeSlot           `json:"auto_resolved"` // Best alternative (if conflicts exist)
+	Alternatives  []TimeSlot          `json:"alternatives"`
 }
 
 // Resolve detects conflicts and provides alternative time slots.

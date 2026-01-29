@@ -19,30 +19,30 @@ type ContextBuilder interface {
 
 // ContextRequest contains parameters for context building.
 type ContextRequest struct {
-	UserID           int32
 	SessionID        string
 	CurrentQuery     string
-	AgentType        string           // "memo", "schedule", "amazing"
-	RetrievalResults []*RetrievalItem // RAG retrieval results
-	MaxTokens        int              // Total token budget (default: 4096)
+	AgentType        string
+	RetrievalResults []*RetrievalItem
+	MaxTokens        int
+	UserID           int32
 }
 
 // RetrievalItem represents a single retrieval result.
 type RetrievalItem struct {
 	ID      string
 	Content string
-	Score   float32
 	Source  string
+	Score   float32
 }
 
 // ContextResult contains the built context.
 type ContextResult struct {
+	TokenBreakdown      *TokenBreakdown
 	SystemPrompt        string
 	ConversationContext string
 	RetrievalContext    string
 	UserPreferences     string
 	TotalTokens         int
-	TokenBreakdown      *TokenBreakdown
 	BuildTime           time.Duration
 }
 
@@ -65,24 +65,24 @@ type ContextStats struct {
 
 // Message represents a conversation message.
 type Message struct {
-	Role      string // "user" or "assistant"
-	Content   string
 	Timestamp time.Time
+	Role      string
+	Content   string
 }
 
 // EpisodicMemory represents a stored episode.
 type EpisodicMemory struct {
-	ID        int64
 	Timestamp time.Time
 	Summary   string
 	AgentType string
 	Outcome   string
+	ID        int64
 }
 
 // UserPreferences represents user preferences.
 type UserPreferences struct {
 	Timezone           string
-	DefaultDuration    int
-	PreferredTimes     []string
 	CommunicationStyle string
+	PreferredTimes     []string
+	DefaultDuration    int
 }

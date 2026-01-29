@@ -7,17 +7,13 @@ import (
 	"github.com/hrygo/divinesense/store"
 )
 
-// Service implements MemoryService interface with two-layer memory architecture.
-// - Short-term: In-memory sliding window for session messages
-// - Long-term: PostgreSQL for episodic memories and user preferences
+// - Long-term: PostgreSQL for episodic memories and user preferences.
 type Service struct {
 	shortTerm *ShortTermMemory
 	longTerm  *LongTermMemory
 }
 
-// NewService creates a new memory service.
-// store: database store for long-term memory (can be nil for short-term only mode)
-// maxShortTermMessages: maximum messages per session (default 10)
+// maxShortTermMessages: maximum messages per session (default 10).
 func NewService(s *store.Store, maxShortTermMessages int) *Service {
 	svc := &Service{
 		shortTerm: NewShortTermMemory(maxShortTermMessages),

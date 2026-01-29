@@ -8,17 +8,17 @@ import (
 	"time"
 )
 
-// Patterns for time parsing
+// Patterns for time parsing.
 var (
-	// Arabic number patterns
+	// Arabic number patterns.
 	numberPattern  = regexp.MustCompile(`(\d+)`)
 	minutePattern  = regexp.MustCompile(`(\d+)\s*分`)
 	hourMinPattern = regexp.MustCompile(`(\d{1,2})[:\s时点](\d{1,2})`)
 
-	// Relative time patterns
+	// Relative time patterns.
 	relativePattern = regexp.MustCompile(`(\d+)\s*(小时|分钟|天|周|月)(后|前)`)
 
-	// Weekday patterns
+	// Weekday patterns.
 	weekdayPattern     = regexp.MustCompile(`(?:这|本)?周([一二三四五六日天])`)
 	nextWeekdayPattern = regexp.MustCompile(`下周([一二三四五六日天])`)
 	lastWeekdayPattern = regexp.MustCompile(`上周([一二三四五六日天])`)

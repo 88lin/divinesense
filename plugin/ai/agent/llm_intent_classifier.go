@@ -15,19 +15,17 @@ import (
 // IntentResult represents the LLM classification result.
 type IntentResult struct {
 	Intent     TaskIntent `json:"intent"`
-	Confidence float64    `json:"confidence"`
 	Reasoning  string     `json:"reasoning,omitempty"`
+	Confidence float64    `json:"confidence"`
 }
 
 // LLMIntentClassifier uses a lightweight LLM for intent classification.
 // This provides better accuracy than rule-based matching, especially for
 // nuanced natural language inputs.
 type LLMIntentClassifier struct {
-	client *openai.Client
-	model  string
-
-	// Fallback rule-based classifier for when LLM fails
+	client   *openai.Client
 	fallback *IntentClassifier
+	model    string
 }
 
 // LLMIntentConfig holds configuration for the LLM intent classifier.
@@ -168,8 +166,8 @@ func (ic *LLMIntentClassifier) parseResponse(content string) (*IntentResult, err
 
 	var raw struct {
 		Intent     string  `json:"intent"`
-		Confidence float64 `json:"confidence"`
 		Reasoning  string  `json:"reasoning"`
+		Confidence float64 `json:"confidence"`
 	}
 
 	if err := json.Unmarshal([]byte(content), &raw); err != nil {
@@ -299,11 +297,11 @@ var intentJSONSchema = &jsonSchema{
 
 // jsonSchema implements json.Marshaler for OpenAI's JSON Schema format.
 type jsonSchema struct {
-	Type                 string                 `json:"type"`
 	Properties           map[string]*jsonSchema `json:"properties,omitempty"`
+	Type                 string                 `json:"type"`
+	Description          string                 `json:"description,omitempty"`
 	Required             []string               `json:"required,omitempty"`
 	Enum                 []string               `json:"enum,omitempty"`
-	Description          string                 `json:"description,omitempty"`
 	AdditionalProperties bool                   `json:"additionalProperties"`
 }
 

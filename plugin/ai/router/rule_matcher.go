@@ -69,8 +69,7 @@ func NewRuleMatcher() *RuleMatcher {
 	}
 }
 
-// Match attempts to classify intent using rule-based matching.
-// Returns: intent, confidence, matched (true if rule matched)
+// Returns: intent, confidence, matched (true if rule matched).
 func (m *RuleMatcher) Match(input string) (Intent, float32, bool) {
 	lower := strings.ToLower(input)
 

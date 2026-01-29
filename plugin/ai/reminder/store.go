@@ -162,10 +162,10 @@ type MockNotifier struct {
 
 // SentMessage represents a message that was sent.
 type SentMessage struct {
-	UserID  int32
+	SentAt  time.Time
 	Channel Channel
 	Message string
-	SentAt  time.Time
+	UserID  int32
 }
 
 // NewMockNotifier creates a new mock notifier.

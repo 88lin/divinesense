@@ -17,7 +17,7 @@ func placeholder(_ int) string {
 	return "?"
 }
 
-// placeholders returns n placeholders for SQLite
+// placeholders returns n placeholders for SQLite.
 func placeholders(n int) string {
 	list := []string{}
 	for i := 0; i < n; i++ {

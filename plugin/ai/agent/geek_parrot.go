@@ -18,13 +18,11 @@ import (
 )
 
 const (
-	// Scanner buffer sizes
-	// 扫描器缓冲区大小
+	// 扫描器缓冲区大小.
 	scannerInitialBufSize = 256 * 1024  // 256 KB
 	scannerMaxBufSize     = 1024 * 1024 // 1 MB
 
-	// Max length for non-JSON output logging
-	// 非 JSON 输出日志的最大长度
+	// 非 JSON 输出日志的最大长度.
 	maxNonJSONOutputLength = 100
 )
 
@@ -97,17 +95,17 @@ When you create a file, announce the filename so the user knows it was created.
 // StreamMessage represents a single event in the stream-json format.
 // StreamMessage 表示 stream-json 格式中的单个事件。
 type StreamMessage struct {
+	Message   *AssistantMessage `json:"message,omitempty"`
+	Input     map[string]any    `json:"input,omitempty"`
 	Type      string            `json:"type"`
 	Timestamp string            `json:"timestamp,omitempty"`
 	SessionID string            `json:"session_id,omitempty"`
 	Role      string            `json:"role,omitempty"`
-	Content   []ContentBlock    `json:"content,omitempty"`
-	Message   *AssistantMessage `json:"message,omitempty"` // Nested message for "assistant" type
 	Name      string            `json:"name,omitempty"`
-	Input     map[string]any    `json:"input,omitempty"`
 	Output    string            `json:"output,omitempty"`
 	Status    string            `json:"status,omitempty"`
 	Error     string            `json:"error,omitempty"`
+	Content   []ContentBlock    `json:"content,omitempty"`
 	Duration  int               `json:"duration_ms,omitempty"`
 }
 
@@ -143,21 +141,15 @@ type ContentBlock struct {
 // It provides DIRECT access to Claude Code CLI without any LLM processing.
 // 它提供 Claude Code CLI 的直接访问，不经过任何 LLM 处理。
 type GeekParrot struct {
-	cliPath string
-	workDir string
-	userID  int32
-	timeout time.Duration
-	mu      sync.Mutex
-
-	// User context
-	// 用户上下文
-	deviceContext string // Detailed context (JSON)
-
-	// Session management
-	// 会话管理
-	sessionID  string // 会话 ID (UUID)
-	firstCall  bool   // 是否首次调用
-	sessionDir string // 会话目录
+	cliPath       string
+	workDir       string
+	deviceContext string
+	sessionID     string
+	sessionDir    string
+	timeout       time.Duration
+	mu            sync.Mutex
+	userID        int32
+	firstCall     bool
 }
 
 // NewGeekParrot creates a new GeekParrot instance.

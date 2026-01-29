@@ -19,14 +19,10 @@ var (
 )
 
 type WebhookRequestPayload struct {
-	// The target URL for the webhook request.
-	URL string `json:"url"`
-	// The type of activity that triggered this webhook.
-	ActivityType string `json:"activityType"`
-	// The resource name of the creator. Format: users/{user}
-	Creator string `json:"creator"`
-	// The memo that triggered this webhook (if applicable).
-	Memo *v1pb.Memo `json:"memo"`
+	Memo         *v1pb.Memo `json:"memo"`
+	URL          string     `json:"url"`
+	ActivityType string     `json:"activityType"`
+	Creator      string     `json:"creator"`
 }
 
 // Post posts the message to webhook endpoint.
@@ -61,8 +57,8 @@ func Post(requestPayload *WebhookRequestPayload) error {
 	}
 
 	response := &struct {
-		Code    int    `json:"code"`
 		Message string `json:"message"`
+		Code    int    `json:"code"`
 	}{}
 	if err := json.Unmarshal(b, response); err != nil {
 		return errors.Wrapf(err, "failed to unmarshal webhook response from %s", requestPayload.URL)

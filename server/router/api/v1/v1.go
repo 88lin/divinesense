@@ -22,28 +22,25 @@ import (
 )
 
 type APIV1Service struct {
-	v1pb.UnimplementedInstanceServiceServer
-	v1pb.UnimplementedAuthServiceServer
+	v1pb.UnimplementedAIServiceServer
+	v1pb.UnimplementedScheduleAgentServiceServer
 	v1pb.UnimplementedUserServiceServer
-	v1pb.UnimplementedMemoServiceServer
+	v1pb.UnimplementedScheduleServiceServer
 	v1pb.UnimplementedAttachmentServiceServer
 	v1pb.UnimplementedShortcutServiceServer
 	v1pb.UnimplementedActivityServiceServer
 	v1pb.UnimplementedIdentityProviderServiceServer
-	v1pb.UnimplementedAIServiceServer
-	v1pb.UnimplementedScheduleServiceServer
-	v1pb.UnimplementedScheduleAgentServiceServer
-
-	Secret               string
+	v1pb.UnimplementedAuthServiceServer
+	v1pb.UnimplementedInstanceServiceServer
+	v1pb.UnimplementedMemoServiceServer
+	MarkdownService      markdown.Service
 	Profile              *profile.Profile
 	Store                *store.Store
-	MarkdownService      markdown.Service
 	AIService            *AIService
 	ScheduleService      *ScheduleService
 	ScheduleAgentService *ScheduleAgentService
-
-	// thumbnailSemaphore limits concurrent thumbnail generation to prevent memory exhaustion
-	thumbnailSemaphore *semaphore.Weighted
+	thumbnailSemaphore   *semaphore.Weighted
+	Secret               string
 }
 
 func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store) *APIV1Service {

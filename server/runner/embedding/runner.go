@@ -11,11 +11,11 @@ import (
 )
 
 type Runner struct {
-	store            *store.Store
 	embeddingService ai.EmbeddingService
+	store            *store.Store
+	model            string
 	interval         time.Duration
 	batchSize        int
-	model            string
 }
 
 // NewRunner creates a vector embedding runner.

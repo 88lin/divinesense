@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TestQueryRouter_DateParsing 测试具体日期解析功能
+// TestQueryRouter_DateParsing 测试具体日期解析功能.
 func TestQueryRouter_DateParsing(t *testing.T) {
 	router := NewQueryRouter()
 
@@ -106,7 +106,7 @@ func TestQueryRouter_DateParsing(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_DateParsingStrategy 测试日期解析后的路由策略
+// TestQueryRouter_DateParsingStrategy 测试日期解析后的路由策略.
 func TestQueryRouter_DateParsingStrategy(t *testing.T) {
 	router := NewQueryRouter()
 
@@ -153,7 +153,7 @@ func TestQueryRouter_DateParsingStrategy(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_DateParsingEdgeCases 测试边界情况
+// TestQueryRouter_DateParsingEdgeCases 测试边界情况.
 func TestQueryRouter_DateParsingEdgeCases(t *testing.T) {
 	router := NewQueryRouter()
 	now := time.Now().UTC()

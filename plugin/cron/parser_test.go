@@ -45,7 +45,7 @@ func TestRange(t *testing.T) {
 	}
 
 	for _, c := range ranges {
-		actual, err := getRange(c.expr, bounds{nil, c.min, c.max})
+		actual, err := getRange(c.expr, bounds{min: c.min, max: c.max})
 		if len(c.err) != 0 && (err == nil || !strings.Contains(err.Error(), c.err)) {
 			t.Errorf("%s => expected %v, got %v", c.expr, c.err, err)
 		}
@@ -71,7 +71,7 @@ func TestField(t *testing.T) {
 	}
 
 	for _, c := range fields {
-		actual, _ := getField(c.expr, bounds{nil, c.min, c.max})
+		actual, _ := getField(c.expr, bounds{min: c.min, max: c.max})
 		if actual != c.expected {
 			t.Errorf("%s => expected %d, got %d", c.expr, c.expected, actual)
 		}
@@ -320,8 +320,16 @@ func TestStandardSpecSchedule(t *testing.T) {
 		err      string
 	}{
 		{
-			expr:     "5 * * * *",
-			expected: &SpecSchedule{time.Local, 1 << seconds.min, 1 << 5, all(hours), all(dom), all(months), all(dow)},
+			expr: "5 * * * *",
+			expected: &SpecSchedule{
+				Location: time.Local,
+				Second:   1 << seconds.min,
+				Minute:   1 << 5,
+				Hour:     all(hours),
+				Dom:      all(dom),
+				Month:    all(months),
+				Dow:      all(dow),
+			},
 		},
 		{
 			expr:     "@every 5m",
@@ -360,15 +368,39 @@ func TestNoDescriptorParser(t *testing.T) {
 }
 
 func every5min(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{loc, 1 << 0, 1 << 5, all(hours), all(dom), all(months), all(dow)}
+	return &SpecSchedule{
+		Location: loc,
+		Second:   1 << 0,
+		Minute:   1 << 5,
+		Hour:     all(hours),
+		Dom:      all(dom),
+		Month:    all(months),
+		Dow:      all(dow),
+	}
 }
 
 func every5min5s(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{loc, 1 << 5, 1 << 5, all(hours), all(dom), all(months), all(dow)}
+	return &SpecSchedule{
+		Location: loc,
+		Second:   1 << 5,
+		Minute:   1 << 5,
+		Hour:     all(hours),
+		Dom:      all(dom),
+		Month:    all(months),
+		Dow:      all(dow),
+	}
 }
 
 func midnight(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{loc, 1, 1, 1, all(dom), all(months), all(dow)}
+	return &SpecSchedule{
+		Location: loc,
+		Second:   1,
+		Minute:   1,
+		Hour:     1,
+		Dom:      all(dom),
+		Month:    all(months),
+		Dow:      all(dow),
+	}
 }
 
 func annual(loc *time.Location) *SpecSchedule {

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hrygo/divinesense/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/hrygo/divinesense/store"
 )
 
 // MockStoreForSchedule is a mock implementation of the Store interface for testing.
@@ -188,10 +188,10 @@ func TestCreateScheduleValidation(t *testing.T) {
 	svc := &service{store: mockStore}
 
 	tests := []struct {
-		name    string
 		req     *CreateScheduleRequest
-		wantErr bool
+		name    string
 		errMsg  string
+		wantErr bool
 	}{
 		{
 			name: "missing title",
@@ -421,11 +421,11 @@ func TestCheckConflicts_IntervalConvention(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name           string
 		existingStart  time.Time
 		existingEnd    time.Time
 		newStart       time.Time
 		newEnd         time.Time
+		name           string
 		expectConflict bool
 	}{
 		{
@@ -440,13 +440,13 @@ func TestCheckConflicts_IntervalConvention(t *testing.T) {
 			name:           "partial overlap - new starts during existing",
 			existingStart:  now.Add(2 * time.Hour),
 			existingEnd:    now.Add(3 * time.Hour),
-			newStart:       now.Add(2 * time.Hour + 30*time.Minute),
-			newEnd:         now.Add(3 * time.Hour + 30*time.Minute),
+			newStart:       now.Add(2*time.Hour + 30*time.Minute),
+			newEnd:         now.Add(3*time.Hour + 30*time.Minute),
 			expectConflict: true,
 		},
 		{
 			name:           "partial overlap - new ends during existing",
-			existingStart:  now.Add(2 * time.Hour + 30*time.Minute),
+			existingStart:  now.Add(2*time.Hour + 30*time.Minute),
 			existingEnd:    now.Add(4 * time.Hour),
 			newStart:       now.Add(2 * time.Hour),
 			newEnd:         now.Add(3 * time.Hour),

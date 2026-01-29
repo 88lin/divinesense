@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TestQueryRouter_TodaySynonyms 测试"今日"等同义词（举一反三优化）
+// TestQueryRouter_TodaySynonyms 测试"今日"等同义词（举一反三优化）.
 func TestQueryRouter_TodaySynonyms(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -21,7 +21,7 @@ func TestQueryRouter_TodaySynonyms(t *testing.T) {
 		{
 			name:             "今日日程",
 			query:            "今日日程",
-			expectedLabel:    "今天", // 同义词，返回原始标签
+			expectedLabel:    "今天",                 // 同义词，返回原始标签
 			expectedStrategy: "schedule_bm25_only", // 纯时间查询
 		},
 		{
@@ -107,7 +107,7 @@ func TestQueryRouter_TodaySynonyms(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_TodayPerformance 性能测试：对比"今日"vs"今天"
+// TestQueryRouter_TodayPerformance 性能测试：对比"今日"vs"今天".
 func TestQueryRouter_TodayPerformance(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()

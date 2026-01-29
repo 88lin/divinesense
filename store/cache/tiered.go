@@ -240,10 +240,10 @@ type SemanticCache struct {
 
 // SemanticCacheEntry represents a cached semantic search result.
 type SemanticCacheEntry struct {
+	Timestamp time.Time `json:"timestamp"`
+	Results   any       `json:"results"`
 	Query     string    `json:"query"`
 	Embedding []float32 `json:"embedding"`
-	Results   any       `json:"results"`
-	Timestamp time.Time `json:"timestamp"`
 }
 
 // NewSemanticCache creates a new semantic cache.
@@ -396,6 +396,7 @@ func GenerateQueryKey(userID int, query string, limit int, strategy string) stri
 
 // CacheStats represents combined cache statistics.
 type CacheStats struct {
+	Metadata    map[string]interface{} `json:"metadata"`
 	L1Size      int64                  `json:"l1_size"`
 	L2Size      int64                  `json:"l2_size"`
 	L1HitRate   float64                `json:"l1_hit_rate"`
@@ -403,7 +404,6 @@ type CacheStats struct {
 	SemanticHit int64                  `json:"semantic_hits"`
 	TotalHits   int64                  `json:"total_hits"`
 	TotalMisses int64                  `json:"total_misses"`
-	Metadata    map[string]interface{} `json:"metadata"`
 }
 
 // GetCacheStats returns statistics from all cache layers.

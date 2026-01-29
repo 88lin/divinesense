@@ -30,10 +30,10 @@ const (
 
 // AIError represents a structured error for AI operations.
 type AIError struct {
-	Code    ErrorCode
-	Message string
 	Cause   error
 	Context map[string]interface{}
+	Code    ErrorCode
+	Message string
 }
 
 // Error implements the error interface.

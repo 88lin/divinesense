@@ -15,9 +15,9 @@ const (
 
 // LogicalCondition composes two conditions with a logical operator.
 type LogicalCondition struct {
-	Operator LogicalOperator
 	Left     Condition
 	Right    Condition
+	Operator LogicalOperator
 }
 
 func (*LogicalCondition) isCondition() {}
@@ -51,8 +51,8 @@ const (
 // ComparisonCondition represents a binary comparison.
 type ComparisonCondition struct {
 	Left     ValueExpr
-	Operator ComparisonOperator
 	Right    ValueExpr
+	Operator ComparisonOperator
 }
 
 func (*ComparisonCondition) isCondition() {}
@@ -117,10 +117,10 @@ func (*FunctionValue) isValueExpr() {}
 
 // ListComprehensionCondition represents CEL macros like exists(), all(), filter().
 type ListComprehensionCondition struct {
+	Predicate PredicateExpr
 	Kind      ComprehensionKind
-	Field     string        // The list field to iterate over (e.g., "tags")
-	IterVar   string        // The iteration variable name (e.g., "t")
-	Predicate PredicateExpr // The predicate to evaluate for each element
+	Field     string
+	IterVar   string
 }
 
 func (*ListComprehensionCondition) isCondition() {}

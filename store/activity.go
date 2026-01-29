@@ -27,16 +27,12 @@ func (l ActivityLevel) String() string {
 }
 
 type Activity struct {
-	ID int32
-
-	// Standard fields
-	CreatorID int32
+	Payload   *storepb.ActivityPayload
+	Type      ActivityType
+	Level     ActivityLevel
 	CreatedTs int64
-
-	// Domain specific fields
-	Type    ActivityType
-	Level   ActivityLevel
-	Payload *storepb.ActivityPayload
+	ID        int32
+	CreatorID int32
 }
 
 type FindActivity struct {

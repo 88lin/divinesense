@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hrygo/divinesense/plugin/ai/habit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/hrygo/divinesense/plugin/ai/habit"
 )
 
 type mockHabitAnalyzer struct {

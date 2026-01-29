@@ -118,8 +118,8 @@ func TestTagCoOccurrence(t *testing.T) {
 func TestTimeProximity(t *testing.T) {
 	now := time.Now()
 	tests := []struct {
-		name          string
 		candidateTime time.Time
+		name          string
 		minExpected   float64
 		maxExpected   float64
 	}{
@@ -198,8 +198,8 @@ func TestFindSharedTags(t *testing.T) {
 
 func TestCalculateWeightedSimilarity(t *testing.T) {
 	tests := []struct {
-		name      string
 		breakdown *Breakdown
+		name      string
 		weights   Weights
 		expected  float64
 	}{
@@ -249,8 +249,8 @@ func TestTruncate(t *testing.T) {
 	tests := []struct {
 		name     string
 		content  string
-		maxLen   int
 		expected string
+		maxLen   int
 	}{
 		{
 			name:     "short content",

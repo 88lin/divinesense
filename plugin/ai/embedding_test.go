@@ -8,8 +8,8 @@ import (
 // TestNewEmbeddingService tests service creation.
 func TestNewEmbeddingService(t *testing.T) {
 	tests := []struct {
-		name        string
 		cfg         *EmbeddingConfig
+		name        string
 		expectError bool
 	}{
 		{

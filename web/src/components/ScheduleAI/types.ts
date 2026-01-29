@@ -5,25 +5,25 @@
 
 import type {
   UIConflictResolutionData,
+  UIMemoPreviewData,
+  UIProgressTrackerData,
   UIQuickActionsData,
+  UIScheduleListData,
   UIScheduleSuggestionData,
   UITimeSlotData,
   UITimeSlotPickerData,
-  UIMemoPreviewData,
-  UIProgressTrackerData,
-  UIScheduleListData,
 } from "@/hooks/useScheduleAgent";
 
 // Re-export types from useScheduleAgent for convenience
 export type {
   UIConflictResolutionData,
+  UIMemoPreviewData,
+  UIProgressTrackerData,
   UIQuickActionsData,
+  UIScheduleListData,
   UIScheduleSuggestionData,
   UITimeSlotData,
   UITimeSlotPickerData,
-  UIMemoPreviewData,
-  UIProgressTrackerData,
-  UIScheduleListData,
 } from "@/hooks/useScheduleAgent";
 
 /**
@@ -31,8 +31,22 @@ export type {
  */
 export interface UIToolEvent {
   id: string;
-  type: "schedule_suggestion" | "time_slot_picker" | "conflict_resolution" | "quick_actions" | "memo_preview" | "progress_tracker" | "schedule_list";
-  data: UIScheduleSuggestionData | UITimeSlotPickerData | UIConflictResolutionData | UIQuickActionsData | UIMemoPreviewData | UIProgressTrackerData | UIScheduleListData;
+  type:
+    | "schedule_suggestion"
+    | "time_slot_picker"
+    | "conflict_resolution"
+    | "quick_actions"
+    | "memo_preview"
+    | "progress_tracker"
+    | "schedule_list";
+  data:
+    | UIScheduleSuggestionData
+    | UITimeSlotPickerData
+    | UIConflictResolutionData
+    | UIQuickActionsData
+    | UIMemoPreviewData
+    | UIProgressTrackerData
+    | UIScheduleListData;
   timestamp: number;
 }
 

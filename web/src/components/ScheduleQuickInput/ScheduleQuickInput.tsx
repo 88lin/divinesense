@@ -2,13 +2,12 @@ import dayjs from "dayjs";
 import { Check, ChevronRight, Loader2, Send, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { validateAndLog, validateScheduleSuggestion } from "@/components/ScheduleAI/uiTypeValidators";
 import { GenerativeUIContainer } from "@/components/ScheduleAI";
 import { StreamingFeedback } from "@/components/ScheduleAI/StreamingFeedback";
 import type { UIToolEvent } from "@/components/ScheduleAI/types";
+import { validateAndLog, validateScheduleSuggestion } from "@/components/ScheduleAI/uiTypeValidators";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useScheduleAgentStreamingChat } from "@/hooks/useScheduleQueries";
 import type {
   ParsedEvent,
   UIConflictResolutionData,
@@ -17,6 +16,7 @@ import type {
   UIQuickActionsData,
   UITimeSlotPickerData,
 } from "@/hooks/useScheduleAgent";
+import { useScheduleAgentStreamingChat } from "@/hooks/useScheduleQueries";
 import { cn } from "@/lib/utils";
 import type { Schedule } from "@/types/proto/api/v1/schedule_service_pb";
 import { type Translations, useTranslate } from "@/utils/i18n";
@@ -73,23 +73,29 @@ export function ScheduleQuickInput({
   const uiTools = [...externalUITools, ...internalUITools];
 
   // Handler for UI actions - wraps external handler to also clear internal tools
-  const handleUIAction = useCallback((action: { type: string; toolId: string; data?: unknown }) => {
-    // Check if this is an internal tool
-    const isInternal = internalUITools.some(t => t.id === action.toolId);
-    if (isInternal) {
-      setInternalUITools(prev => prev.filter(t => t.id !== action.toolId));
-    }
-    onUIAction?.(action);
-  }, [internalUITools, onUIAction]);
+  const handleUIAction = useCallback(
+    (action: { type: string; toolId: string; data?: unknown }) => {
+      // Check if this is an internal tool
+      const isInternal = internalUITools.some((t) => t.id === action.toolId);
+      if (isInternal) {
+        setInternalUITools((prev) => prev.filter((t) => t.id !== action.toolId));
+      }
+      onUIAction?.(action);
+    },
+    [internalUITools, onUIAction],
+  );
 
   // Handler for UI dismiss - wraps external handler to also clear internal tools
-  const handleUIDismiss = useCallback((toolId: string) => {
-    const isInternal = internalUITools.some(t => t.id === toolId);
-    if (isInternal) {
-      setInternalUITools(prev => prev.filter(t => t.id !== toolId));
-    }
-    onUIDismiss?.(toolId);
-  }, [internalUITools, onUIDismiss]);
+  const handleUIDismiss = useCallback(
+    (toolId: string) => {
+      const isInternal = internalUITools.some((t) => t.id === toolId);
+      if (isInternal) {
+        setInternalUITools((prev) => prev.filter((t) => t.id !== toolId));
+      }
+      onUIDismiss?.(toolId);
+    },
+    [internalUITools, onUIDismiss],
+  );
 
   // Auto-resize textarea
   useEffect(() => {
@@ -319,15 +325,12 @@ export function ScheduleQuickInput({
   // Don't show lastInput during processing - user wants input cleared
   const displayText = input;
 
-
   return (
     <div className={cn("w-full flex flex-col gap-2", className)}>
       {/* Editing Status Bar */}
 
       {/* Priority 1: Generative UI - AI confirmation cards (highest priority, hides other states when active) */}
-      {uiTools.length > 0 && (
-        <GenerativeUIContainer tools={uiTools} onAction={handleUIAction} onDismiss={handleUIDismiss} />
-      )}
+      {uiTools.length > 0 && <GenerativeUIContainer tools={uiTools} onAction={handleUIAction} onDismiss={handleUIDismiss} />}
 
       {/* Priority 2: Success Message (only when not processing and no UI tools) */}
       {showSuccess && !isProcessing && uiTools.length === 0 && (
@@ -384,7 +387,9 @@ export function ScheduleQuickInput({
       )}
 
       {/* AI Suggestions Cards */}
-      {aiSuggestions.length > 0 && uiTools.length === 0 && <AISuggestionCards suggestions={aiSuggestions} onConfirmSuggestion={handleAISuggestionSelect} />}
+      {aiSuggestions.length > 0 && uiTools.length === 0 && (
+        <AISuggestionCards suggestions={aiSuggestions} onConfirmSuggestion={handleAISuggestionSelect} />
+      )}
 
       {/* Input Bar */}
       <div
@@ -465,8 +470,6 @@ export function ScheduleQuickInput({
           )}
         </div>
       </div>
-
-
     </div>
   );
 }

@@ -611,8 +611,8 @@ type ChatRequest struct {
 	AgentType          AgentType              `protobuf:"varint,5,opt,name=agent_type,json=agentType,proto3,enum=memos.api.v1.AgentType" json:"agent_type,omitempty"`                                   // Agent type (optional, defaults to DEFAULT)
 	ConversationId     int32                  `protobuf:"varint,6,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`                                                // Conversation ID to persist message to
 	IsTempConversation bool                   `protobuf:"varint,7,opt,name=is_temp_conversation,json=isTempConversation,proto3" json:"is_temp_conversation,omitempty"`                                  // Whether to create a temporary conversation (true) or fixed conversation (false)
-	GeekMode           bool                   `protobuf:"varint,10,opt,name=geek_mode,json=geekMode,proto3" json:"geek_mode,omitempty"`
-DeviceContext      string                 `protobuf:"bytes,11,opt,name=device_context,json=deviceContext,proto3" json:"device_context,omitempty"`                                                                 // Geek Mode: Enable Claude Code CLI for code-related tasks (optional, defaults to false)
+	GeekMode           bool                   `protobuf:"varint,10,opt,name=geek_mode,json=geekMode,proto3" json:"geek_mode,omitempty"`                                                                 // Geek Mode: Enable Claude Code CLI for code-related tasks (optional, defaults to false)
+	DeviceContext      string                 `protobuf:"bytes,11,opt,name=device_context,json=deviceContext,proto3" json:"device_context,omitempty"`                                                   // Detailed client/device context (JSON string containing UA, screen info, location, etc.)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -696,18 +696,18 @@ func (x *ChatRequest) GetIsTempConversation() bool {
 	return false
 }
 
-func (x *ChatRequest) GetDeviceContext() string {
-if x != nil {
-return x.DeviceContext
-}
-return ""
-}
-
 func (x *ChatRequest) GetGeekMode() bool {
 	if x != nil {
 		return x.GeekMode
 	}
 	return false
+}
+
+func (x *ChatRequest) GetDeviceContext() string {
+	if x != nil {
+		return x.DeviceContext
+	}
+	return ""
 }
 
 // AIConversation represents an AI chat session.
@@ -3526,7 +3526,7 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\acontent\x18\x01 \x01(\tB\x03\xe0A\x02R\acontent\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\")\n" +
 	"\x13SuggestTagsResponse\x12\x12\n" +
-	"\x04tags\x18\x01 \x03(\tR\x04tags\"\xec\x02\n" +
+	"\x04tags\x18\x01 \x03(\tR\x04tags\"\x93\x03\n" +
 	"\vChatRequest\x12\x1d\n" +
 	"\amessage\x18\x01 \x01(\tB\x03\xe0A\x02R\amessage\x12\x18\n" +
 	"\ahistory\x18\x02 \x03(\tR\ahistory\x12#\n" +
@@ -3537,7 +3537,8 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\x0fconversation_id\x18\x06 \x01(\x05R\x0econversationId\x120\n" +
 	"\x14is_temp_conversation\x18\a \x01(\bR\x12isTempConversation\x12\x1b\n" +
 	"\tgeek_mode\x18\n" +
-	" \x01(\bR\bgeekMode\"\xcd\x02\n" +
+	" \x01(\bR\bgeekMode\x12%\n" +
+	"\x0edevice_context\x18\v \x01(\tR\rdeviceContext\"\xcd\x02\n" +
 	"\x0eAIConversation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1d\n" +

@@ -1,5 +1,5 @@
 import { Check, ChevronDown, ChevronUp, Copy, Scissors } from "lucide-react";
-import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
@@ -7,11 +7,11 @@ import remarkGfm from "remark-gfm";
 import MessageActions from "@/components/AIChat/MessageActions";
 import TypingCursor from "@/components/AIChat/TypingCursor";
 import { CodeBlock } from "@/components/MemoContent/CodeBlock";
+import { GenerativeUIContainer } from "@/components/ScheduleAI/GenerativeUIContainer";
+import type { GenerativeUIContainerProps } from "@/components/ScheduleAI/types";
 import { cn } from "@/lib/utils";
 import { ChatItem, ConversationMessage } from "@/types/aichat";
 import { PARROT_ICONS, PARROT_THEMES, ParrotAgentType } from "@/types/parrot";
-import { GenerativeUIContainer } from "@/components/ScheduleAI/GenerativeUIContainer";
-import type { GenerativeUIContainerProps } from "@/components/ScheduleAI/types";
 
 type CodeComponentProps = React.ComponentProps<"code"> & { inline?: boolean };
 
@@ -31,9 +31,9 @@ interface ChatMessagesProps {
   onUIDismiss?: GenerativeUIContainerProps["onDismiss"];
 }
 
-const SCROLL_THRESHOLD = 100;
+const SCROLL_THRESHOLD = 50;
 
-export function ChatMessages({
+const ChatMessages = memo(function ChatMessages({
   items,
   isTyping = false,
   currentParrotId,
@@ -60,12 +60,36 @@ export function ChatMessages({
     }
   }, []);
 
-  // Smooth scroll to bottom when new messages arrive, but only if user isn't scrolling
-  useEffect(() => {
-    if (!isUserScrolling && endRef.current) {
-      endRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
     }
-  }, [items, isTyping, isUserScrolling]);
+  }, []);
+
+  // Use a ResizeObserver for more robust scrolling that handles folding/unfolding/content changes
+  useEffect(() => {
+    if (!scrollRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!isUserScrolling) {
+        scrollToBottom();
+      }
+    });
+
+    // Only observe the content child (not the container itself) to avoid
+    // jittering when the container is resized (e.g. by expanding input box)
+    const contentElement = scrollRef.current.firstElementChild;
+    if (contentElement) {
+      observer.observe(contentElement);
+    }
+
+    return () => observer.disconnect();
+  }, [isUserScrolling, scrollToBottom]);
 
   // Reset user scrolling state when typing starts
   useEffect(() => {
@@ -82,11 +106,16 @@ export function ChatMessages({
   const currentIcon = currentParrotId ? PARROT_ICONS[currentParrotId] || PARROT_ICONS.AMAZING : PARROT_ICONS.AMAZING;
 
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className={cn("flex-1 overflow-y-auto px-3 md:px-6 py-4", className)}>
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className={cn("flex-1 overflow-y-auto px-3 md:px-6 py-4 overscroll-contain", className)}
+      style={{ overflowAnchor: "auto", scrollbarGutter: "stable" }}
+    >
       {children}
 
       {items.length > 0 && (
-        <div className="max-w-3xl mx-auto space-y-4" ref={endRef}>
+        <div className="max-w-3xl mx-auto space-y-4">
           {items.map((item, index) => {
             // Context separator - optimized visual design
             if ("type" in item && item.type === "context-separator") {
@@ -98,9 +127,7 @@ export function ChatMessages({
                   <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border shadow-sm">
                     <Scissors className="w-3.5 h-3.5 text-muted-foreground rotate-[-45deg]" />
-                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
-                      {t("ai.context-cleared")}
-                    </span>
+                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">{t("ai.context-cleared")}</span>
                   </div>
                   <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
                 </div>
@@ -132,7 +159,7 @@ export function ChatMessages({
 
           {/* Amazing Insight Card - rendered in message flow with exact same alignment as assistant messages */}
           {amazingInsightCard && !isTyping && items.length > 0 && (
-            <div className="flex gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex gap-3 md:gap-4 animate-in fade-in duration-300">
               {/* Spacer for avatar alignment */}
               <div className="w-9 h-9 md:w-10 md:h-10 shrink-0 invisible" />
               <div className="flex-1 min-w-0">
@@ -143,16 +170,12 @@ export function ChatMessages({
 
           {/* Generative UI Tools - embedded in message flow like assistant messages */}
           {uiTools && uiTools.length > 0 && onUIAction && onUIDismiss && (
-            <div className="flex gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex gap-3 md:gap-4 animate-in fade-in duration-300">
               {/* Spacer for avatar alignment */}
               <div className="w-9 h-9 md:w-10 md:h-10 shrink-0 invisible" />
               <div className="flex-1 min-w-0">
                 <div className="max-w-[85%] md:max-w-[80%]">
-                  <GenerativeUIContainer
-                    tools={uiTools}
-                    onAction={onUIAction}
-                    onDismiss={onUIDismiss}
-                  />
+                  <GenerativeUIContainer tools={uiTools} onAction={onUIAction} onDismiss={onUIDismiss} />
                 </div>
               </div>
             </div>
@@ -166,7 +189,7 @@ export function ChatMessages({
               if ("type" in lastItem && lastItem.type === "context-separator") return true;
               return "role" in lastItem && lastItem.role !== "assistant";
             })() && (
-              <div className="flex gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="flex gap-3 md:gap-4 animate-in fade-in duration-300">
                 <div className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shadow-sm">
                   {currentIcon.startsWith("/") ? (
                     <img src={currentIcon} alt="" className="w-8 h-8 md:w-9 md:h-9 object-contain" />
@@ -180,12 +203,14 @@ export function ChatMessages({
               </div>
             )}
           {/* Scroll anchor */}
-          <div ref={endRef} className="h-1" />
+          <div ref={endRef} className="h-px" />
         </div>
       )}
     </div>
   );
-}
+});
+
+export { ChatMessages };
 
 interface MessageBubbleProps {
   message: ConversationMessage;
@@ -201,7 +226,7 @@ interface MessageBubbleProps {
 
 const MAX_MESSAGE_HEIGHT = 200;
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   message,
   theme,
   icon,
@@ -248,7 +273,7 @@ function MessageBubble({
       className={cn(
         "flex gap-3 md:gap-4 group/row",
         role === "user" ? "flex-row-reverse" : "flex-row",
-        isNew && "animate-in fade-in slide-in-from-bottom-3 duration-300",
+        isNew && "animate-in fade-in duration-300",
       )}
     >
       {/* Avatar */}
@@ -279,7 +304,7 @@ function MessageBubble({
           ) : (
             <div
               className={cn(
-                "relative rounded-2xl shadow-sm transition-all duration-300 group/bubble min-w-0 max-w-[85%] md:max-w-[80%]",
+                "relative rounded-2xl shadow-sm transition-colors group/bubble min-w-0 max-w-[85%] md:max-w-[80%]",
                 role === "user" ? theme.bubbleUser : cn(theme.bubbleBg, theme.bubbleBorder, theme.text),
                 shouldShowFold && isFolded ? "overflow-hidden" : "max-h-none",
               )}
@@ -296,9 +321,9 @@ function MessageBubble({
                         ? "bg-white/10 border-white/20 text-white/80 hover:bg-white/30"
                         : "bg-card/50 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm",
                       copied &&
-                      (role === "user"
-                        ? "bg-white/40 border-white/40"
-                        : "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600"),
+                        (role === "user"
+                          ? "bg-white/40 border-white/40"
+                          : "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600"),
                     )}
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -317,14 +342,11 @@ function MessageBubble({
                           <a {...props} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer" />
                         ),
                         p: ({ node, ...props }) => <p {...props} className="mb-1 last:mb-0 text-sm leading-relaxed" />,
-                        pre: ({ node, ...props }) => <CodeBlock {...props} />,
+                        pre: ({ node, ...props }) => <CodeBlock {...props} hideCopy={true} />,
                         code: ({ className, children, inline, ...props }: CodeComponentProps) => {
                           return inline ? (
                             <code
-                              className={cn(
-                                "px-1.5 py-0.5 rounded-md bg-muted text-xs break-all whitespace-pre-wrap",
-                                className,
-                              )}
+                              className={cn("px-1.5 py-0.5 rounded-md bg-muted text-xs break-all whitespace-pre-wrap", className)}
                               {...props}
                             >
                               {children}
@@ -378,4 +400,4 @@ function MessageBubble({
       </div>
     </div>
   );
-}
+});

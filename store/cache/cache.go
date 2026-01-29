@@ -40,17 +40,10 @@ type item struct {
 
 // Config contains options for configuring a cache.
 type Config struct {
-	// DefaultTTL is the default time-to-live for cache entries.
-	DefaultTTL time.Duration
-
-	// CleanupInterval is how often the cache runs cleanup.
+	OnEviction      func(key string, value any)
+	DefaultTTL      time.Duration
 	CleanupInterval time.Duration
-
-	// MaxItems is the maximum number of items allowed in the cache.
-	MaxItems int
-
-	// OnEviction is called when an item is evicted from the cache.
-	OnEviction func(key string, value any)
+	MaxItems        int
 }
 
 // DefaultConfig returns a default configuration for the cache.
@@ -65,11 +58,11 @@ func DefaultConfig() Config {
 
 // Cache is a thread-safe in-memory cache with TTL and memory management.
 type Cache struct {
-	itemCount  atomic.Int64 // Use atomic operations to track item count
-	data       sync.Map
 	config     Config
 	stopChan   chan struct{}
 	closedChan chan struct{}
+	data       sync.Map
+	itemCount  atomic.Int64
 }
 
 // New creates a new memory cache with the given configuration.
@@ -263,9 +256,9 @@ func (c *Cache) cleanupOldest() {
 
 	// Find the oldest items
 	type keyExpPair struct {
-		key        string
-		value      any
 		expiration time.Time
+		value      any
+		key        string
 	}
 	candidates := make([]keyExpPair, 0, threshold)
 
@@ -275,7 +268,11 @@ func (c *Cache) cleanupOldest() {
 			return true
 		}
 		if keyStr, ok := key.(string); ok && len(candidates) < threshold {
-			candidates = append(candidates, keyExpPair{keyStr, itm.value, itm.expiration})
+			candidates = append(candidates, keyExpPair{
+				expiration: itm.expiration,
+				value:      itm.value,
+				key:        keyStr,
+			})
 			return true
 		}
 
@@ -289,7 +286,11 @@ func (c *Cache) cleanupOldest() {
 
 		// Replace it if this item is older
 		if itm.expiration.Before(candidates[newestIdx].expiration) {
-			candidates[newestIdx] = keyExpPair{key.(string), itm.value, itm.expiration}
+			candidates[newestIdx] = keyExpPair{
+				expiration: itm.expiration,
+				value:      itm.value,
+				key:        key.(string),
+			}
 		}
 
 		return true

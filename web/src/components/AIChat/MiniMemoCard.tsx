@@ -16,20 +16,14 @@ export function MiniMemoCard({ memo, rank, showRank = true, className }: MiniMem
   return (
     <Link
       to={`/memos/${memo.uid}`}
-      className={cn(
-        "block p-2.5 rounded-lg border hover:bg-muted transition-colors group",
-        "bg-card border-border",
-        className,
-      )}
+      className={cn("block p-2.5 rounded-lg border hover:bg-muted transition-colors group", "bg-card border-border", className)}
     >
       <div className="flex items-start gap-2">
         {showRank && rank !== undefined && (
           <div
             className={cn(
               "flex-shrink-0 w-5 h-5 rounded flex items-center justify-center text-xs font-medium",
-              rank <= 3
-                ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                : "bg-muted text-muted-foreground",
+              rank <= 3 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "bg-muted text-muted-foreground",
             )}
           >
             {rank}

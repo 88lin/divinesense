@@ -4,12 +4,12 @@ package genui
 type ScheduleCardData struct {
 	ID          string `json:"id,omitempty"`
 	Title       string `json:"title"`
-	StartTime   int64  `json:"start_time"` // Unix timestamp
-	EndTime     int64  `json:"end_time"`   // Unix timestamp
-	Duration    int    `json:"duration"`   // Minutes
 	Location    string `json:"location,omitempty"`
 	Description string `json:"description,omitempty"`
-	Status      string `json:"status"` // "preview", "confirmed", "conflict"
+	Status      string `json:"status"`
+	StartTime   int64  `json:"start_time"`
+	EndTime     int64  `json:"end_time"`
+	Duration    int    `json:"duration"`
 }
 
 // CardStatus defines the status of a schedule card.

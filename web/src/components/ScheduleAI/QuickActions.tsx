@@ -36,17 +36,11 @@ export function QuickActions({ data, onAction, onDismiss }: QuickActionsProps) {
         )}
       </div>
 
-      {data.description && (
-        <p className="text-sm text-muted-foreground mb-3">{data.description}</p>
-      )}
+      {data.description && <p className="text-sm text-muted-foreground mb-3">{data.description}</p>}
 
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
         {data.actions.map((action) => (
-          <QuickActionButton
-            key={action.id}
-            action={action}
-            onClick={() => onAction(action)}
-          />
+          <QuickActionButton key={action.id} action={action} onClick={() => onAction(action)} />
         ))}
       </div>
     </div>
@@ -80,9 +74,7 @@ function QuickActionButton({ action, onClick }: QuickActionButtonProps) {
         <span className="font-medium text-sm text-foreground flex-1">{action.label}</span>
         <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
       </div>
-      {action.description && (
-        <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>
-      )}
+      {action.description && <p className="text-xs text-muted-foreground line-clamp-2">{action.description}</p>}
     </button>
   );
 }

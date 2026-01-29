@@ -4,8 +4,7 @@ package router
 
 import "context"
 
-// RouterService defines the LLM routing service interface.
-// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement)
+// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement).
 type RouterService interface {
 	// ClassifyIntent classifies user intent from input text.
 	// Returns: intent type, confidence (0-1), error

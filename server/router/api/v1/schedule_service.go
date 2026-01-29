@@ -724,9 +724,7 @@ func (s *ScheduleService) ParseAndCreateSchedule(ctx context.Context, req *v1pb.
 
 // Helper functions
 
-// checkTimeOverlap checks if two time ranges overlap.
-// 区间约定 Convention: [start, end) 左闭右开
-// Two intervals [s1, e1) and [s2, e2) overlap if: s1 < e2 AND s2 < e1
+// Two intervals [s1, e1) and [s2, e2) overlap if: s1 < e2 AND s2 < e1.
 func checkTimeOverlap(start1, end1, start2 int64, end2 *int64) bool {
 	scheduleEnd := end2
 	if scheduleEnd == nil {

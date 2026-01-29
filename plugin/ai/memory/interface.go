@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// MemoryService defines the unified memory service interface.
-// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement)
+// Consumers: Team B (Assistant+Schedule), Team C (Memo Enhancement).
 type MemoryService interface {
 	// ========== Short-term Memory (within session) ==========
 
@@ -46,30 +45,30 @@ type MemoryService interface {
 
 // Message represents a conversation message.
 type Message struct {
-	Role      string    `json:"role"` // "user" | "assistant" | "system"
-	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
+	Role      string    `json:"role"`
+	Content   string    `json:"content"`
 }
 
 // EpisodicMemory represents an episodic memory record.
 type EpisodicMemory struct {
+	Timestamp  time.Time `json:"timestamp"`
+	AgentType  string    `json:"agent_type"`
+	UserInput  string    `json:"user_input"`
+	Outcome    string    `json:"outcome"`
+	Summary    string    `json:"summary"`
 	ID         int64     `json:"id"`
 	UserID     int32     `json:"user_id"`
-	Timestamp  time.Time `json:"timestamp"`
-	AgentType  string    `json:"agent_type"` // memo/schedule/amazing/assistant
-	UserInput  string    `json:"user_input"`
-	Outcome    string    `json:"outcome"` // success/failure
-	Summary    string    `json:"summary"`
-	Importance float32   `json:"importance"` // 0-1
+	Importance float32   `json:"importance"`
 }
 
 // UserPreferences represents user preferences.
 type UserPreferences struct {
-	Timezone           string         `json:"timezone"`
-	DefaultDuration    int            `json:"default_duration"` // minutes
-	PreferredTimes     []string       `json:"preferred_times"`  // ["09:00", "14:00"]
-	FrequentLocations  []string       `json:"frequent_locations"`
-	CommunicationStyle string         `json:"communication_style"` // concise/detailed
-	TagPreferences     []string       `json:"tag_preferences"`
 	CustomSettings     map[string]any `json:"custom_settings"`
+	Timezone           string         `json:"timezone"`
+	CommunicationStyle string         `json:"communication_style"`
+	PreferredTimes     []string       `json:"preferred_times"`
+	FrequentLocations  []string       `json:"frequent_locations"`
+	TagPreferences     []string       `json:"tag_preferences"`
+	DefaultDuration    int            `json:"default_duration"`
 }

@@ -69,7 +69,7 @@ export interface UIAutoResolvedSlot {
   start_ts: number;
   end_ts: number;
   reason: string;
-  score?: number;  // Optional - backend may not always provide
+  score?: number; // Optional - backend may not always provide
 }
 
 export interface UIConflictResolutionData {
@@ -146,7 +146,13 @@ export interface UIProgressTrackerData {
  */
 export interface UIToolEvent {
   type: "schedule_suggestion" | "time_slot_picker" | "conflict_resolution" | "quick_actions" | "memo_preview" | "progress_tracker";
-  data: UIScheduleSuggestionData | UITimeSlotPickerData | UIConflictResolutionData | UIQuickActionsData | UIMemoPreviewData | UIProgressTrackerData;
+  data:
+    | UIScheduleSuggestionData
+    | UITimeSlotPickerData
+    | UIConflictResolutionData
+    | UIQuickActionsData
+    | UIMemoPreviewData
+    | UIProgressTrackerData;
 }
 
 /**

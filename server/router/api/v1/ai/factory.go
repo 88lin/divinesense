@@ -58,8 +58,8 @@ func (t AgentType) ToProto() v1pb.AgentType {
 // CreateConfig contains configuration for creating an agent.
 type CreateConfig struct {
 	Type     AgentType
-	UserID   int32
 	Timezone string
+	UserID   int32
 }
 
 // AgentFactory creates parrot agents based on type.

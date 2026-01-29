@@ -33,49 +33,32 @@ func (v Visibility) String() string {
 }
 
 type Memo struct {
-	// ID is the system generated unique identifier for the memo.
-	ID int32
-	// UID is the user defined unique identifier for the memo.
-	UID string
-
-	// Standard fields
-	RowStatus RowStatus
-	CreatorID int32
-	CreatedTs int64
-	UpdatedTs int64
-
-	// Domain specific fields
+	Payload    *storepb.MemoPayload
+	ParentUID  *string
+	UID        string
+	RowStatus  RowStatus
 	Content    string
 	Visibility Visibility
+	CreatedTs  int64
+	UpdatedTs  int64
+	ID         int32
+	CreatorID  int32
 	Pinned     bool
-	Payload    *storepb.MemoPayload
-
-	// Composed fields
-	ParentUID *string
 }
 
 type FindMemo struct {
-	ID  *int32
-	UID *string
-
-	IDList  []int32
-	UIDList []string
-
-	// Standard fields
-	RowStatus *RowStatus
-	CreatorID *int32
-
-	// Domain specific fields
-	VisibilityList  []Visibility
-	ExcludeContent  bool
-	ExcludeComments bool
-	Filters         []string
-
-	// Pagination
-	Limit  *int
-	Offset *int
-
-	// Ordering
+	ID               *int32
+	UID              *string
+	Offset           *int
+	Limit            *int
+	RowStatus        *RowStatus
+	CreatorID        *int32
+	VisibilityList   []Visibility
+	Filters          []string
+	UIDList          []string
+	IDList           []int32
+	ExcludeContent   bool
+	ExcludeComments  bool
 	OrderByPinned    bool
 	OrderByUpdatedTs bool
 	OrderByTimeAsc   bool
@@ -91,7 +74,6 @@ type FindMemoPayload struct {
 }
 
 type UpdateMemo struct {
-	ID         int32
 	UID        *string
 	CreatedTs  *int64
 	UpdatedTs  *int64
@@ -100,6 +82,7 @@ type UpdateMemo struct {
 	Visibility *Visibility
 	Pinned     *bool
 	Payload    *storepb.MemoPayload
+	ID         int32
 }
 
 type DeleteMemo struct {

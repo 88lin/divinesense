@@ -17,14 +17,14 @@ import (
 // ChatRequest represents a chat request.
 type ChatRequest struct {
 	Message            string
-	History            []string
 	AgentType          AgentType
-	UserID             int32
 	Timezone           string
+	DeviceContext      string
+	History            []string
+	UserID             int32
 	ConversationID     int32
 	IsTempConversation bool
-	GeekMode           bool   // Geek Mode: Enable Claude Code CLI for code-related tasks
-	DeviceContext      string // Detailed client/device context (JSON)
+	GeekMode           bool
 }
 
 // Handler is the interface for handling chat requests.

@@ -17,21 +17,21 @@ var ErrTimeServiceNotConfigured = errors.New("time service not configured")
 
 // ScheduleRequest represents a schedule creation request.
 type ScheduleRequest struct {
-	Title           string    `json:"title"`
 	StartTime       time.Time `json:"start_time"`
 	EndTime         time.Time `json:"end_time"`
-	Duration        int       `json:"duration"` // minutes
+	Title           string    `json:"title"`
 	Location        string    `json:"location,omitempty"`
 	Description     string    `json:"description,omitempty"`
+	Duration        int       `json:"duration"`
 	ReminderMinutes int       `json:"reminder_minutes,omitempty"`
 }
 
 // FastCreateResult represents the result of fast create parsing.
 type FastCreateResult struct {
-	CanFastCreate bool             // Whether fast create is possible
-	Schedule      *ScheduleRequest // Parsed schedule
-	MissingFields []string         // Missing required fields
-	Confidence    float64          // Confidence score (0-1)
+	Schedule      *ScheduleRequest
+	MissingFields []string
+	Confidence    float64
+	CanFastCreate bool
 }
 
 // FastCreateParser parses user input for fast schedule creation.

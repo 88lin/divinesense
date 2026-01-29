@@ -56,9 +56,7 @@ export const MemoSearchResultCard = memo(function MemoSearchResultCard({ data, o
             </div>
             <div>
               <h5 className="font-medium text-base text-foreground">{data.title}</h5>
-              {data.reason && (
-                <p className="text-xs text-muted-foreground mt-0.5">{data.reason}</p>
-              )}
+              {data.reason && <p className="text-xs text-muted-foreground mt-0.5">{data.reason}</p>}
             </div>
           </div>
           <a
@@ -88,10 +86,7 @@ export const MemoSearchResultCard = memo(function MemoSearchResultCard({ data, o
             </label>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {data.tags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-primary/10 text-primary"
-                >
+                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-primary/10 text-primary">
                   #{tag}
                 </span>
               ))}

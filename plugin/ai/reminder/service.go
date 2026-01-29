@@ -40,28 +40,28 @@ const (
 
 // Reminder represents a reminder entity.
 type Reminder struct {
-	ID        string         `json:"id"`
-	UserID    int32          `json:"user_id"`
-	Type      ReminderType   `json:"type"`
-	TargetID  string         `json:"target_id"` // Schedule or Todo ID
 	TriggerAt time.Time      `json:"trigger_at"`
-	Message   string         `json:"message"`
-	Channels  []Channel      `json:"channels"`
-	Status    ReminderStatus `json:"status"`
 	CreatedAt time.Time      `json:"created_at"`
 	SentAt    *time.Time     `json:"sent_at,omitempty"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
+	ID        string         `json:"id"`
+	Type      ReminderType   `json:"type"`
+	TargetID  string         `json:"target_id"`
+	Message   string         `json:"message"`
+	Status    ReminderStatus `json:"status"`
+	Channels  []Channel      `json:"channels"`
+	UserID    int32          `json:"user_id"`
 }
 
 // CreateReminderRequest represents a request to create a reminder.
 type CreateReminderRequest struct {
-	UserID      int32
+	TriggerAt   time.Time
 	Type        ReminderType
 	TargetID    string
-	TriggerAt   time.Time
 	Message     string
 	Channels    []Channel
-	LeadMinutes int // Minutes before event to trigger
+	LeadMinutes int
+	UserID      int32
 }
 
 // ScheduleInfo contains schedule information for reminder creation.
@@ -94,8 +94,8 @@ type Notifier interface {
 type Service struct {
 	store           ReminderStore
 	notifier        Notifier
-	defaultLead     int // Default lead time in minutes
 	defaultChannels []Channel
+	defaultLead     int
 	mu              sync.RWMutex
 }
 

@@ -218,7 +218,7 @@ func TestServiceStats(t *testing.T) {
 	assert.Greater(t, stats.AverageTokens, float64(0))
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkBuild(b *testing.B) {
 	svc := NewService(DefaultConfig())
 	ctx := context.Background()

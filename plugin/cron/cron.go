@@ -11,19 +11,19 @@ import (
 // specified by the schedule. It may be started, stopped, and the entries may
 // be inspected while running.
 type Cron struct {
-	entries   []*Entry
-	chain     Chain
-	stop      chan struct{}
+	logger    Logger
+	parser    ScheduleParser
+	location  *time.Location
 	add       chan *Entry
 	remove    chan EntryID
 	snapshot  chan chan []Entry
-	running   bool
-	logger    Logger
-	runningMu sync.Mutex
-	location  *time.Location
-	parser    ScheduleParser
-	nextID    EntryID
+	stop      chan struct{}
+	entries   []*Entry
+	chain     Chain
 	jobWaiter sync.WaitGroup
+	nextID    EntryID
+	runningMu sync.Mutex
+	running   bool
 }
 
 // ScheduleParser is an interface for schedule spec parsers that return a Schedule.
@@ -48,27 +48,12 @@ type EntryID int
 
 // Entry consists of a schedule and the func to execute on that schedule.
 type Entry struct {
-	// ID is the cron-assigned ID of this entry, which may be used to look up a
-	// snapshot or remove it.
-	ID EntryID
-
-	// Schedule on which this job should be run.
-	Schedule Schedule
-
-	// Next time the job will run, or the zero time if Cron has not been
-	// started or this entry's schedule is unsatisfiable
-	Next time.Time
-
-	// Prev is the last time this job was run, or the zero time if never.
-	Prev time.Time
-
-	// WrappedJob is the thing to run when the Schedule is activated.
+	Next       time.Time
+	Prev       time.Time
+	Schedule   Schedule
 	WrappedJob Job
-
-	// Job is the thing that was submitted to cron.
-	// It is kept around so that user code that needs to get at the job later,
-	// e.g. via Entries() can do so.
-	Job Job
+	Job        Job
+	ID         EntryID
 }
 
 // Valid returns true if this is not the zero entry.

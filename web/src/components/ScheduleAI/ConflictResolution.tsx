@@ -39,9 +39,7 @@ export function ConflictResolution({ data, onAction, onDismiss, isLoading = fals
     toast(
       (toastInstance) => (
         <div className="flex items-center gap-3">
-          <span className="text-sm">
-            {t("schedule.conflict.auto-resolved", { time: autoSlot.label }) || `已调整到 ${autoSlot.label}`}
-          </span>
+          <span className="text-sm">{t("schedule.conflict.auto-resolved", { time: autoSlot.label }) || `已调整到 ${autoSlot.label}`}</span>
           <button
             type="button"
             onClick={() => {

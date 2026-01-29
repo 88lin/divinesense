@@ -26,11 +26,10 @@ import (
 )
 
 const (
-	// DefaultConflictCheckWindow is the default time window for conflict checking
+	// DefaultConflictCheckWindow is the default time window for conflict checking.
 	DefaultConflictCheckWindow = 1 * time.Hour
 
-	// MaxInstancesToCheck is the maximum number of recurring instances to check for conflicts
-	// This prevents excessive computation for infinite recurrence rules
+	// This prevents excessive computation for infinite recurrence rules.
 	MaxInstancesToCheck = 100
 )
 
@@ -49,9 +48,9 @@ type ConflictError struct {
 
 // TimeSlotAlternative represents an available time slot alternative.
 type TimeSlotAlternative struct {
+	Reason  string `json:"reason,omitempty"`
 	StartTs int64  `json:"start_ts"`
 	EndTs   int64  `json:"end_ts"`
-	Reason  string `json:"reason,omitempty"`
 }
 
 func (e *ConflictError) Error() string {

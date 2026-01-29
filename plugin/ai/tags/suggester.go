@@ -15,27 +15,27 @@ type TagSuggester interface {
 
 // SuggestRequest contains parameters for tag suggestion.
 type SuggestRequest struct {
-	UserID  int32  // User ID for personalized suggestions
-	MemoID  string // Optional: memo ID when editing existing memo
-	Content string // Memo content
-	Title   string // Memo title (optional)
-	MaxTags int    // Maximum tags to return (default: 5)
-	UseLLM  bool   // Whether to use LLM layer (default: true)
+	MemoID  string
+	Content string
+	Title   string
+	MaxTags int
+	UserID  int32
+	UseLLM  bool
 }
 
 // SuggestResponse contains tag suggestions and metadata.
 type SuggestResponse struct {
 	Tags    []Suggestion  `json:"tags"`
+	Sources []string      `json:"sources"`
 	Latency time.Duration `json:"latency"`
-	Sources []string      `json:"sources"` // ["statistics", "rules", "llm"]
 }
 
 // Suggestion represents a single tag suggestion.
 type Suggestion struct {
 	Name       string  `json:"name"`
-	Confidence float64 `json:"confidence"` // 0.0 - 1.0
-	Source     string  `json:"source"`     // "statistics", "rules", "llm"
+	Source     string  `json:"source"`
 	Reason     string  `json:"reason,omitempty"`
+	Confidence float64 `json:"confidence"`
 }
 
 // TagFrequency represents tag usage frequency.

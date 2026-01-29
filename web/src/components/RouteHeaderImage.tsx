@@ -16,7 +16,8 @@ const RouteHeaderImage = () => {
   if (path === Routes.HOME) headerName = "memos";
   else if (path.startsWith(Routes.EXPLORE)) headerName = "explore";
   else if (path.startsWith(Routes.ARCHIVED)) headerName = "memos";
-  else if (path.startsWith("/u/")) headerName = "memos"; // Profile
+  else if (path.startsWith("/u/"))
+    headerName = "memos"; // Profile
   else if (path.startsWith(Routes.CHAT)) headerName = "ai";
   else if (path.startsWith(Routes.SCHEDULE)) headerName = "schedule";
   else if (path.startsWith(Routes.REVIEW)) headerName = "review";
@@ -30,13 +31,7 @@ const RouteHeaderImage = () => {
 
   const headerSrc = `/headers/header-${headerName}${suffix}.svg`;
 
-  return (
-    <img
-      src={headerSrc}
-      alt="Page Header"
-      className="h-8 w-auto object-contain select-none opacity-90 dark:opacity-100"
-    />
-  );
+  return <img src={headerSrc} alt="Page Header" className="h-8 w-auto object-contain select-none opacity-90 dark:opacity-100" />;
 };
 
 export default RouteHeaderImage;

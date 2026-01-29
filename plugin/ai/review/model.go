@@ -7,25 +7,25 @@ import (
 
 // ReviewItem represents a memo in the review queue.
 type ReviewItem struct {
+	LastReview  time.Time `json:"last_review"`
+	NextReview  time.Time `json:"next_review"`
+	CreatedAt   time.Time `json:"created_at"`
 	MemoID      string    `json:"memo_id"`
-	MemoName    string    `json:"memo_name"` // memos/{uid} format
+	MemoName    string    `json:"memo_name"`
 	Title       string    `json:"title"`
 	Snippet     string    `json:"snippet"`
 	Tags        []string  `json:"tags"`
-	LastReview  time.Time `json:"last_review"`
 	ReviewCount int       `json:"review_count"`
-	NextReview  time.Time `json:"next_review"`
 	Priority    float64   `json:"priority"`
-	CreatedAt   time.Time `json:"created_at"`
 }
 
 // ReviewState stores the spaced repetition state for a memo.
 type ReviewState struct {
-	MemoUID      string    `json:"memo_uid"`
-	ReviewCount  int       `json:"review_count"`
 	LastReview   time.Time `json:"last_review"`
 	NextReview   time.Time `json:"next_review"`
-	EaseFactor   float64   `json:"ease_factor"` // SM-2 ease factor
+	MemoUID      string    `json:"memo_uid"`
+	ReviewCount  int       `json:"review_count"`
+	EaseFactor   float64   `json:"ease_factor"`
 	IntervalDays int       `json:"interval_days"`
 }
 
@@ -33,13 +33,13 @@ type ReviewState struct {
 type ReviewQuality int
 
 const (
-	// QualityAgain - complete blackout, wrong response
+	// QualityAgain - complete blackout, wrong response.
 	QualityAgain ReviewQuality = 0
-	// QualityHard - correct but with serious difficulty
+	// QualityHard - correct but with serious difficulty.
 	QualityHard ReviewQuality = 1
-	// QualityGood - correct with some hesitation
+	// QualityGood - correct with some hesitation.
 	QualityGood ReviewQuality = 2
-	// QualityEasy - perfect response
+	// QualityEasy - perfect response.
 	QualityEasy ReviewQuality = 3
 )
 

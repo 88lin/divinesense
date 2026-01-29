@@ -37,8 +37,8 @@ func NewConnectServiceHandler(svc *APIV1Service) *ConnectServiceHandler {
 func (s *ConnectServiceHandler) RegisterConnectHandlers(mux *http.ServeMux, opts ...connect.HandlerOption) {
 	// Register all service handlers
 	handlers := []struct {
-		path    string
 		handler http.Handler
+		path    string
 	}{
 		wrap(apiv1connect.NewInstanceServiceHandler(s, opts...)),
 		wrap(apiv1connect.NewAuthServiceHandler(s, opts...)),
@@ -70,13 +70,16 @@ func (s *ConnectServiceHandler) RegisterConnectHandlers(mux *http.ServeMux, opts
 
 // wrap converts (path, handler) return value to a struct for cleaner iteration.
 func wrap(path string, handler http.Handler) struct {
-	path    string
 	handler http.Handler
+	path    string
 } {
 	return struct {
-		path    string
 		handler http.Handler
-	}{path, handler}
+		path    string
+	}{
+		handler: handler,
+		path:    path,
+	}
 }
 
 // convertGRPCError converts gRPC status errors to Connect errors.
@@ -170,7 +173,7 @@ func (s *ConnectServiceHandler) Chat(ctx context.Context, req *connect.Request[v
 	})
 }
 
-// connectStreamAdapter wraps Connect ServerStream to implement AIService_ChatServer
+// connectStreamAdapter wraps Connect ServerStream to implement AIService_ChatServer.
 type connectStreamAdapter struct {
 	stream *connect.ServerStream[v1pb.ChatResponse]
 	ctx    context.Context
@@ -206,7 +209,7 @@ func (a *connectStreamAdapter) SendHeader(md metadata.MD) error {
 func (a *connectStreamAdapter) SetTrailer(md metadata.MD) {
 }
 
-// truncateStringForLog truncates a string for logging
+// truncateStringForLog truncates a string for logging.
 func truncateStringForLog(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
@@ -339,7 +342,7 @@ func (s *ScheduleAgentServiceConnectHandler) ChatStream(ctx context.Context, req
 	return s.scheduleAgentService.ChatStream(req.Msg, grpcStream)
 }
 
-// scheduleAgentStreamAdapter adapts Connect ServerStream to gRPC ScheduleAgentService_ChatStreamServer
+// scheduleAgentStreamAdapter adapts Connect ServerStream to gRPC ScheduleAgentService_ChatStreamServer.
 type scheduleAgentStreamAdapter struct {
 	connectStream *connect.ServerStream[v1pb.ScheduleAgentStreamResponse]
 	ctx           context.Context
@@ -414,7 +417,7 @@ func (s *ConnectServiceHandler) ListParrots(ctx context.Context, req *connect.Re
 	}), nil
 }
 
-// Helper function to get parrot self-cognition by agent type
+// Helper function to get parrot self-cognition by agent type.
 func getParrotSelfCognition(agentType v1pb.AgentType) *v1pb.ParrotSelfCognition {
 	switch agentType {
 	case v1pb.AgentType_AGENT_TYPE_MEMO:
@@ -485,7 +488,7 @@ func getParrotSelfCognition(agentType v1pb.AgentType) *v1pb.ParrotSelfCognition 
 	}
 }
 
-// Helper function to get parrot name by agent type
+// Helper function to get parrot name by agent type.
 func getParrotNameByAgentType(agentType v1pb.AgentType) string {
 	switch agentType {
 	case v1pb.AgentType_AGENT_TYPE_MEMO:

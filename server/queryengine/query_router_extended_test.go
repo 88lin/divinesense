@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-// TestQueryRouter_ExtendedTimeKeywords 举一反三优化：测试扩展的时间关键词
-// 验证新增的所有时间表达都能正确识别和路由
+// 验证新增的所有时间表达都能正确识别和路由.
 func TestQueryRouter_ExtendedTimeKeywords(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -16,9 +15,9 @@ func TestQueryRouter_ExtendedTimeKeywords(t *testing.T) {
 		name             string
 		query            string
 		expectedStrategy string
-		expectTimeRange  bool
 		expectedLabel    string
 		minConfidence    float32
+		expectTimeRange  bool
 	}{
 		// ============================================================
 		// 1. 模糊时间关键词（举一反三优化重点）
@@ -326,7 +325,7 @@ func TestQueryRouter_ExtendedTimeKeywords(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_ExtendedTimeRangeValidation 举一反三优化：验证时间范围的准确性
+// TestQueryRouter_ExtendedTimeRangeValidation 举一反三优化：验证时间范围的准确性.
 func TestQueryRouter_ExtendedTimeRangeValidation(t *testing.T) {
 	router := NewQueryRouter()
 	_ = time.Now().In(utcLocation) // 保留以备将来使用
@@ -334,8 +333,8 @@ func TestQueryRouter_ExtendedTimeRangeValidation(t *testing.T) {
 	tests := []struct {
 		name            string
 		keyword         string
-		expectedMinDays int  // 最少天数
-		expectedMaxDays int  // 最多天数
+		expectedMinDays int // 最少天数
+		expectedMaxDays int // 最多天数
 	}{
 		{
 			name:            "近期 = 7天",
@@ -398,7 +397,7 @@ func TestQueryRouter_ExtendedTimeRangeValidation(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_ExtractContentQueryExtended 举一反三优化：测试内容提取
+// TestQueryRouter_ExtractContentQueryExtended 举一反三优化：测试内容提取.
 func TestQueryRouter_ExtractContentQueryExtended(t *testing.T) {
 	router := NewQueryRouter()
 

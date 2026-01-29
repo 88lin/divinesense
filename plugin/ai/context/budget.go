@@ -1,7 +1,7 @@
 // Package context provides context building for LLM prompts.
 package context
 
-// Default token budget values
+// Default token budget values.
 const (
 	DefaultMaxTokens      = 4096
 	DefaultSystemPrompt   = 500

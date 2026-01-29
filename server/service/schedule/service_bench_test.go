@@ -102,11 +102,11 @@ func BenchmarkCreateSchedule_WithRecurring(b *testing.B) {
 	dailyRule := `{"type":"daily","interval":1}`
 
 	req := &CreateScheduleRequest{
-		Title:          "Daily Standup",
-		StartTs:        time.Now().Add(2 * time.Hour).Unix(),
-		EndTs:          func() *int64 { ts := time.Now().Add(3 * time.Hour).Unix(); return &ts }(),
-		Timezone:       "Asia/Shanghai",
-		RecurrenceRule: &dailyRule,
+		Title:           "Daily Standup",
+		StartTs:         time.Now().Add(2 * time.Hour).Unix(),
+		EndTs:           func() *int64 { ts := time.Now().Add(3 * time.Hour).Unix(); return &ts }(),
+		Timezone:        "Asia/Shanghai",
+		RecurrenceRule:  &dailyRule,
 		RecurrenceEndTs: func() *int64 { ts := time.Now().Add(30 * 24 * time.Hour).Unix(); return &ts }(),
 	}
 

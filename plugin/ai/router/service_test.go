@@ -339,7 +339,7 @@ func TestRuleMatcher_TimePatterns(t *testing.T) {
 	}
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkRuleMatcher_Match(b *testing.B) {
 	matcher := NewRuleMatcher()
 	input := "明天下午3点开会"

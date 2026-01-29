@@ -7,9 +7,9 @@ import (
 
 func TestParser_Parse(t *testing.T) {
 	tests := []struct {
+		want    *Rule
 		name    string
 		rrule   string
-		want    *Rule
 		wantErr bool
 	}{
 		{
@@ -110,32 +110,32 @@ func TestGenerator_All(t *testing.T) {
 		name         string
 		rrule        string
 		start        string
+		wantFirstDay string
 		maxGen       int
 		wantCount    int
-		wantFirstDay string
 	}{
 		{
-			name:      "daily for 5 days",
-			rrule:     "FREQ=DAILY;COUNT=5",
-			start:     "2024-01-15T10:00:00+08:00",
-			maxGen:    10,
-			wantCount: 5,
+			name:         "daily for 5 days",
+			rrule:        "FREQ=DAILY;COUNT=5",
+			start:        "2024-01-15T10:00:00+08:00",
+			maxGen:       10,
+			wantCount:    5,
 			wantFirstDay: "2024-01-15T10:00:00+08:00",
 		},
 		{
-			name:      "weekly mon/wed/fri",
-			rrule:     "FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=6",
-			start:     "2024-01-15T10:00:00+08:00", // Monday
-			maxGen:    10,
-			wantCount: 6,
+			name:         "weekly mon/wed/fri",
+			rrule:        "FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=6",
+			start:        "2024-01-15T10:00:00+08:00", // Monday
+			maxGen:       10,
+			wantCount:    6,
 			wantFirstDay: "2024-01-15T10:00:00+08:00",
 		},
 		{
-			name:      "monthly on 15th",
-			rrule:     "FREQ=MONTHLY;BYMONTHDAY=15;COUNT=3",
-			start:     "2024-01-15T10:00:00+08:00",
-			maxGen:    10,
-			wantCount: 3,
+			name:         "monthly on 15th",
+			rrule:        "FREQ=MONTHLY;BYMONTHDAY=15;COUNT=3",
+			start:        "2024-01-15T10:00:00+08:00",
+			maxGen:       10,
+			wantCount:    3,
 			wantFirstDay: "2024-01-15T10:00:00+08:00",
 		},
 	}
@@ -172,9 +172,9 @@ func TestGenerator_All(t *testing.T) {
 
 func TestRule_String(t *testing.T) {
 	tests := []struct {
-		name  string
-		rule  *Rule
-		want  string
+		name string
+		rule *Rule
+		want string
 	}{
 		{
 			name: "simple weekly",
@@ -213,7 +213,7 @@ func TestRule_String(t *testing.T) {
 	}
 }
 
-// Common RRULE examples for schedules
+// Common RRULE examples for schedules.
 func ExampleParser() {
 	parser := NewParser()
 

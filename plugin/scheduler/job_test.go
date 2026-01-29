@@ -31,8 +31,8 @@ func TestJobDefinition(t *testing.T) {
 
 func TestJobValidation(t *testing.T) {
 	tests := []struct {
-		name    string
 		job     *Job
+		name    string
 		wantErr bool
 	}{
 		{

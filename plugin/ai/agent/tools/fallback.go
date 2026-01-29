@@ -94,8 +94,8 @@ var scheduleCache = &simpleCache{
 }
 
 type simpleCache struct {
-	mu   sync.RWMutex
 	data map[string]string
+	mu   sync.RWMutex
 }
 
 // makeCacheKey creates a user-isolated cache key.
@@ -130,8 +130,8 @@ func ClearScheduleCache() {
 
 // FallbackRegistry allows dynamic registration of fallback handlers.
 type FallbackRegistry struct {
-	mu       sync.RWMutex
 	handlers map[string]FallbackFunc
+	mu       sync.RWMutex
 }
 
 // NewFallbackRegistry creates a new FallbackRegistry with default handlers.

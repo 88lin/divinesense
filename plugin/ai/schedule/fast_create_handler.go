@@ -16,9 +16,9 @@ const (
 
 // Action represents a user action button.
 type Action struct {
-	Type  string `json:"type"`  // confirm, edit, cancel
-	Label string `json:"label"` // Button label
 	Data  any    `json:"data,omitempty"`
+	Type  string `json:"type"`
+	Label string `json:"label"`
 }
 
 // AgentResponse represents the response from the fast create handler.

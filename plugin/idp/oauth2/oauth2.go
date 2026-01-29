@@ -80,7 +80,7 @@ func (p *IdentityProvider) ExchangeToken(ctx context.Context, redirectURL, code,
 // UserInfo returns the parsed user information using the given OAuth2 token.
 func (p *IdentityProvider) UserInfo(token string) (*idp.IdentityProviderUserInfo, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, p.config.UserInfoUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, p.config.UserInfoUrl, http.NoBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to new http request")
 	}

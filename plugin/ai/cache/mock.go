@@ -9,13 +9,13 @@ import (
 
 // MockCacheService is a mock implementation of CacheService for testing.
 type MockCacheService struct {
-	mu    sync.RWMutex
 	store map[string]*cacheEntry
+	mu    sync.RWMutex
 }
 
 type cacheEntry struct {
-	value     []byte
 	expiresAt time.Time
+	value     []byte
 }
 
 // NewMockCacheService creates a new MockCacheService.
@@ -95,5 +95,5 @@ func (m *MockCacheService) Clear() {
 	m.store = make(map[string]*cacheEntry)
 }
 
-// Ensure MockCacheService implements CacheService
+// Ensure MockCacheService implements CacheService.
 var _ CacheService = (*MockCacheService)(nil)

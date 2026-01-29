@@ -1,7 +1,15 @@
 import { useEffect } from "react";
-import type { UIConflictResolutionData, UIScheduleSuggestionData, UITimeSlotData, UITimeSlotPickerData, UIMemoPreviewData, UIQuickActionsData, UIQuickActionData, UIProgressTrackerData } from "@/hooks/useScheduleAgent";
+import type {
+  UIConflictResolutionData,
+  UIMemoPreviewData,
+  UIProgressTrackerData,
+  UIQuickActionData,
+  UIQuickActionsData,
+  UIScheduleSuggestionData,
+  UITimeSlotData,
+  UITimeSlotPickerData,
+} from "@/hooks/useScheduleAgent";
 import { cn } from "@/lib/utils";
-import { validateAndLog, validateScheduleSuggestion, validateMemoPreview, validateScheduleList } from "./uiTypeValidators";
 import { ConflictResolution } from "./ConflictResolution";
 import { MemoPreview } from "./MemoPreview";
 import { MemoSearchResultCard } from "./MemoSearchResultCard";
@@ -11,6 +19,7 @@ import { ScheduleListCard } from "./ScheduleListCard";
 import { ScheduleSuggestionCard } from "./ScheduleSuggestionCard";
 import { TimeSlotPicker } from "./TimeSlotPicker";
 import type { GenerativeUIContainerProps, UIAction } from "./types";
+import { validateAndLog, validateMemoPreview, validateScheduleList, validateScheduleSuggestion } from "./uiTypeValidators";
 
 /**
  * Auto-dismiss timeout for UI tools (5 minutes).
@@ -85,8 +94,6 @@ function GenerativeUIComponent({ tool, onAction, onDismiss }: GenerativeUICompon
   const handleConfirm = (data: UIScheduleSuggestionData) => {
     onAction({ type: "confirm", toolId: tool.id, data });
   };
-
-
 
   const handleSlotSelect = (slot: UITimeSlotData) => {
     onAction({ type: "select_slot", toolId: tool.id, data: slot });

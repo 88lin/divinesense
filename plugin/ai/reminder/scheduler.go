@@ -11,16 +11,16 @@ import (
 // Scheduler runs background tasks for processing due reminders.
 type Scheduler struct {
 	service       *Service
+	stopCh        chan struct{}
+	logger        *slog.Logger
+	processedChan chan int
+	wg            sync.WaitGroup
 	interval      time.Duration
 	maxRetries    int
 	retryDelay    time.Duration
 	batchSize     int
-	running       bool
-	stopCh        chan struct{}
-	wg            sync.WaitGroup
 	mu            sync.Mutex
-	logger        *slog.Logger
-	processedChan chan int // For testing: reports processed count
+	running       bool
 }
 
 // SchedulerConfig holds configuration for the scheduler.
@@ -169,9 +169,9 @@ func (s *Scheduler) RunOnce(ctx context.Context) (int, error) {
 type Worker struct {
 	store      ReminderStore
 	notifier   Notifier
+	logger     *slog.Logger
 	maxRetries int
 	retryDelay time.Duration
-	logger     *slog.Logger
 }
 
 // NewWorker creates a new reminder worker.
@@ -275,16 +275,16 @@ func (h *HealthCheck) Check() HealthStatus {
 
 // HealthStatus represents the health of the scheduler.
 type HealthStatus struct {
-	Healthy    bool      `json:"healthy"`
 	LastCheck  time.Time `json:"last_check"`
 	CheckCount int64     `json:"check_count"`
+	Healthy    bool      `json:"healthy"`
 }
 
 // Stats holds scheduler statistics.
 type Stats struct {
+	LastRunAt      time.Time `json:"last_run_at"`
 	TotalProcessed int64     `json:"total_processed"`
 	TotalFailed    int64     `json:"total_failed"`
-	LastRunAt      time.Time `json:"last_run_at"`
 	AverageLatency float64   `json:"average_latency_ms"`
 }
 

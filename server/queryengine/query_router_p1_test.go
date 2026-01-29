@@ -6,51 +6,51 @@ import (
 	"time"
 )
 
-// TestQueryRouter_P1_ExplicitYear 测试 P1: 明确年份表达
+// TestQueryRouter_P1_ExplicitYear 测试 P1: 明确年份表达.
 func TestQueryRouter_P1_ExplicitYear(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
 
 	tests := []struct {
-		name           string
-		query          string
-		expectedLabel  string
-		expectedMode   ScheduleQueryMode
+		name            string
+		query           string
+		expectedLabel   string
+		expectedMode    ScheduleQueryMode
 		expectTimeRange bool
 	}{
 		{
-			name:           "YYYY年MM月DD日格式",
-			query:          "2025年1月21日的日程",
-			expectedLabel:  "2025年1月21日",
-			expectedMode:   StrictQueryMode,
+			name:            "YYYY年MM月DD日格式",
+			query:           "2025年1月21日的日程",
+			expectedLabel:   "2025年1月21日",
+			expectedMode:    StrictQueryMode,
 			expectTimeRange: true,
 		},
 		{
-			name:           "YYYY-MM-DD格式",
-			query:          "2025-01-21有什么安排",
-			expectedLabel:  "2025-01-21",
-			expectedMode:   StrictQueryMode,
+			name:            "YYYY-MM-DD格式",
+			query:           "2025-01-21有什么安排",
+			expectedLabel:   "2025-01-21",
+			expectedMode:    StrictQueryMode,
 			expectTimeRange: true,
 		},
 		{
-			name:           "YYYY/MM/DD格式",
-			query:          "2025/01/21的会议",
-			expectedLabel:  "2025/01/21",
-			expectedMode:   StrictQueryMode,
+			name:            "YYYY/MM/DD格式",
+			query:           "2025/01/21的会议",
+			expectedLabel:   "2025/01/21",
+			expectedMode:    StrictQueryMode,
 			expectTimeRange: true,
 		},
 		{
-			name:           "相对时间-今天",
-			query:          "今天的日程",
-			expectedLabel:  "今天",
-			expectedMode:   StandardQueryMode,
+			name:            "相对时间-今天",
+			query:           "今天的日程",
+			expectedLabel:   "今天",
+			expectedMode:    StandardQueryMode,
 			expectTimeRange: true,
 		},
 		{
-			name:           "相对时间-本周",
-			query:          "本周的安排",
-			expectedLabel:  "本周",
-			expectedMode:   StandardQueryMode,
+			name:            "相对时间-本周",
+			query:           "本周的安排",
+			expectedLabel:   "本周",
+			expectedMode:    StandardQueryMode,
 			expectTimeRange: true,
 		},
 	}
@@ -87,45 +87,45 @@ func TestQueryRouter_P1_ExplicitYear(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_P1_FarYearKeywords 测试 P1: 更远的年份关键词
+// TestQueryRouter_P1_FarYearKeywords 测试 P1: 更远的年份关键词.
 func TestQueryRouter_P1_FarYearKeywords(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
 	now := time.Now().In(utcLocation)
 
 	tests := []struct {
-		name           string
-		query          string
-		expectedLabel  string
-		expectedYear   int
+		name            string
+		query           string
+		expectedLabel   string
+		expectedYear    int
 		expectTimeRange bool
 	}{
 		{
-			name:           "后年",
-			query:          "后年的计划",
-			expectedLabel:  "后年",
-			expectedYear:   now.Year() + 2,
+			name:            "后年",
+			query:           "后年的计划",
+			expectedLabel:   "后年",
+			expectedYear:    now.Year() + 2,
 			expectTimeRange: true,
 		},
 		{
-			name:           "大后年",
-			query:          "大后年的目标",
-			expectedLabel:  "大后年",
-			expectedYear:   now.Year() + 3,
+			name:            "大后年",
+			query:           "大后年的目标",
+			expectedLabel:   "大后年",
+			expectedYear:    now.Year() + 3,
 			expectTimeRange: true,
 		},
 		{
-			name:           "前年",
-			query:          "前年的数据",
-			expectedLabel:  "前年",
-			expectedYear:   now.Year() - 2,
+			name:            "前年",
+			query:           "前年的数据",
+			expectedLabel:   "前年",
+			expectedYear:    now.Year() - 2,
 			expectTimeRange: true,
 		},
 		{
-			name:           "大前年",
-			query:          "大前年的总结",
-			expectedLabel:  "大前年",
-			expectedYear:   now.Year() - 3,
+			name:            "大前年",
+			query:           "大前年的总结",
+			expectedLabel:   "大前年",
+			expectedYear:    now.Year() - 3,
 			expectTimeRange: true,
 		},
 	}
@@ -166,7 +166,7 @@ func TestQueryRouter_P1_FarYearKeywords(t *testing.T) {
 	}
 }
 
-// TestQueryRouter_P1_QueryModeSelection 测试 P1: 查询模式选择逻辑
+// TestQueryRouter_P1_QueryModeSelection 测试 P1: 查询模式选择逻辑.
 func TestQueryRouter_P1_QueryModeSelection(t *testing.T) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -204,7 +204,7 @@ func TestQueryRouter_P1_QueryModeSelection(t *testing.T) {
 	}
 }
 
-// BenchmarkQueryRouter_P1_ExplicitYear 性能测试：明确年份解析
+// BenchmarkQueryRouter_P1_ExplicitYear 性能测试：明确年份解析.
 func BenchmarkQueryRouter_P1_ExplicitYear(b *testing.B) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -224,7 +224,7 @@ func BenchmarkQueryRouter_P1_ExplicitYear(b *testing.B) {
 	}
 }
 
-// BenchmarkQueryRouter_P1_FarYear 性能测试：更远年份
+// BenchmarkQueryRouter_P1_FarYear 性能测试：更远年份.
 func BenchmarkQueryRouter_P1_FarYear(b *testing.B) {
 	router := NewQueryRouter()
 	ctx := context.Background()

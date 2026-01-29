@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	// DefaultTimezone is the default timezone for schedule operations
+	// DefaultTimezone is the default timezone for schedule operations.
 	DefaultTimezone = "Asia/Shanghai"
 )
 
-// toolCallRegex is pre-compiled for performance (hot path)
+// toolCallRegex is pre-compiled for performance (hot path).
 var toolCallRegex = regexp.MustCompile(`\n?\[Tool: [^\]]+\]`)
 
 // ScheduleAgentService is a dedicated service for schedule agent interactions.

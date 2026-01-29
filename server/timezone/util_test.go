@@ -85,11 +85,11 @@ func TestToUserTimezone(t *testing.T) {
 	ts := int64(1737417600)
 
 	tests := []struct {
-		name      string
-		ts        int64
-		timezone  string
-		wantHour  int
-		wantDay   int
+		name     string
+		timezone string
+		ts       int64
+		wantHour int
+		wantDay  int
 	}{
 		{
 			name:     "UTC timezone",
@@ -133,43 +133,43 @@ func TestFormatScheduleTime(t *testing.T) {
 	startTs := int64(1737468000)
 
 	tests := []struct {
-		name     string
-		startTs  int64
-		endTs    *int64
-		allDay   bool
-		tz       string
+		endTs        *int64
+		name         string
+		tz           string
 		wantContains string
+		startTs      int64
+		allDay       bool
 	}{
 		{
-			name:    "all-day event",
-			startTs: startTs,
-			endTs:   nil,
-			allDay:  true,
-			tz:      "UTC",
+			name:         "all-day event",
+			startTs:      startTs,
+			endTs:        nil,
+			allDay:       true,
+			tz:           "UTC",
 			wantContains: "2025-01-21",
 		},
 		{
-			name:     "event with end time",
-			startTs:  startTs,
-			endTs:    func() *int64 { t := int64(1737471600); return &t }(), // 15:00
-			allDay:   false,
-			tz:       "UTC",
+			name:         "event with end time",
+			startTs:      startTs,
+			endTs:        func() *int64 { t := int64(1737471600); return &t }(), // 15:00
+			allDay:       false,
+			tz:           "UTC",
 			wantContains: "14:00 - 15:00",
 		},
 		{
-			name:     "event without end time",
-			startTs:  startTs,
-			endTs:    nil,
-			allDay:   false,
-			tz:       "UTC",
+			name:         "event without end time",
+			startTs:      startTs,
+			endTs:        nil,
+			allDay:       false,
+			tz:           "UTC",
 			wantContains: "14:00",
 		},
 		{
-			name:     "Asia/Shanghai timezone",
-			startTs:  startTs,
-			endTs:    func() *int64 { t := int64(1737471600); return &t }(),
-			allDay:   false,
-			tz:       "Asia/Shanghai",
+			name:         "Asia/Shanghai timezone",
+			startTs:      startTs,
+			endTs:        func() *int64 { t := int64(1737471600); return &t }(),
+			allDay:       false,
+			tz:           "Asia/Shanghai",
 			wantContains: "22:00 - 23:00",
 		},
 	}
@@ -272,7 +272,7 @@ func TestCommonTimezoneConstants(t *testing.T) {
 	}
 }
 
-// Helper function
+// Helper function.
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
 }

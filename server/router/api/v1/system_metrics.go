@@ -9,20 +9,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// MetricsOverviewResponse represents the overview response of system metrics
+// MetricsOverviewResponse represents the overview response of system metrics.
 type MetricsOverviewResponse struct {
+	TimeRange     string  `json:"time_range"`
 	TotalRequests int64   `json:"total_requests"`
 	SuccessRate   float64 `json:"success_rate"`
 	AvgLatencyMs  int64   `json:"avg_latency_ms"`
 	P50LatencyMs  int64   `json:"p50_latency_ms"`
 	P95LatencyMs  int64   `json:"p95_latency_ms"`
 	ErrorCount    int64   `json:"error_count"`
-	TimeRange     string  `json:"time_range"`
-	IsMock        bool    `json:"is_mock"` // indicates if the data is mock
+	IsMock        bool    `json:"is_mock"`
 }
 
-// GetMetricsOverview returns the system metrics overview
-// GET /api/v1/system/metrics/overview
+// GET /api/v1/system/metrics/overview.
 func (s *APIV1Service) GetMetricsOverview(c echo.Context) error {
 	// Parse time range parameter
 	timeRange := c.QueryParam("range")
@@ -50,7 +49,7 @@ func (s *APIV1Service) GetMetricsOverview(c echo.Context) error {
 	})
 }
 
-// parseTimeRange parses time range string and returns the start time
+// parseTimeRange parses time range string and returns the start time.
 func parseTimeRange(timeRange string) (time.Time, error) {
 	now := time.Now()
 	switch timeRange {

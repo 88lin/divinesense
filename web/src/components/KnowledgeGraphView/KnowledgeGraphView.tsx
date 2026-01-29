@@ -1,15 +1,15 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, lazy } from "react";
+import { AlertCircle, Filter, Loader2, Maximize2, RefreshCw, ZoomIn, ZoomOut } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ForceGraphMethods, LinkObject, NodeObject } from "react-force-graph-2d";
 import { useTranslation } from "react-i18next";
-import { Loader2, ZoomIn, ZoomOut, Maximize2, Filter, RefreshCw, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
-import useNavigateTo from "@/hooks/useNavigateTo";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useKnowledgeGraph } from "@/hooks/useAIQueries";
-import { CLUSTER_COLORS, EDGE_TYPE_COLORS, convertProtoToGraphData } from "./types";
+import useNavigateTo from "@/hooks/useNavigateTo";
+import { cn } from "@/lib/utils";
+import { CLUSTER_COLORS, convertProtoToGraphData, EDGE_TYPE_COLORS } from "./types";
 
 const ForceGraph2D = lazy(() => import("react-force-graph-2d"));
 
@@ -40,7 +40,7 @@ const KnowledgeGraphView = ({ className }: Props) => {
   const { t } = useTranslation();
   const navigateTo = useNavigateTo();
   const containerRef = useRef<HTMLDivElement>(null);
-  const graphRef = useRef<ForceGraphMethods<any, any> | undefined>(undefined);
+  const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
   const [graphSize, setGraphSize] = useState({ width: 0, height: 0 });
 
   // Filter state
@@ -67,12 +67,7 @@ const KnowledgeGraphView = ({ className }: Props) => {
   // Convert proto response to graph data
   const graphData = useMemo(() => {
     if (!graphResponse) return null;
-    return convertProtoToGraphData(
-      graphResponse.nodes,
-      graphResponse.edges,
-      graphResponse.stats ?? null,
-      graphResponse.buildMs
-    );
+    return convertProtoToGraphData(graphResponse.nodes, graphResponse.edges, graphResponse.stats ?? null, graphResponse.buildMs);
   }, [graphResponse]);
 
   // Filter edges by type
@@ -89,8 +84,7 @@ const KnowledgeGraphView = ({ className }: Props) => {
     });
 
     // Filter nodes to only include connected ones (or all if no edges)
-    const filteredNodes =
-      connectedNodeIds.size > 0 ? graphData.nodes.filter((n) => connectedNodeIds.has(n.id)) : graphData.nodes;
+    const filteredNodes = connectedNodeIds.size > 0 ? graphData.nodes.filter((n) => connectedNodeIds.has(n.id)) : graphData.nodes;
 
     return {
       nodes: filteredNodes.map((n) => ({
@@ -139,32 +133,33 @@ const KnowledgeGraphView = ({ className }: Props) => {
 
   // Node click handler
   const onNodeClick = useCallback(
-    (node: any) => {
-      if (node.id.startsWith("memos/")) {
-        navigateTo(`/${node.id}`);
+    (node: NodeObject, _event: MouseEvent) => {
+      const n = node as ForceGraphNode;
+      if (n.id.startsWith("memos/")) {
+        navigateTo(`/${n.id}`);
       }
     },
-    [navigateTo]
+    [navigateTo],
   );
 
   // Node color by cluster
-  const getNodeColor = useCallback((node: any) => {
-    return CLUSTER_COLORS[node.cluster % CLUSTER_COLORS.length];
+  const getNodeColor = useCallback((node: NodeObject) => {
+    return CLUSTER_COLORS[(node as ForceGraphNode).cluster % CLUSTER_COLORS.length];
   }, []);
 
   // Node size by importance
-  const getNodeSize = useCallback((node: any) => {
-    return 4 + node.importance * 12;
+  const getNodeSize = useCallback((node: NodeObject) => {
+    return 4 + (node as ForceGraphNode).importance * 12;
   }, []);
 
   // Link color by type
-  const getLinkColor = useCallback((link: any) => {
-    return EDGE_TYPE_COLORS[link.type] || "#94a3b8";
+  const getLinkColor = useCallback((link: LinkObject) => {
+    return EDGE_TYPE_COLORS[(link as ForceGraphLink).type] || "#94a3b8";
   }, []);
 
   // Link width by weight
-  const getLinkWidth = useCallback((link: any) => {
-    return 0.5 + link.weight * 2;
+  const getLinkWidth = useCallback((link: LinkObject) => {
+    return 0.5 + ((link as ForceGraphLink).weight as number) * 2;
   }, []);
 
   // Zoom controls
@@ -260,11 +255,7 @@ const KnowledgeGraphView = ({ className }: Props) => {
                   <div className="flex flex-col gap-2 mt-2">
                     {Object.entries(EDGE_TYPE_COLORS).map(([type, color]) => (
                       <div key={type} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`edge-${type}`}
-                          checked={showEdgeTypes[type]}
-                          onCheckedChange={() => toggleEdgeType(type)}
-                        />
+                        <Checkbox id={`edge-${type}`} checked={showEdgeTypes[type]} onCheckedChange={() => toggleEdgeType(type)} />
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                         <label htmlFor={`edge-${type}`} className="text-sm">
                           {t(`ai.knowledge-graph.edge-type-${type}`)}
@@ -325,25 +316,30 @@ const KnowledgeGraphView = ({ className }: Props) => {
       {/* Graph container */}
       <div ref={containerRef} className="flex-1 relative">
         {filteredGraphData.nodes.length > 0 ? (
-          <Suspense fallback={
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          }>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
             <ForceGraph2D
               ref={graphRef}
               width={graphSize.width}
               height={graphSize.height}
               graphData={filteredGraphData}
               nodeId="id"
-              nodeLabel={(node: any) => `${node.label}\n${node.tags.map((tag: string) => `#${tag}`).join(" ")}`}
+              nodeLabel={(node: NodeObject) => {
+                const n = node as ForceGraphNode;
+                return `${n.label}\n${n.tags.map((tag: string) => `#${tag}`).join(" ")}`;
+              }}
               nodeColor={getNodeColor}
               nodeRelSize={1}
               nodeVal={getNodeSize}
               linkColor={getLinkColor}
               linkWidth={getLinkWidth}
               linkDirectionalParticles={1}
-              linkDirectionalParticleWidth={(link: any) => link.weight * 2}
+              linkDirectionalParticleWidth={(link: LinkObject) => ((link as ForceGraphLink).weight as number) * 2}
               onNodeClick={onNodeClick}
               cooldownTicks={100}
               enableZoomInteraction

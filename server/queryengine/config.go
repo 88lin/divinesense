@@ -4,8 +4,7 @@ import (
 	"fmt"
 )
 
-// Config RAG 查询引擎配置
-// P2 改进：配置化，将硬编码提取为可配置项
+// P2 改进：配置化，将硬编码提取为可配置项.
 type Config struct {
 	// 时间范围配置
 	TimeRange TimeRangeConfig `json:"timeRange" yaml:"timeRange"`
@@ -20,17 +19,14 @@ type Config struct {
 	Scoring ScoringConfig `json:"scoring" yaml:"scoring"`
 }
 
-// TimeRangeConfig 时间范围配置
+// TimeRangeConfig 时间范围配置.
 type TimeRangeConfig struct {
-	// 最大允许的未来时间（天数）
-	MaxFutureDays int `json:"maxFutureDays" yaml:"maxFutureDays"`
-	// 最大时间范围（天数）
-	MaxRangeDays int `json:"maxRangeDays" yaml:"maxRangeDays"`
-	// 时区（使用 UTC）
-	Timezone string `json:"timezone" yaml:"timezone"`
+	Timezone      string `json:"timezone" yaml:"timezone"`
+	MaxFutureDays int    `json:"maxFutureDays" yaml:"maxFutureDays"`
+	MaxRangeDays  int    `json:"maxRangeDays" yaml:"maxRangeDays"`
 }
 
-// QueryLimitsConfig 查询限制配置
+// QueryLimitsConfig 查询限制配置.
 type QueryLimitsConfig struct {
 	// 最大查询长度（字符数）
 	MaxQueryLength int `json:"maxQueryLength" yaml:"maxQueryLength"`
@@ -40,7 +36,7 @@ type QueryLimitsConfig struct {
 	MinScore float32 `json:"minScore" yaml:"minScore"`
 }
 
-// RetrievalConfig 检索配置
+// RetrievalConfig 检索配置.
 type RetrievalConfig struct {
 	// 向量检索限制
 	VectorLimit int `json:"vectorLimit" yaml:"vectorLimit"`
@@ -54,7 +50,7 @@ type RetrievalConfig struct {
 	MaxDocLength int `json:"maxDocLength" yaml:"maxDocLength"`
 }
 
-// ScoringConfig 评分配置
+// ScoringConfig 评分配置.
 type ScoringConfig struct {
 	// BM25 权重范围
 	BM25WeightMin float32 `json:"bm25WeightMin" yaml:"bm25WeightMin"`
@@ -71,13 +67,13 @@ type ScoringConfig struct {
 	MinRerankResults int `json:"minRerankResults" yaml:"minRerankResults"`
 }
 
-// DefaultConfig 返回默认配置
+// DefaultConfig 返回默认配置.
 func DefaultConfig() *Config {
 	return &Config{
 		TimeRange: TimeRangeConfig{
 			MaxFutureDays: 365,
-			MaxRangeDays: 90,
-			Timezone:     "UTC",
+			MaxRangeDays:  90,
+			Timezone:      "UTC",
 		},
 		QueryLimits: QueryLimitsConfig{
 			MaxQueryLength: 1000,
@@ -85,11 +81,11 @@ func DefaultConfig() *Config {
 			MinScore:       0.5,
 		},
 		Retrieval: RetrievalConfig{
-			VectorLimit:     5,
-			HybridLimit:     20,
-			ExpandLimit:     20,
-			EnableReranker:  true,
-			MaxDocLength:    5000,
+			VectorLimit:    5,
+			HybridLimit:    20,
+			ExpandLimit:    20,
+			EnableReranker: true,
+			MaxDocLength:   5000,
 		},
 		Scoring: ScoringConfig{
 			BM25WeightMin:          0.3,
@@ -103,22 +99,21 @@ func DefaultConfig() *Config {
 	}
 }
 
-// ApplyConfig 应用配置到 QueryRouter
-// P2 改进：支持运行时配置更新
+// P2 改进：支持运行时配置更新.
 func (r *QueryRouter) ApplyConfig(config *Config) {
 	r.configMutex.Lock()
 	defer r.configMutex.Unlock()
 	r.config = config
 }
 
-// GetConfig 获取当前配置（线程安全）
+// GetConfig 获取当前配置（线程安全）.
 func (r *QueryRouter) GetConfig() *Config {
 	r.configMutex.RLock()
 	defer r.configMutex.RUnlock()
 	return r.config
 }
 
-// ValidateConfig 验证配置有效性
+// ValidateConfig 验证配置有效性.
 func ValidateConfig(config *Config) error {
 	// 验证时间范围配置
 	if config.TimeRange.MaxFutureDays < 0 || config.TimeRange.MaxFutureDays > 365 {
@@ -158,10 +153,10 @@ func ValidateConfig(config *Config) error {
 	return nil
 }
 
-// ErrInvalidConfig 配置无效错误
+// ErrInvalidConfig 配置无效错误.
 type ErrInvalidConfig struct {
-	Field string
 	Value interface{}
+	Field string
 }
 
 func (e ErrInvalidConfig) Error() string {

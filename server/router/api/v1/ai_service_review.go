@@ -134,9 +134,7 @@ func (s *AIService) GetReviewStats(ctx context.Context, req *v1pb.GetReviewStats
 	}, nil
 }
 
-// mapProtoQualityToService converts proto ReviewQuality to service ReviewQuality.
-// Proto: UNSPECIFIED=0, AGAIN=1, HARD=2, GOOD=3, EASY=4
-// Service: Again=0, Hard=1, Good=2, Easy=3
+// Service: Again=0, Hard=1, Good=2, Easy=3.
 func mapProtoQualityToService(pq v1pb.ReviewQuality) (review.ReviewQuality, error) {
 	switch pq {
 	case v1pb.ReviewQuality_REVIEW_QUALITY_AGAIN:

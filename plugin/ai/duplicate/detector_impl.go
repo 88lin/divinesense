@@ -16,10 +16,10 @@ import (
 
 // duplicateDetector implements DuplicateDetector.
 type duplicateDetector struct {
-	store     *store.Store
 	embedding ai.EmbeddingService
+	store     *store.Store
+	model     string
 	weights   Weights
-	model     string // embedding model name
 }
 
 // NewDuplicateDetector creates a new DuplicateDetector.

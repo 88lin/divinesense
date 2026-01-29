@@ -192,11 +192,11 @@ func (i *Integrator) CreateSmartReminder(ctx context.Context, userID int32, sugg
 
 // SmartSuggestion represents an AI-generated reminder suggestion.
 type SmartSuggestion struct {
-	RelatedEntityID string
 	SuggestedTime   time.Time
+	RelatedEntityID string
 	Message         string
-	Confidence      float64
 	Reason          string
+	Confidence      float64
 }
 
 // BatchCreateForSchedules creates reminders for multiple schedules.

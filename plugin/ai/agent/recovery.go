@@ -18,7 +18,7 @@ import (
 
 // Pre-compiled regex patterns for better performance.
 var (
-	// Time patterns for normalization
+	// Time patterns for normalization.
 	timePatternRegexes = []*regexp.Regexp{
 		regexp.MustCompile(`明天\d{1,2}点`),
 		regexp.MustCompile(`后天\d{1,2}点`),
@@ -31,7 +31,7 @@ var (
 		regexp.MustCompile(`\d{1,2}点\d{0,2}分?`),
 	}
 
-	// Space normalization pattern
+	// Space normalization pattern.
 	spaceRegex = regexp.MustCompile(`\s+`)
 )
 
@@ -191,10 +191,10 @@ func (r *ErrorRecovery) formatUserFriendlyError(err error) string {
 
 // RecoveryResult contains the result of an execution with recovery.
 type RecoveryResult struct {
-	Success       bool   // Whether execution succeeded
-	Result        string // The result or error message
-	WasRecovered  bool   // Whether recovery was attempted and succeeded
-	OriginalError error  // The original error (if any)
+	OriginalError error
+	Result        string
+	Success       bool
+	WasRecovered  bool
 }
 
 // ExecuteWithRecoveryDetailed executes with recovery and returns detailed result.

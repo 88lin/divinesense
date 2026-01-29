@@ -1,6 +1,6 @@
 import { uniqBy } from "lodash-es";
 import { FileIcon, LinkIcon, LoaderIcon, MapPinIcon, Maximize2Icon, MoreHorizontalIcon, PlusIcon } from "lucide-react";
-import { Suspense, useEffect, useState, lazy } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useDebounce } from "react-use";
 import { useReverseGeocoding } from "@/components/map";
 import { Button } from "@/components/ui/button";

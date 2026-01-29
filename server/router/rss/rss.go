@@ -33,10 +33,10 @@ var (
 
 // cacheEntry represents a cached RSS feed with expiration.
 type cacheEntry struct {
-	content      string
-	etag         string
 	lastModified time.Time
 	createdAt    time.Time
+	content      string
+	etag         string
 }
 
 type RSSService struct {

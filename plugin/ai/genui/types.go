@@ -32,11 +32,11 @@ type UIComponent struct {
 
 // UIAction represents an action button on a component.
 type UIAction struct {
-	ID      string `json:"id"`
-	Type    string `json:"type"` // "button", "link", "submit"
-	Label   string `json:"label"`
-	Style   string `json:"style"` // "primary", "secondary", "danger", "ghost"
 	Payload any    `json:"payload,omitempty"`
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Label   string `json:"label"`
+	Style   string `json:"style"`
 }
 
 // AgentResponse represents an enhanced agent response with UI components.
@@ -61,26 +61,26 @@ const (
 
 // AgentOutput represents the raw output from an agent.
 type AgentOutput struct {
+	SuggestedTime time.Time
+	Payload       any
+	Schedule      *ScheduleData
 	Type          OutputType
 	Text          string
 	Title         string
 	Message       string
-	Schedule      *ScheduleData
-	SuggestedTime time.Time
 	Options       []OptionItem
-	Payload       any
 	Danger        bool
 }
 
 // ScheduleData represents schedule information for card display.
 type ScheduleData struct {
-	ID          string    `json:"id,omitempty"`
-	Title       string    `json:"title"`
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
-	Duration    int       `json:"duration"`
+	ID          string    `json:"id,omitempty"`
+	Title       string    `json:"title"`
 	Location    string    `json:"location,omitempty"`
 	Description string    `json:"description,omitempty"`
+	Duration    int       `json:"duration"`
 }
 
 // generateID creates a unique component ID.

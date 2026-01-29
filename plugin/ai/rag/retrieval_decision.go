@@ -8,12 +8,12 @@ import (
 
 // RetrievalDecision represents the decision on whether to retrieve.
 type RetrievalDecision struct {
-	ShouldRetrieve bool
 	Reason         string
 	Confidence     float32
+	ShouldRetrieve bool
 }
 
-// DecisionReason constants
+// DecisionReason constants.
 const (
 	ReasonChitchat         = "chitchat_detected"
 	ReasonSystemCommand    = "system_command"
@@ -22,9 +22,9 @@ const (
 	ReasonDefault          = "default"
 )
 
-// Retrieval trigger patterns
+// Retrieval trigger patterns.
 var (
-	// Patterns that indicate no retrieval is needed
+	// Patterns that indicate no retrieval is needed.
 	chitchatPatterns = []string{
 		"你好", "谢谢", "再见", "哈哈", "好的", "嗯", "ok", "hi", "hello",
 		"好", "行", "可以", "没问题", "明白了", "知道了",
@@ -34,7 +34,7 @@ var (
 		"帮助", "设置", "退出", "清空", "重置", "取消",
 	}
 
-	// Patterns that indicate retrieval is needed
+	// Patterns that indicate retrieval is needed.
 	retrievalTriggers = []string{
 		"搜索", "查找", "找到", "找", "查", "有什么", "哪些",
 		"记录", "笔记", "memo", "之前", "写过", "提到",
@@ -45,7 +45,7 @@ var (
 		"今天", "明天", "后天", "下周", "本周",
 	}
 
-	// Question patterns that usually need retrieval
+	// Question patterns that usually need retrieval.
 	questionPatterns = []string{
 		"什么时候", "在哪里", "怎么样", "多少", "是不是",
 	}

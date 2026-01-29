@@ -111,5 +111,5 @@ func (s *Service) cleanupLoop() {
 	}
 }
 
-// Ensure Service implements CacheService
+// Ensure Service implements CacheService.
 var _ CacheService = (*Service)(nil)

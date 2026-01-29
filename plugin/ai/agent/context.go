@@ -18,74 +18,55 @@ import (
 
 // ConversationContext maintains state across conversation turns.
 type ConversationContext struct {
-	mu sync.RWMutex
-
-	// Identification
-	SessionID string
-	UserID    int32
-	Timezone  string
-
-	// Conversation history
-	Turns []ConversationTurn
-
-	// Working state - current work in progress
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	WorkingState *WorkingState
-
-	// Timestamps
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	SessionID    string
+	Timezone     string
+	Turns        []ConversationTurn
+	mu           sync.RWMutex
+	UserID       int32
 }
 
 // ConversationTurn represents a single turn in the conversation.
 type ConversationTurn struct {
-	UserInput   string           // What the user said
-	AgentOutput string           // How the agent responded
-	ToolCalls   []ToolCallRecord // Tools called during this turn
-	Timestamp   time.Time        // When this turn occurred
+	Timestamp   time.Time
+	UserInput   string
+	AgentOutput string
+	ToolCalls   []ToolCallRecord
 }
 
 // ToolCallRecord records a tool invocation.
 type ToolCallRecord struct {
+	Timestamp time.Time
 	Tool      string
 	Input     string
 	Output    string
-	Success   bool
 	Duration  time.Duration
-	Timestamp time.Time
+	Success   bool
 }
 
 // WorkingState tracks the agent's current understanding and work in progress.
 type WorkingState struct {
-	// Proposed schedule (what user wants to create)
 	ProposedSchedule *ScheduleDraft
-
-	// Conflicts detected (if any) - stores the conflicting schedules
-	Conflicts []*store.Schedule
-
-	// Last intent (what the user wanted to do last)
-	LastIntent string
-
-	// Last tool used (for context)
-	LastToolUsed string
-
-	// Current step in the workflow
-	CurrentStep WorkflowStep
+	LastIntent       string
+	LastToolUsed     string
+	CurrentStep      WorkflowStep
+	Conflicts        []*store.Schedule
 }
 
 // ScheduleDraft represents a partially specified schedule.
 type ScheduleDraft struct {
-	Title       string
-	Description string
-	Location    string
-	StartTime   *time.Time
-	EndTime     *time.Time
-	AllDay      bool
-	Timezone    string
-	Recurrence  *schedule.RecurrenceRule
-	Confidence  map[string]float32 // Confidence score for each field (0-1)
-
-	// Raw input that generated this draft
+	StartTime     *time.Time
+	EndTime       *time.Time
+	Recurrence    *schedule.RecurrenceRule
+	Confidence    map[string]float32
+	Title         string
+	Description   string
+	Location      string
+	Timezone      string
 	OriginalInput string
+	AllDay        bool
 }
 
 // WorkflowStep represents the current step in the scheduling workflow.
@@ -396,21 +377,21 @@ func (c *ConversationContext) ToHistoryPrompt() string {
 
 // ContextSummary provides a quick overview of the context state.
 type ContextSummary struct {
-	SessionID           string
-	UserID              int32
-	TurnCount           int
-	CurrentStep         WorkflowStep
-	LastIntent          string
-	HasProposedSchedule bool
-	ConflictCount       int
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+	SessionID           string
+	CurrentStep         WorkflowStep
+	LastIntent          string
+	TurnCount           int
+	ConflictCount       int
+	UserID              int32
+	HasProposedSchedule bool
 }
 
 // ContextStore manages conversation contexts for multiple sessions.
 type ContextStore struct {
-	mu       sync.RWMutex
 	contexts map[string]*ConversationContext
+	mu       sync.RWMutex
 }
 
 // NewContextStore creates a new context store.

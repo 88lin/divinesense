@@ -145,8 +145,8 @@ func TestSuggestTags_ParseTags(t *testing.T) {
 	tests := []struct {
 		name     string
 		response string
-		limit    int
 		expected []string
+		limit    int
 	}{
 		{
 			name:     "simple tags",

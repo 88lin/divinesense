@@ -15,12 +15,12 @@ type OptionsListData struct {
 
 // OptionItem represents a single option in an options list.
 type OptionItem struct {
+	Value       any    `json:"value,omitempty"`
 	ID          string `json:"id"`
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
 	Icon        string `json:"icon,omitempty"`
 	Selected    bool   `json:"selected"`
-	Value       any    `json:"value,omitempty"`
 }
 
 // NewOptionsList creates a new options list component.

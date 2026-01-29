@@ -100,7 +100,14 @@ export function useChat() {
      * @returns A promise that resolves when streaming completes
      */
     stream: async (
-      params: { message: string; history?: string[]; agentType?: ParrotAgentType; userTimezone?: string; conversationId?: number; geekMode?: boolean },
+      params: {
+        message: string;
+        history?: string[];
+        agentType?: ParrotAgentType;
+        userTimezone?: string;
+        conversationId?: number;
+        geekMode?: boolean;
+      },
       callbacks?: {
         onContent?: (content: string) => void;
         onSources?: (sources: string[]) => void;
@@ -156,7 +163,7 @@ export function useChat() {
           windowWidth: window.innerWidth,
           windowHeight: window.innerHeight,
           language: navigator.language,
-          platform: (navigator as any).platform || "unknown",
+          platform: (navigator as Navigator).platform || "unknown",
         }),
       });
 
@@ -285,18 +292,16 @@ export function useChat() {
                   // Transform to the expected format with bigint conversion
                   const transformedResult = {
                     detected: true,
-                    schedules: (result.schedules || []).map(
-                      (s) => ({
-                        uid: s.uid || "",
-                        title: s.title || "",
-                        startTs: BigInt(s.start_ts || 0),
-                        endTs: BigInt(s.end_ts || 0),
-                        allDay: s.all_day || false,
-                        location: s.location || "",
-                        recurrenceRule: "",
-                        status: s.status || "ACTIVE",
-                      }),
-                    ),
+                    schedules: (result.schedules || []).map((s) => ({
+                      uid: s.uid || "",
+                      title: s.title || "",
+                      startTs: BigInt(s.start_ts || 0),
+                      endTs: BigInt(s.end_ts || 0),
+                      allDay: s.all_day || false,
+                      location: s.location || "",
+                      recurrenceRule: "",
+                      status: s.status || "ACTIVE",
+                    })),
                     timeRangeDescription: result.time_range_description || "",
                     queryType: result.query_type || "range",
                   };
@@ -452,7 +457,7 @@ export function useLinkMemos() {
  */
 export function useKnowledgeGraph(
   filter: { tags: string[]; minImportance: number; clusters: number[] },
-  options: { enabled?: boolean } = {}
+  options: { enabled?: boolean } = {},
 ) {
   return useQuery({
     queryKey: aiKeys.knowledgeGraph(filter),

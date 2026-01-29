@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
+  Bell,
   CalendarDays,
   CalendarPlus,
   Clock,
   FileSearch,
-  LineChart,
   Lightbulb,
-  PenSquare,
-  Bell,
-  Sparkles,
+  LineChart,
   type LucideIcon,
+  PenSquare,
+  Sparkles,
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 // Action types matching backend prediction engine
@@ -56,23 +56,24 @@ const ACTION_ICONS: Record<ActionType, LucideIcon> = {
 
 // Color mapping based on action category
 const ACTION_COLORS: Record<ActionType, string> = {
-  view_week_schedule: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800",
+  view_week_schedule:
+    "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800",
   view_tomorrow: "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800",
-  create_schedule: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800",
-  set_reminder: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800",
-  search_related: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800",
-  view_weekly_report: "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800",
-  monthly_review: "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800",
-  quick_note: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800",
+  create_schedule:
+    "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800",
+  set_reminder:
+    "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800",
+  search_related:
+    "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800",
+  view_weekly_report:
+    "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800",
+  monthly_review:
+    "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800",
+  quick_note:
+    "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800",
 };
 
-export function PredictionChips({
-  predictions,
-  onSelect,
-  loading = false,
-  className,
-  maxVisible = 4,
-}: PredictionChipsProps) {
+export function PredictionChips({ predictions, onSelect, loading = false, className, maxVisible = 4 }: PredictionChipsProps) {
   const { t } = useTranslation();
   const [visiblePredictions, setVisiblePredictions] = useState<Prediction[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -81,10 +82,8 @@ export function PredictionChips({
     if (predictions.length > 0) {
       setIsAnimating(true);
       // Stagger animation
-      const sorted = [...predictions]
-        .sort((a, b) => b.confidence - a.confidence)
-        .slice(0, maxVisible);
-      
+      const sorted = [...predictions].sort((a, b) => b.confidence - a.confidence).slice(0, maxVisible);
+
       setVisiblePredictions([]);
       sorted.forEach((pred, index) => {
         setTimeout(() => {
@@ -103,7 +102,7 @@ export function PredictionChips({
     (prediction: Prediction) => {
       onSelect(prediction);
     },
-    [onSelect]
+    [onSelect],
   );
 
   const getActionLabel = (action: ActionType): string => {
@@ -124,10 +123,7 @@ export function PredictionChips({
     return (
       <div className={cn("flex items-center gap-2", className)}>
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-8 w-24 rounded-full bg-muted animate-pulse"
-          />
+          <div key={i} className="h-8 w-24 rounded-full bg-muted animate-pulse" />
         ))}
       </div>
     );
@@ -156,7 +152,7 @@ export function PredictionChips({
               "border transition-all duration-200 ease-out",
               "hover:shadow-sm active:scale-95",
               "animate-in fade-in slide-in-from-bottom-2",
-              colorClass
+              colorClass,
             )}
             style={{
               animationDelay: `${index * 50}ms`,
@@ -166,9 +162,7 @@ export function PredictionChips({
           >
             <Icon className="w-3.5 h-3.5" />
             <span>{prediction.label || getActionLabel(prediction.action)}</span>
-            {prediction.confidence >= 0.8 && (
-              <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-            )}
+            {prediction.confidence >= 0.8 && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-current opacity-60" />}
           </button>
         );
       })}
@@ -182,35 +176,38 @@ export function usePredictions(userID: number | undefined) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchPredictions = useCallback(async (context?: unknown[]) => {
-    if (!userID) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch("/api/v1/ai/predictions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: userID,
-          context: context || [],
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch predictions");
+  const fetchPredictions = useCallback(
+    async (context?: unknown[]) => {
+      if (!userID) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/v1/ai/predictions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userID,
+            context: context || [],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch predictions");
+        }
+
+        const data = await response.json();
+        setPredictions(data.predictions || []);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Unknown error"));
+        setPredictions([]);
+      } finally {
+        setLoading(false);
       }
-      
-      const data = await response.json();
-      setPredictions(data.predictions || []);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Unknown error"));
-      setPredictions([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userID]);
+    },
+    [userID],
+  );
 
   const clearPredictions = useCallback(() => {
     setPredictions([]);
@@ -228,11 +225,11 @@ export function usePredictions(userID: number | undefined) {
 // Static predictions for demo/fallback
 export function useStaticPredictions() {
   const { t } = useTranslation();
-  
+
   const getTimeBased = useCallback((): Prediction[] => {
     const hour = new Date().getHours();
     const predictions: Prediction[] = [];
-    
+
     // Morning predictions
     if (hour >= 8 && hour < 10) {
       predictions.push({
@@ -243,7 +240,7 @@ export function useStaticPredictions() {
         reason: t("ai.prediction.reason-morning"),
       });
     }
-    
+
     // End of week
     const dayOfWeek = new Date().getDay();
     if (dayOfWeek === 5) {
@@ -255,7 +252,7 @@ export function useStaticPredictions() {
         reason: t("ai.prediction.reason-friday"),
       });
     }
-    
+
     // Default suggestions
     predictions.push({
       type: "action",
@@ -263,14 +260,14 @@ export function useStaticPredictions() {
       confidence: 0.7,
       action: "view_week_schedule",
     });
-    
+
     predictions.push({
       type: "action",
       label: t("ai.prediction.create-schedule"),
       confidence: 0.6,
       action: "create_schedule",
     });
-    
+
     return predictions.slice(0, 4);
   }, [t]);
 

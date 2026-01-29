@@ -1,21 +1,24 @@
+import dayjs from "dayjs";
 import { Calendar, Clock, MapPin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
-import dayjs from "dayjs";
 import type { ScheduleListCardProps } from "./types";
 
 export function ScheduleListCard({ data, onDismiss }: ScheduleListCardProps) {
   const t = useTranslate();
 
   // Group schedules by date
-  const groupedSchedules = data.schedules.reduce((acc, schedule) => {
-    const date = dayjs.unix(schedule.start_ts).format("YYYY-MM-DD");
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(schedule);
-    return acc;
-  }, {} as Record<string, typeof data.schedules>);
+  const groupedSchedules = data.schedules.reduce(
+    (acc, schedule) => {
+      const date = dayjs.unix(schedule.start_ts).format("YYYY-MM-DD");
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(schedule);
+      return acc;
+    },
+    {} as Record<string, typeof data.schedules>,
+  );
 
   // Sort dates
   const sortedDates = Object.keys(groupedSchedules).sort();
@@ -35,17 +38,11 @@ export function ScheduleListCard({ data, onDismiss }: ScheduleListCardProps) {
           </div>
           <div>
             <h4 className="font-semibold text-foreground">{data.title}</h4>
-            {data.time_range && (
-              <p className="text-xs text-muted-foreground">{data.time_range}</p>
-            )}
+            {data.time_range && <p className="text-xs text-muted-foreground">{data.time_range}</p>}
           </div>
         </div>
         {onDismiss && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <button type="button" onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -70,23 +67,16 @@ export function ScheduleListCard({ data, onDismiss }: ScheduleListCardProps) {
 
           return (
             <div key={date}>
-              <div className="text-xs font-medium text-muted-foreground mb-1">
-                {dateLabel}
-              </div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">{dateLabel}</div>
               <div className="space-y-2">
                 {schedules.map((schedule) => (
                   <div
                     key={schedule.uid}
-                    className={cn(
-                      "p-3 rounded-lg border transition-colors",
-                      "bg-background border-border hover:border-primary/50",
-                    )}
+                    className={cn("p-3 rounded-lg border transition-colors", "bg-background border-border hover:border-primary/50")}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <h5 className="font-medium text-foreground truncate">
-                          {schedule.title}
-                        </h5>
+                        <h5 className="font-medium text-foreground truncate">{schedule.title}</h5>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
@@ -104,11 +94,7 @@ export function ScheduleListCard({ data, onDismiss }: ScheduleListCardProps) {
                           )}
                         </div>
                       </div>
-                      {schedule.status === "CANCELLED" && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          已取消
-                        </span>
-                      )}
+                      {schedule.status === "CANCELLED" && <span className="text-xs text-muted-foreground line-through">已取消</span>}
                     </div>
                   </div>
                 ))}
@@ -122,9 +108,7 @@ export function ScheduleListCard({ data, onDismiss }: ScheduleListCardProps) {
       {data.count === 0 && (
         <div className="text-center py-6 text-muted-foreground">
           <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">
-            {t("schedule.list.empty") || "该时间段没有找到日程"}
-          </p>
+          <p className="text-sm">{t("schedule.list.empty") || "该时间段没有找到日程"}</p>
         </div>
       )}
     </div>

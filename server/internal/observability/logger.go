@@ -29,11 +29,11 @@ const (
 
 // RequestContext represents the context for a single request with structured logging.
 type RequestContext struct {
-	RequestID string
-	UserID    int32
-	AgentType string
 	StartTime time.Time
 	Logger    *slog.Logger
+	RequestID string
+	AgentType string
+	UserID    int32
 }
 
 // NewRequestContext creates a new request context with a generated request ID.

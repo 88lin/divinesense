@@ -18,9 +18,9 @@ type Persister struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	flushInterval    time.Duration
-	retentionPeriod  time.Duration
-	cleanupInterval  time.Duration
+	flushInterval   time.Duration
+	retentionPeriod time.Duration
+	cleanupInterval time.Duration
 }
 
 // PersisterConfig configures the metrics persister.

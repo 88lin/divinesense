@@ -50,9 +50,9 @@ func NewDB(profile *profile.Profile) (store.Driver, error) {
 
 	// Configure connection pool for single-user personal assistant
 	// Optimized for low resource usage while maintaining responsiveness
-	db.SetMaxOpenConns(5)                 // Single-user: max 5 concurrent connections
-	db.SetMaxIdleConns(2)                 // Keep 2 idle connections ready for instant response
-	db.SetConnMaxLifetime(2 * time.Hour)  // Personal use: longer lifetime, less churn
+	db.SetMaxOpenConns(5)                   // Single-user: max 5 concurrent connections
+	db.SetMaxIdleConns(2)                   // Keep 2 idle connections ready for instant response
+	db.SetConnMaxLifetime(2 * time.Hour)    // Personal use: longer lifetime, less churn
 	db.SetConnMaxIdleTime(15 * time.Minute) // Close idle connections after 15min
 
 	// Verify connection is working before returning

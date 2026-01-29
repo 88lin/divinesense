@@ -46,15 +46,15 @@ type Column struct {
 
 // Field captures the schema metadata for an exposed CEL identifier.
 type Field struct {
+	Expressions          map[DialectName]string
+	AllowedComparisonOps map[ComparisonOperator]bool
+	Column               Column
 	Name                 string
 	Kind                 FieldKind
 	Type                 FieldType
-	Column               Column
-	JSONPath             []string
 	AliasFor             string
+	JSONPath             []string
 	SupportsContains     bool
-	Expressions          map[DialectName]string
-	AllowedComparisonOps map[ComparisonOperator]bool
 }
 
 // Schema collects CEL environment options and field metadata.

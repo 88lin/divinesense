@@ -41,19 +41,19 @@ const (
 
 // PrecheckRequest represents a schedule precheck request.
 type PrecheckRequest struct {
-	Title     string    `json:"title"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
-	Duration  int       `json:"duration"` // minutes
+	Title     string    `json:"title"`
 	Location  string    `json:"location,omitempty"`
+	Duration  int       `json:"duration"`
 }
 
 // PrecheckResponse represents a schedule precheck result.
 type PrecheckResponse struct {
-	Valid       bool                 `json:"valid"`
 	Errors      []PrecheckError      `json:"errors,omitempty"`
 	Warnings    []PrecheckWarning    `json:"warnings,omitempty"`
 	Suggestions []PrecheckSuggestion `json:"suggestions,omitempty"`
+	Valid       bool                 `json:"valid"`
 }
 
 // PrecheckError represents a validation error.
@@ -71,8 +71,8 @@ type PrecheckWarning struct {
 
 // PrecheckSuggestion represents a suggestion for schedule correction.
 type PrecheckSuggestion struct {
-	Type  string `json:"type"`  // "alternative_time"
-	Value any    `json:"value"` // AlternativeSlot for time suggestions
+	Value any    `json:"value"`
+	Type  string `json:"type"`
 }
 
 // AlternativeSlot represents an available time slot.

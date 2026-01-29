@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-// BenchmarkQueryRouter_Route 基准测试：路由性能
-// P2 改进：建立性能基准
+// P2 改进：建立性能基准.
 func BenchmarkQueryRouter_Route(b *testing.B) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -27,7 +26,7 @@ func BenchmarkQueryRouter_Route(b *testing.B) {
 	}
 }
 
-// BenchmarkQueryRouter_Route_Parallel 并发路由性能测试
+// BenchmarkQueryRouter_Route_Parallel 并发路由性能测试.
 func BenchmarkQueryRouter_Route_Parallel(b *testing.B) {
 	router := NewQueryRouter()
 	ctx := context.Background()
@@ -51,7 +50,7 @@ func BenchmarkQueryRouter_Route_Parallel(b *testing.B) {
 	})
 }
 
-// BenchmarkQueryRouter_DetectTimeRange 时间检测性能
+// BenchmarkQueryRouter_DetectTimeRange 时间检测性能.
 func BenchmarkQueryRouter_DetectTimeRange(b *testing.B) {
 	router := NewQueryRouter()
 
@@ -73,7 +72,7 @@ func BenchmarkQueryRouter_DetectTimeRange(b *testing.B) {
 	}
 }
 
-// BenchmarkQueryRouter_ExtractContentQuery 内容提取性能
+// BenchmarkQueryRouter_ExtractContentQuery 内容提取性能.
 func BenchmarkQueryRouter_ExtractContentQuery(b *testing.B) {
 	router := NewQueryRouter()
 
@@ -92,7 +91,7 @@ func BenchmarkQueryRouter_ExtractContentQuery(b *testing.B) {
 	}
 }
 
-// BenchmarkQueryRouter_CheckMostlyProperNouns 专有名词检测性能
+// BenchmarkQueryRouter_CheckMostlyProperNouns 专有名词检测性能.
 func BenchmarkQueryRouter_CheckMostlyProperNouns(b *testing.B) {
 	router := NewQueryRouter()
 
@@ -111,7 +110,7 @@ func BenchmarkQueryRouter_CheckMostlyProperNouns(b *testing.B) {
 	}
 }
 
-// BenchmarkTimeRange_ValidateTimeRange 时间范围验证性能
+// BenchmarkTimeRange_ValidateTimeRange 时间范围验证性能.
 func BenchmarkTimeRange_ValidateTimeRange(b *testing.B) {
 	now := time.Now()
 
@@ -127,7 +126,7 @@ func BenchmarkTimeRange_ValidateTimeRange(b *testing.B) {
 	}
 }
 
-// BenchmarkQueryRouter_ConcurrentConfig 并发配置读写性能
+// BenchmarkQueryRouter_ConcurrentConfig 并发配置读写性能.
 func BenchmarkQueryRouter_ConcurrentConfig(b *testing.B) {
 	config := DefaultConfig()
 	router := NewQueryRouterWithConfig(config)

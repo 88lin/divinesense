@@ -20,9 +20,7 @@ func NewTokenizer() *Tokenizer {
 	}
 }
 
-// Tokenize splits the input text into searchable tokens.
-// For Chinese: splits by character (each character is a token)
-// For English: splits by whitespace and punctuation
+// For English: splits by whitespace and punctuation.
 func (t *Tokenizer) Tokenize(text string) []string {
 	if text == "" {
 		return nil

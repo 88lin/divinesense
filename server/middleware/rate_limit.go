@@ -10,8 +10,8 @@ import (
 
 // RateLimiter provides rate limiting functionality.
 type RateLimiter struct {
-	mu     sync.RWMutex
 	limits map[string]*rate.Limiter
+	mu     sync.RWMutex
 }
 
 // NewRateLimiter creates a new rate limiter.

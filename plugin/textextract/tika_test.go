@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDefaultConfig tests the default configuration
+// TestDefaultConfig tests the default configuration.
 func TestDefaultConfig(t *testing.T) {
 	config := DefaultConfig()
 
@@ -19,7 +19,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.False(t, config.UseEmbedded)
 }
 
-// TestNewClient tests client creation
+// TestNewClient tests client creation.
 func TestNewClient(t *testing.T) {
 	t.Run("with nil config", func(t *testing.T) {
 		client := NewClient(nil)
@@ -39,7 +39,7 @@ func TestNewClient(t *testing.T) {
 	})
 }
 
-// TestIsSupported tests MIME type support checking
+// TestIsSupported tests MIME type support checking.
 func TestIsSupported(t *testing.T) {
 	client := NewClient(nil)
 
@@ -78,7 +78,7 @@ func TestIsSupported(t *testing.T) {
 	}
 }
 
-// TestDetectDocumentType tests document type detection
+// TestDetectDocumentType tests document type detection.
 func TestDetectDocumentType(t *testing.T) {
 	tests := []struct {
 		mimeType string
@@ -103,7 +103,7 @@ func TestDetectDocumentType(t *testing.T) {
 	}
 }
 
-// TestResultCalculateStats tests statistics calculation
+// TestResultCalculateStats tests statistics calculation.
 func TestResultCalculateStats(t *testing.T) {
 	result := &Result{}
 
@@ -129,7 +129,7 @@ func TestResultCalculateStats(t *testing.T) {
 	})
 }
 
-// TestResultGetSummary tests summary generation
+// TestResultGetSummary tests summary generation.
 func TestResultGetSummary(t *testing.T) {
 	longText := "This is a very long text that should be truncated when the summary is generated. " +
 		"It contains multiple sentences to test the truncation functionality properly."
@@ -154,7 +154,7 @@ func TestResultGetSummary(t *testing.T) {
 	})
 }
 
-// TestMerge tests merging multiple extraction results
+// TestMerge tests merging multiple extraction results.
 func TestMerge(t *testing.T) {
 	t.Run("empty slice", func(t *testing.T) {
 		result := Merge([]*Result{})
@@ -202,7 +202,7 @@ func TestMerge(t *testing.T) {
 	})
 }
 
-// TestGetSupportedMimeTypes tests getting supported MIME types
+// TestGetSupportedMimeTypes tests getting supported MIME types.
 func TestGetSupportedMimeTypes(t *testing.T) {
 	types := GetSupportedMimeTypes()
 	assert.NotEmpty(t, types)
@@ -210,7 +210,7 @@ func TestGetSupportedMimeTypes(t *testing.T) {
 	assert.Contains(t, types, "text/plain")
 }
 
-// TestSupportedMimeTypes tests the supported MIME types constant
+// TestSupportedMimeTypes tests the supported MIME types constant.
 func TestSupportedMimeTypes(t *testing.T) {
 	expected := []string{
 		"application/pdf",
@@ -228,7 +228,7 @@ func TestSupportedMimeTypes(t *testing.T) {
 	assert.Equal(t, expected, SupportedMimeTypes)
 }
 
-// TestConfigFromEnv tests environment variable configuration
+// TestConfigFromEnv tests environment variable configuration.
 func TestConfigFromEnv(t *testing.T) {
 	// Save original env vars
 	origURL := ""
@@ -260,7 +260,7 @@ func TestConfigFromEnv(t *testing.T) {
 	_ = origEmbedded
 }
 
-// BenchmarkIsSupported benchmarks MIME type checking
+// BenchmarkIsSupported benchmarks MIME type checking.
 func BenchmarkIsSupported(b *testing.B) {
 	client := NewClient(nil)
 	mimeTypes := []string{

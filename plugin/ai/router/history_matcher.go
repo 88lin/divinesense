@@ -42,8 +42,8 @@ func NewHistoryMatcher(ms memory.MemoryService) *HistoryMatcher {
 // HistoryMatchResult contains the result of history matching.
 type HistoryMatchResult struct {
 	Intent     Intent
+	SourceID   int64
 	Confidence float32
-	SourceID   int64 // ID of the matched episode
 	Matched    bool
 }
 

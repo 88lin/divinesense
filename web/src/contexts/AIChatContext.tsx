@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState, useRef } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { aiServiceClient } from "@/connect";
 import {
@@ -640,9 +640,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
         const existingMessages = c.messages || [];
         // Create a copy for mutation
         const mergedMessages = [...existingMessages];
-        const existingUids = new Set(
-          existingMessages.filter((m) => !isContextSeparator(m)).map((m) => ("uid" in m ? m.uid : m.id)),
-        );
+        const existingUids = new Set(existingMessages.filter((m) => !isContextSeparator(m)).map((m) => ("uid" in m ? m.uid : m.id)));
 
         for (const msg of newMessages) {
           if (isContextSeparator(msg)) {
@@ -789,9 +787,9 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
                   messages: [...olderMessages, ...c.messages],
                   messageCache: c.messageCache
                     ? {
-                      ...c.messageCache,
-                      hasMore: response.hasMore,
-                    }
+                        ...c.messageCache,
+                        hasMore: response.hasMore,
+                      }
                     : undefined,
                 };
               }),

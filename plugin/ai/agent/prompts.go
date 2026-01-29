@@ -23,21 +23,16 @@ const (
 
 // PromptConfig holds versioned prompt templates.
 type PromptConfig struct {
-	// Version is the currently active prompt version.
-	Version PromptVersion
-
-	// Templates maps version IDs to template strings.
 	Templates map[PromptVersion]string
-
-	// Enabled can be used to disable feature flags.
-	Enabled bool
+	Version   PromptVersion
+	Enabled   bool
 }
 
 // DefaultPromptConfig returns the default prompt configuration.
 func DefaultPromptConfig() *PromptConfig {
 	return &PromptConfig{
-		Version:  PromptV1,
-		Enabled:  true,
+		Version: PromptV1,
+		Enabled: true,
 		Templates: map[PromptVersion]string{
 			PromptV1: "", // To be filled by specific agents
 		},
@@ -127,10 +122,10 @@ func (p *AgentPrompts) GetSynthesisPrompt(args ...any) string {
 // PromptRegistry manages prompts for all agent types.
 // Thread-safe: uses mu for concurrent access to prompts.
 var PromptRegistry = struct {
-	mu sync.RWMutex
 	Memo     *AgentPrompts
 	Schedule *AgentPrompts
 	Amazing  *AgentPrompts
+	mu       sync.RWMutex
 }{
 	Memo:     NewAgentPrompts(),
 	Schedule: NewAgentPrompts(),
@@ -283,7 +278,7 @@ func init() {
 	initFromEnv()
 }
 
-// Environment variables for prompt version configuration
+// Environment variables for prompt version configuration.
 const (
 	EnvMemoVersion     = "MEMO_PROMPT_VERSION"
 	EnvScheduleVersion = "SCHEDULE_PROMPT_VERSION"
@@ -351,8 +346,7 @@ func GetAmazingSynthesisPrompt(args ...any) string {
 	return PromptRegistry.Amazing.GetSynthesisPrompt(args...)
 }
 
-// formatTZOffset formats a timezone offset in seconds to ±HH:MM format.
-// Exported for use in scheduler_v2.go
+// Exported for use in scheduler_v2.go.
 func FormatTZOffset(offset int) string {
 	sign := "+"
 	if offset < 0 {
@@ -406,11 +400,11 @@ func GetPromptVersion(agentType string) PromptVersion {
 
 // ABConfig represents A/B testing configuration for a prompt experiment.
 type ABConfig struct {
-	ExperimentID    string
-	ControlVersion  PromptVersion // V1 typically
+	ExperimentID     string
+	ControlVersion   PromptVersion // V1 typically
 	TreatmentVersion PromptVersion // V2 typically
-	TrafficPercent  int           // 0-100, percentage for treatment
-	Enabled         bool
+	TrafficPercent   int           // 0-100, percentage for treatment
+	Enabled          bool
 }
 
 // ABExperiment manages an A/B testing experiment for prompts.
@@ -445,7 +439,7 @@ func (exp *ABExperiment) GetVersionForUser(userID int32) PromptVersion {
 	return exp.config.ControlVersion
 }
 
-// Global experiments (can be configured at runtime)
+// Global experiments (can be configured at runtime).
 var (
 	MemoABExperiment     = NewABExperiment(ABConfig{ExperimentID: "memo-v1-v2", ControlVersion: PromptV1, TreatmentVersion: PromptV2, TrafficPercent: 0, Enabled: false})
 	ScheduleABExperiment = NewABExperiment(ABConfig{ExperimentID: "schedule-v1-v2", ControlVersion: PromptV1, TreatmentVersion: PromptV2, TrafficPercent: 0, Enabled: false})
@@ -496,7 +490,7 @@ type MetricsRecorder interface {
 	RecordPromptVersion(agentType, promptVersion string, success bool, latencyMs int64)
 }
 
-// Default metrics recorder (can be replaced with a real backend implementation)
+// Default metrics recorder (can be replaced with a real backend implementation).
 var defaultMetricsRecorder MetricsRecorder = &noopMetricsRecorder{}
 
 // SetMetricsRecorder sets the global metrics recorder.
@@ -520,10 +514,10 @@ func RecordPromptUsage(agentType string, userID int32, success bool, latencyMs i
 	}
 }
 
-// In-memory metrics for quick access (not persisted)
+// In-memory metrics for quick access (not persisted).
 type promptMetricsSnapshot struct {
-	requests  atomic.Int64
-	successes atomic.Int64
+	requests   atomic.Int64
+	successes  atomic.Int64
 	latencySum atomic.Int64
 }
 
@@ -621,32 +615,23 @@ func GetPromptMetricsSnapshot(agentType string, version PromptVersion) (requests
 
 // PromptExperimentReport represents a report of an A/B experiment's performance.
 type PromptExperimentReport struct {
-	AgentType          string
-	ControlVersion     PromptVersion
-	TreatmentVersion   PromptVersion
-	TrafficPercent     int
-
-	// Control metrics
-	ControlRequests    int64
-	ControlSuccesses   int64
-	ControlSuccessRate float64
-	ControlAvgLatency  int64
-
-	// Treatment metrics
-	TreatmentRequests  int64
-	TreatmentSuccesses int64
+	GeneratedAt          time.Time
+	AgentType            string
+	ControlVersion       PromptVersion
+	TreatmentVersion     PromptVersion
+	Confidence           string
+	Recommendation       string
+	TreatmentRequests    int64
+	ControlAvgLatency    int64
+	ControlSuccessRate   float64
+	TreatmentSuccesses   int64
 	TreatmentSuccessRate float64
-	TreatmentAvgLatency int64
-
-	// Comparison
-	SuccessRateDelta   float64 // Treatment - Control (percentage points)
-	LatencyDelta       int64   // Treatment - Control (ms)
-
-	// Recommendation
-	Recommendation     string // "rollout_treatment", "keep_control", "needs_more_data"
-	Confidence         string // "high", "medium", "low"
-
-	GeneratedAt time.Time
+	TreatmentAvgLatency  int64
+	SuccessRateDelta     float64
+	LatencyDelta         int64
+	ControlSuccesses     int64
+	ControlRequests      int64
+	TrafficPercent       int
 }
 
 // GenerateExperimentReport generates an A/B experiment report for an agent type.

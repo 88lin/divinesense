@@ -1,6 +1,6 @@
 import copy from "copy-to-clipboard";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
@@ -11,9 +11,11 @@ const MermaidBlock = lazy(() => import("./MermaidBlock").then((module) => ({ def
 interface CodeBlockProps {
   children?: React.ReactNode;
   className?: string;
+  hideCopy?: boolean;
 }
 
-export const CodeBlock = ({ children, className, ...props }: CodeBlockProps) => {
+export const CodeBlock = (props: CodeBlockProps) => {
+  const { children, className, hideCopy, ...rest } = props;
   const { userGeneralSetting } = useAuth();
   const [copied, setCopied] = useState(false);
   const [highlightedCode, setHighlightedCode] = useState<string>("");
@@ -28,7 +30,7 @@ export const CodeBlock = ({ children, className, ...props }: CodeBlockProps) => 
     return (
       <pre className="relative">
         <Suspense fallback={<div className="text-sm text-muted-foreground p-2">Loading Diagram...</div>}>
-          <MermaidBlock className={cn(className)} {...props}>
+          <MermaidBlock className={cn(className)} {...rest}>
             {children}
           </MermaidBlock>
         </Suspense>
@@ -86,7 +88,7 @@ export const CodeBlock = ({ children, className, ...props }: CodeBlockProps) => 
             return;
           }
         }
-      } catch (err) {
+      } catch (_err) {
         // Fallback to default
       }
 
@@ -136,16 +138,18 @@ export const CodeBlock = ({ children, className, ...props }: CodeBlockProps) => 
     <pre className="relative overflow-x-auto">
       <div className="absolute right-2 leading-3 top-1.5 flex flex-row justify-end items-center gap-1 opacity-60 hover:opacity-80">
         <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider select-none">{language}</span>
-        <button
-          onClick={handleCopy}
-          className={cn("rounded-md transition-all", "hover:bg-accent/50", copied ? "text-primary" : "text-muted-foreground")}
-          aria-label={copied ? "Copied" : "Copy code"}
-          title={copied ? "Copied!" : "Copy code"}
-        >
-          {copied ? <CheckIcon className="w-3 h-3" /> : <CopyIcon className="w-3 h-3" />}
-        </button>
+        {!hideCopy && (
+          <button
+            onClick={handleCopy}
+            className={cn("rounded-md transition-all", "hover:bg-accent/50", copied ? "text-primary" : "text-muted-foreground")}
+            aria-label={copied ? "Copied" : "Copy code"}
+            title={copied ? "Copied!" : "Copy code"}
+          >
+            {copied ? <CheckIcon className="w-3 h-3" /> : <CopyIcon className="w-3 h-3" />}
+          </button>
+        )}
       </div>
-      <div className={className} {...props}>
+      <div className={className} {...rest}>
         <code className={`language-${language}`} dangerouslySetInnerHTML={{ __html: highlightedCode }} />
       </div>
     </pre>

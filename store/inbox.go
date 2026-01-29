@@ -23,18 +23,18 @@ func (s InboxStatus) String() string {
 // Inbox represents a notification in a user's inbox.
 // It connects activities to users who should be notified.
 type Inbox struct {
-	ID         int32
+	Message    *storepb.InboxMessage
+	Status     InboxStatus
 	CreatedTs  int64
-	SenderID   int32                 // The user who triggered the notification
-	ReceiverID int32                 // The user who receives the notification
-	Status     InboxStatus           // Current status (unread/archived)
-	Message    *storepb.InboxMessage // The notification message content
+	ID         int32
+	SenderID   int32
+	ReceiverID int32
 }
 
 // UpdateInbox contains fields that can be updated for an inbox item.
 type UpdateInbox struct {
-	ID     int32
 	Status InboxStatus
+	ID     int32
 }
 
 // FindInbox specifies filter criteria for querying inbox items.

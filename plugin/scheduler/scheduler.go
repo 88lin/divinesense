@@ -11,13 +11,13 @@ import (
 // Scheduler manages scheduled jobs.
 type Scheduler struct {
 	jobs       map[string]*registeredJob
-	jobsMu     sync.RWMutex
 	timezone   *time.Location
 	middleware Middleware
-	running    bool
-	runningMu  sync.RWMutex
 	stopCh     chan struct{}
 	wg         sync.WaitGroup
+	jobsMu     sync.RWMutex
+	runningMu  sync.RWMutex
+	running    bool
 }
 
 // registeredJob wraps a Job with runtime state.

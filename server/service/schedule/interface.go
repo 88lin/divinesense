@@ -32,33 +32,31 @@ type Service interface {
 
 // ScheduleInstance represents a specific schedule instance (expanded from recurring schedules).
 type ScheduleInstance struct {
-	ID          int32
+	EndTs       *int64
 	UID         string
 	Title       string
 	Description string
 	Location    string
-	StartTs     int64
-	EndTs       *int64
-	AllDay      bool
 	Timezone    string
-	// IsRecurring indicates if this is an instance of a recurring schedule
+	ParentUID   string
+	StartTs     int64
+	ID          int32
+	AllDay      bool
 	IsRecurring bool
-	// ParentUID is the UID of the base recurring schedule (if IsRecurring is true)
-	ParentUID string
 }
 
 // CreateScheduleRequest represents the request to create a schedule.
 type CreateScheduleRequest struct {
+	EndTs           *int64
+	RecurrenceRule  *string
+	RecurrenceEndTs *int64
 	Title           string
 	Description     string
 	Location        string
-	StartTs         int64
-	EndTs           *int64
-	AllDay          bool
 	Timezone        string
-	RecurrenceRule  *string
-	RecurrenceEndTs *int64
 	Reminders       []*Reminder
+	StartTs         int64
+	AllDay          bool
 }
 
 // UpdateScheduleRequest represents the request to update a schedule.
@@ -79,6 +77,6 @@ type UpdateScheduleRequest struct {
 // Reminder represents a schedule reminder.
 type Reminder struct {
 	Type  string
-	Value int32
 	Unit  string
+	Value int32
 }

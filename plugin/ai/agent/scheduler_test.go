@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/hrygo/divinesense/plugin/ai"
 	"github.com/hrygo/divinesense/server/service/schedule"
 	"github.com/hrygo/divinesense/store"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // MockLLM implements ai.LLMService for testing.

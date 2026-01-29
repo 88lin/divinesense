@@ -381,10 +381,10 @@ func TestPrecheckService_NormalizeRequest(t *testing.T) {
 	tomorrow := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour).Add(10 * time.Hour)
 
 	tests := []struct {
-		name          string
 		req           *PrecheckRequest
+		name          string
 		wantDuration  int
-		wantEndOffset time.Duration // Offset from StartTime
+		wantEndOffset time.Duration
 	}{
 		{
 			name: "duration only",

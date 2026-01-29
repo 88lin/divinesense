@@ -27,11 +27,11 @@ type RerankerService interface {
 }
 
 type rerankerService struct {
-	enabled bool
+	client  *http.Client
 	apiKey  string
 	baseURL string
 	model   string
-	client  *http.Client
+	enabled bool
 }
 
 // NewRerankerService creates a new RerankerService.

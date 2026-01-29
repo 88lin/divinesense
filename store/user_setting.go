@@ -11,9 +11,9 @@ import (
 )
 
 type UserSetting struct {
+	Value  string
 	UserID int32
 	Key    storepb.UserSetting_Key
-	Value  string
 }
 
 type FindUserSetting struct {
@@ -23,15 +23,15 @@ type FindUserSetting struct {
 
 // RefreshTokenQueryResult contains the result of querying a refresh token.
 type RefreshTokenQueryResult struct {
-	UserID       int32
 	RefreshToken *storepb.RefreshTokensUserSetting_RefreshToken
+	UserID       int32
 }
 
 // PATQueryResult contains the result of querying a PAT by hash.
 type PATQueryResult struct {
-	UserID int32
 	User   *User
 	PAT    *storepb.PersonalAccessTokensUserSetting_PersonalAccessToken
+	UserID int32
 }
 
 func (s *Store) UpsertUserSetting(ctx context.Context, upsert *storepb.UserSetting) (*storepb.UserSetting, error) {

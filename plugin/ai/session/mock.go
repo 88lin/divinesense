@@ -9,8 +9,8 @@ import (
 
 // MockSessionService is a mock implementation of SessionService for testing.
 type MockSessionService struct {
-	mu       sync.RWMutex
 	sessions map[string]*ConversationContext
+	mu       sync.RWMutex
 }
 
 // NewMockSessionService creates a new MockSessionService with sample data.
@@ -221,5 +221,5 @@ func (m *MockSessionService) SetSessionDirectly(sessionID string, context *Conve
 	m.sessions[sessionID] = context
 }
 
-// Ensure MockSessionService implements SessionService
+// Ensure MockSessionService implements SessionService.
 var _ SessionService = (*MockSessionService)(nil)

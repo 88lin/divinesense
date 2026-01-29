@@ -10,7 +10,7 @@ import (
 	"github.com/hrygo/divinesense/plugin/ai/metrics"
 )
 
-// Test errors for retry logic
+// Test errors for retry logic.
 var (
 	errNetwork   = errors.New("network error")
 	errPermanent = errors.New("permanent error")
@@ -18,8 +18,8 @@ var (
 
 // mockTool implements Tool interface for testing.
 type mockTool struct {
-	name      string
 	runFunc   func(ctx context.Context, input string) (*Result, error)
+	name      string
 	callCount int32
 }
 

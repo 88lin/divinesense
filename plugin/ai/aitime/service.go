@@ -123,5 +123,5 @@ func (s *Service) parseRangeKeyword(input string, ref time.Time) (TimeRange, err
 	return TimeRange{}, fmt.Errorf("unable to parse time expression: %s", input)
 }
 
-// Ensure Service implements TimeService
+// Ensure Service implements TimeService.
 var _ TimeService = (*Service)(nil)

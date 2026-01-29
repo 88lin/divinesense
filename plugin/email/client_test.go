@@ -25,8 +25,8 @@ func TestNewClient(t *testing.T) {
 
 func TestClientValidateConfig(t *testing.T) {
 	tests := []struct {
-		name    string
 		config  *Config
+		name    string
 		wantErr bool
 	}{
 		{
@@ -75,8 +75,8 @@ func TestClientSendValidation(t *testing.T) {
 	client := NewClient(config)
 
 	tests := []struct {
-		name    string
 		message *Message
+		name    string
 		wantErr bool
 	}{
 		{

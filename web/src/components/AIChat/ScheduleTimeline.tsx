@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { TimestampSchema, timestampDate } from "@bufbuild/protobuf/wkt";
 import dayjs, { Dayjs } from "dayjs";
-import { ChevronLeft, ChevronRight, Clock, MapPin, CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -63,21 +63,20 @@ const DateStrip = ({ currentDate, selectedDate, schedules, onDateSelect, onPrevW
                     : "hover:bg-muted/80 text-muted-foreground",
               )}
             >
-              <span className={cn("text-[11px] font-medium uppercase tracking-wider mb-0.5", isSelected ? "opacity-90" : "opacity-60 group-hover:opacity-80")}>
+              <span
+                className={cn(
+                  "text-[11px] font-medium uppercase tracking-wider mb-0.5",
+                  isSelected ? "opacity-90" : "opacity-60 group-hover:opacity-80",
+                )}
+              >
                 {date.format("ddd")}
               </span>
-              <span className={cn("text-xl font-semibold leading-none", (isSelected || isToday) && "font-bold")}>
-                {date.format("D")}
-              </span>
+              <span className={cn("text-xl font-semibold leading-none", (isSelected || isToday) && "font-bold")}>{date.format("D")}</span>
 
               {/* Indicators */}
               <div className="flex gap-0.5 h-1 mt-1.5">
-                {scheduleCount > 0 && (
-                  <span className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/90" : "bg-foreground/40")} />
-                )}
-                {scheduleCount > 2 && (
-                  <span className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/90" : "bg-foreground/40")} />
-                )}
+                {scheduleCount > 0 && <span className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/90" : "bg-foreground/40")} />}
+                {scheduleCount > 2 && <span className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/90" : "bg-foreground/40")} />}
               </div>
             </button>
           );
@@ -96,13 +95,7 @@ const DateStrip = ({ currentDate, selectedDate, schedules, onDateSelect, onPrevW
   );
 };
 
-export const ScheduleTimeline = ({
-  schedules,
-  selectedDate,
-  onDateClick,
-  onScheduleEdit,
-  className = "",
-}: ScheduleTimelineProps) => {
+export const ScheduleTimeline = ({ schedules, selectedDate, onDateClick, onScheduleEdit, className = "" }: ScheduleTimelineProps) => {
   const t = useTranslate();
   const [currentDate, setCurrentDate] = useState(selectedDate ? dayjs(selectedDate) : dayjs());
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -144,21 +137,15 @@ export const ScheduleTimeline = ({
       </div>
 
       {/* Agenda List Area */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 scroll-smooth"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 scroll-smooth">
         <div className="max-w-3xl mx-auto min-h-full flex flex-col">
-
           {/* Day Header */}
           <div className="mb-6 mt-2 flex items-baseline justify-between px-2">
             <div className="flex items-baseline gap-3">
               <h2 className="text-2xl font-bold tracking-tight text-foreground">
                 {isToday ? t("common.today") : currentDate.format("dddd")}
               </h2>
-              <span className="text-muted-foreground font-medium">
-                {currentDate.format("MMMM D")}
-              </span>
+              <span className="text-muted-foreground font-medium">{currentDate.format("MMMM D")}</span>
             </div>
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
               {t("schedule.schedule-count", { count: daySchedules.length })}
@@ -192,11 +179,13 @@ export const ScheduleTimeline = ({
 
                     {/* Dot Indicator */}
                     <div className="absolute left-[5rem] -translate-x-1/2 pt-3.5 z-10 bg-background py-1">
-                      <div className={cn(
-                        "w-2.5 h-2.5 rounded-full border-2 transition-all",
-                        isCurrent ? "bg-primary border-primary ring-4 ring-primary/10" : "bg-background border-muted-foreground",
-                        isPast && "bg-muted border-muted-foreground/30"
-                      )} />
+                      <div
+                        className={cn(
+                          "w-2.5 h-2.5 rounded-full border-2 transition-all",
+                          isCurrent ? "bg-primary border-primary ring-4 ring-primary/10" : "bg-background border-muted-foreground",
+                          isPast && "bg-muted border-muted-foreground/30",
+                        )}
+                      />
                     </div>
 
                     {/* Content Card */}
@@ -209,11 +198,7 @@ export const ScheduleTimeline = ({
                         )}
                       >
                         {/* Main Click Area (View/Edit) */}
-                        <div
-                          role="button"
-                          onClick={() => onScheduleEdit?.(schedule)}
-                          className="p-3 sm:p-4 cursor-pointer"
-                        >
+                        <div role="button" onClick={() => onScheduleEdit?.(schedule)} className="p-3 sm:p-4 cursor-pointer">
                           <div className="flex justify-between items-start gap-4">
                             <div className="space-y-1.5 min-w-0">
                               <h3 className={cn("font-semibold text-base truncate leading-none", isCurrent && "text-primary")}>
@@ -226,7 +211,7 @@ export const ScheduleTimeline = ({
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="w-3 h-3 shrink-0 opacity-70" />
                                   <span>
-                                    {Math.max(15, endDate.diff(startDate, 'minute'))} {t("schedule.quick-input.minutes-abbr")}
+                                    {Math.max(15, endDate.diff(startDate, "minute"))} {t("schedule.quick-input.minutes-abbr")}
                                   </span>
                                 </div>
 
@@ -247,8 +232,6 @@ export const ScheduleTimeline = ({
                             </div>
                           )}
                         </div>
-
-
                       </div>
                     </div>
                   </div>

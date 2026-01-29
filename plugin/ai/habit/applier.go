@@ -12,12 +12,12 @@ import (
 
 // ScheduleInput represents input for schedule creation.
 type ScheduleInput struct {
-	Title              string    `json:"title"`
 	StartTime          time.Time `json:"start_time"`
-	Duration           int       `json:"duration"` // minutes
+	Title              string    `json:"title"`
 	Location           string    `json:"location"`
 	SuggestedTimes     []string  `json:"suggested_times,omitempty"`
 	SuggestedLocations []string  `json:"suggested_locations,omitempty"`
+	Duration           int       `json:"duration"`
 	SuggestedDuration  int       `json:"suggested_duration,omitempty"`
 }
 

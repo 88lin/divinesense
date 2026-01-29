@@ -9,22 +9,14 @@ import (
 // Config represents the SMTP configuration for email sending.
 // These settings should be provided by the self-hosted instance administrator.
 type Config struct {
-	// SMTPHost is the SMTP server hostname (e.g., "smtp.gmail.com")
-	SMTPHost string
-	// SMTPPort is the SMTP server port (common: 587 for TLS, 465 for SSL, 25 for unencrypted)
-	SMTPPort int
-	// SMTPUsername is the SMTP authentication username (usually the email address)
+	SMTPHost     string
 	SMTPUsername string
-	// SMTPPassword is the SMTP authentication password or app-specific password
 	SMTPPassword string
-	// FromEmail is the email address that will appear in the "From" field
-	FromEmail string
-	// FromName is the display name that will appear in the "From" field
-	FromName string
-	// UseTLS enables STARTTLS encryption (recommended for port 587)
-	UseTLS bool
-	// UseSSL enables SSL/TLS encryption (for port 465)
-	UseSSL bool
+	FromEmail    string
+	FromName     string
+	SMTPPort     int
+	UseTLS       bool
+	UseSSL       bool
 }
 
 // Validate checks if the configuration is valid.

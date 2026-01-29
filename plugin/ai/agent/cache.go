@@ -10,30 +10,28 @@ import (
 // LRUCache is a thread-safe LRU (Least Recently Used) cache with TTL support.
 // LRUCache 是一个线程安全的 LRU（最近最少使用）缓存，支持 TTL。
 type LRUCache struct {
+	entries    map[string]*list.Element
+	lruList    *list.List
 	maxEntries int
 	ttl        time.Duration
-	entries    map[string]*list.Element // Map from key to list element
-	lruList    *list.List               // LRU list (front = most recently used)
+	hits       int64
+	misses     int64
 	mutex      sync.RWMutex
-
-	// Metrics
-	hits   int64
-	misses int64
 }
 
 // cacheEntry represents a cache entry with value and expiration.
 // cacheEntry 表示包含值和过期时间的缓存条目。
 type cacheEntry struct {
-	key        string
-	value      interface{}
 	expiration time.Time
+	value      interface{}
+	key        string
 }
 
 // CacheEntry represents a cached value with metadata.
 // CacheEntry 表示带有元数据的缓存值。
 type CacheEntry struct {
-	Key        string      `json:"key"`
 	Value      interface{} `json:"value"`
+	Key        string      `json:"key"`
 	ExpiresAt  int64       `json:"expires_at"`
 	SizeBytes  int         `json:"size_bytes"`
 	AccessTime int64       `json:"access_time"`

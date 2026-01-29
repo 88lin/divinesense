@@ -24,10 +24,10 @@ type Tool interface {
 // BaseTool provides a reusable base implementation for tools.
 // BaseTool 为工具提供可复用的基础实现。
 type BaseTool struct {
-	name        string
-	description string
 	execute     func(ctx context.Context, input string) (string, error)
 	validate    func(input string) error
+	name        string
+	description string
 	timeout     time.Duration
 }
 
@@ -223,13 +223,13 @@ func (r *ToolRegistry) Count() int {
 // ToolResult represents the result of a tool execution.
 // ToolResult 表示工具执行的结果。
 type ToolResult struct {
-	Name      string        `json:"name"`      // Tool name
-	Input     string        `json:"input"`     // Tool input
-	Output    string        `json:"output"`    // Tool output
-	Duration  time.Duration `json:"duration"`  // Execution duration
-	Error     string        `json:"error"`     // Error message (if any)
-	Success   bool          `json:"success"`   // Whether execution succeeded
-	Timestamp int64         `json:"timestamp"` // Execution timestamp (Unix)
+	Name      string        `json:"name"`
+	Input     string        `json:"input"`
+	Output    string        `json:"output"`
+	Error     string        `json:"error"`
+	Duration  time.Duration `json:"duration"`
+	Timestamp int64         `json:"timestamp"`
+	Success   bool          `json:"success"`
 }
 
 // NewToolResult creates a new ToolResult.

@@ -1,8 +1,8 @@
 import { AlertCircle, ArrowRight, Check, Clock, LoaderCircle, X } from "lucide-react";
+import type { ProgressStep } from "@/hooks/useScheduleAgent";
 import { cn } from "@/lib/utils";
 import { type Translations, useTranslate } from "@/utils/i18n";
 import type { ProgressTrackerProps } from "./types";
-import type { ProgressStep } from "@/hooks/useScheduleAgent";
 
 export function ProgressTracker({ data, onCancel, onDismiss }: ProgressTrackerProps) {
   const t = useTranslate();
@@ -43,20 +43,12 @@ export function ProgressTracker({ data, onCancel, onDismiss }: ProgressTrackerPr
         </div>
         <div className="flex items-center gap-2">
           {data.can_cancel && onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button type="button" onClick={onCancel} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               {cancelText}
             </button>
           )}
           {onDismiss && (
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button type="button" onClick={onDismiss} className="text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -66,10 +58,7 @@ export function ProgressTracker({ data, onCancel, onDismiss }: ProgressTrackerPr
       {/* Progress bar */}
       <div className="mb-4">
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -111,17 +100,11 @@ function ProgressStep({ step, statusTexts }: ProgressStepProps) {
           >
             {step.label}
           </span>
-          {step.status === "in_progress" && (
-            <span className="text-xs text-muted-foreground">{statusTexts.in_progress}</span>
-          )}
+          {step.status === "in_progress" && <span className="text-xs text-muted-foreground">{statusTexts.in_progress}</span>}
         </div>
-        {step.error && (
-          <p className="text-xs text-destructive mt-1">{step.error}</p>
-        )}
+        {step.error && <p className="text-xs text-destructive mt-1">{step.error}</p>}
       </div>
-      {step.status === "in_progress" && (
-        <ArrowRight className="w-4 h-4 text-primary animate-pulse" />
-      )}
+      {step.status === "in_progress" && <ArrowRight className="w-4 h-4 text-primary animate-pulse" />}
     </div>
   );
 }

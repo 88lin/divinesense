@@ -55,12 +55,8 @@ export function ScheduleSuggestionCard({ data, onConfirm, isLoading = false }: S
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-foreground">{data.title}</h4>
-            {!showCreating && (
-              <span className="text-xs text-primary/70 hidden sm:inline">{clickToCreateText}</span>
-            )}
-            {showCreating && (
-              <span className="text-xs text-green-600 dark:text-green-400">{creatingText}</span>
-            )}
+            {!showCreating && <span className="text-xs text-primary/70 hidden sm:inline">{clickToCreateText}</span>}
+            {showCreating && <span className="text-xs text-green-600 dark:text-green-400">{creatingText}</span>}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">

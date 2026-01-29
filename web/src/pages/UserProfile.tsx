@@ -1,6 +1,6 @@
 import copy from "copy-to-clipboard";
 import { ExternalLinkIcon, LayoutListIcon, type LucideIcon, MapIcon } from "lucide-react";
-import { Suspense, lazy } from "react";
+import { lazy, Suspense } from "react";
 import { toast } from "react-hot-toast";
 import { useParams, useSearchParams } from "react-router-dom";
 import { MemoRenderContext } from "@/components/MasonryView";

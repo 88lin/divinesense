@@ -19,32 +19,32 @@ type DuplicateDetector interface {
 
 // DetectRequest contains input for duplicate detection.
 type DetectRequest struct {
-	UserID  int32    `json:"user_id"`
 	Title   string   `json:"title"`
 	Content string   `json:"content"`
 	Tags    []string `json:"tags,omitempty"`
-	TopK    int      `json:"top_k,omitempty"` // default 5
+	TopK    int      `json:"top_k,omitempty"`
+	UserID  int32    `json:"user_id"`
 }
 
 // DetectResponse contains detection results.
 type DetectResponse struct {
-	HasDuplicate bool          `json:"has_duplicate"`
-	HasRelated   bool          `json:"has_related"`
 	Duplicates   []SimilarMemo `json:"duplicates,omitempty"`
 	Related      []SimilarMemo `json:"related,omitempty"`
 	LatencyMs    int64         `json:"latency_ms"`
+	HasDuplicate bool          `json:"has_duplicate"`
+	HasRelated   bool          `json:"has_related"`
 }
 
 // SimilarMemo represents a memo similar to the input.
 type SimilarMemo struct {
+	Breakdown  *Breakdown `json:"breakdown,omitempty"`
 	ID         string     `json:"id"`
 	Name       string     `json:"name"`
 	Title      string     `json:"title"`
 	Snippet    string     `json:"snippet"`
-	Similarity float64    `json:"similarity"`
+	Level      string     `json:"level"`
 	SharedTags []string   `json:"shared_tags,omitempty"`
-	Level      string     `json:"level"` // "duplicate" or "related"
-	Breakdown  *Breakdown `json:"breakdown,omitempty"`
+	Similarity float64    `json:"similarity"`
 }
 
 // Breakdown shows how similarity was calculated.

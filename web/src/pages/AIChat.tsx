@@ -12,8 +12,8 @@ import { PartnerGreeting } from "@/components/AIChat/PartnerGreeting";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useAIChat } from "@/contexts/AIChatContext";
 import { useChat } from "@/hooks/useAIQueries";
-import { useCapabilityRouter } from "@/hooks/useCapabilityRouter";
 import { useAITools } from "@/hooks/useAITools";
+import { useCapabilityRouter } from "@/hooks/useCapabilityRouter";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import type { ChatItem } from "@/types/aichat";
 import { CapabilityStatus, CapabilityType, capabilityToParrotAgent } from "@/types/capability";
@@ -447,7 +447,7 @@ const AIChat = () => {
         content: "",
       };
 
-      // Note: addMessage returns messageID. We don't use it for streaming logic 
+      // Note: addMessage returns messageID. We don't use it for streaming logic
       // but we need it to update the specific message later if needed.
       const assistantMessageId = addMessage(targetConversationId, newMessage);
       lastAssistantMessageIdRef.current = assistantMessageId;

@@ -55,8 +55,8 @@ func TestGenerateSnippet(t *testing.T) {
 	tests := []struct {
 		name      string
 		content   string
-		maxLength int
 		expected  string
+		maxLength int
 	}{
 		{
 			name:      "simple text",
@@ -198,8 +198,8 @@ func TestExtractTags(t *testing.T) {
 	tests := []struct {
 		name     string
 		content  string
-		withExt  bool
 		expected []string
+		withExt  bool
 	}{
 		{
 			name:     "no tags",
@@ -355,8 +355,8 @@ func TestTruncateAtWord(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
-		maxLength int
 		expected  string
+		maxLength int
 	}{
 		{
 			name:      "no truncation needed",

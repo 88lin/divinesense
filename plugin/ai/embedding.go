@@ -74,8 +74,8 @@ func (s *embeddingService) EmbedBatch(ctx context.Context, texts []string) ([][]
 	}
 
 	req := openai.EmbeddingRequest{
-		Input:     texts,
-		Model:     openai.EmbeddingModel(s.model),
+		Input:      texts,
+		Model:      openai.EmbeddingModel(s.model),
 		Dimensions: s.dimensions,
 	}
 

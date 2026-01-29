@@ -9,23 +9,23 @@ import (
 
 // MockMetricsService is a mock implementation of MetricsService for testing.
 type MockMetricsService struct {
-	mu        sync.RWMutex
 	requests  []requestRecord
 	toolCalls []toolCallRecord
+	mu        sync.RWMutex
 }
 
 type requestRecord struct {
+	Timestamp time.Time
 	AgentType string
 	Latency   time.Duration
 	Success   bool
-	Timestamp time.Time
 }
 
 type toolCallRecord struct {
+	Timestamp time.Time
 	ToolName  string
 	Latency   time.Duration
 	Success   bool
-	Timestamp time.Time
 }
 
 // NewMockMetricsService creates a new MockMetricsService.
@@ -155,5 +155,5 @@ func (m *MockMetricsService) Clear() {
 	m.toolCalls = make([]toolCallRecord, 0)
 }
 
-// Ensure MockMetricsService implements MetricsService
+// Ensure MockMetricsService implements MetricsService.
 var _ MetricsService = (*MockMetricsService)(nil)

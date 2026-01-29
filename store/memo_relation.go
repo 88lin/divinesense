@@ -14,9 +14,9 @@ const (
 )
 
 type MemoRelation struct {
+	Type          MemoRelationType
 	MemoID        int32
 	RelatedMemoID int32
-	Type          MemoRelationType
 }
 
 type FindMemoRelation struct {

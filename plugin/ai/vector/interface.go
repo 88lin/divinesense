@@ -4,8 +4,7 @@ package vector
 
 import "context"
 
-// VectorService defines the vector retrieval service interface.
-// Consumers: Team C (Memo Enhancement)
+// Consumers: Team C (Memo Enhancement).
 type VectorService interface {
 	// StoreEmbedding stores a vector embedding with metadata.
 	StoreEmbedding(ctx context.Context, docID string, vector []float32, metadata map[string]any) error
@@ -20,15 +19,15 @@ type VectorService interface {
 
 // VectorResult represents a vector search result.
 type VectorResult struct {
-	DocID    string         `json:"doc_id"`
-	Score    float32        `json:"score"` // similarity score 0-1
 	Metadata map[string]any `json:"metadata"`
+	DocID    string         `json:"doc_id"`
+	Score    float32        `json:"score"`
 }
 
 // SearchResult represents a hybrid search result.
 type SearchResult struct {
-	Name      string  `json:"name"` // memo UID
+	Name      string  `json:"name"`
 	Content   string  `json:"content"`
+	MatchType string  `json:"match_type"`
 	Score     float32 `json:"score"`
-	MatchType string  `json:"match_type"` // vector/keyword/hybrid
 }

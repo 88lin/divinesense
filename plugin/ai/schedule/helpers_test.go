@@ -78,11 +78,11 @@ func TestMarshalReminders(t *testing.T) {
 
 func TestUnmarshalReminders(t *testing.T) {
 	tests := []struct {
-		name      string
-		data      string
-		wantNil   bool
-		wantLen   int
-		wantErr   bool
+		name    string
+		data    string
+		wantLen int
+		wantNil bool
+		wantErr bool
 	}{
 		{
 			name:    "empty string",

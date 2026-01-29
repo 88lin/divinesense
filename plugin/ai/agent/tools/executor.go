@@ -22,18 +22,18 @@ type Tool interface {
 
 // Result represents the output of a tool execution.
 type Result struct {
+	Data    any    `json:"data,omitempty"`
 	Output  string `json:"output"`
 	Success bool   `json:"success"`
-	Data    any    `json:"data,omitempty"`
 }
 
 // ResilientToolExecutor provides retry and fallback capabilities for tool execution.
 type ResilientToolExecutor struct {
+	metricsService metrics.MetricsService
+	fallbackRules  map[string]FallbackFunc
 	maxRetries     int
 	retryDelay     time.Duration
 	timeout        time.Duration
-	metricsService metrics.MetricsService
-	fallbackRules  map[string]FallbackFunc
 }
 
 // ExecutorOption configures a ResilientToolExecutor.

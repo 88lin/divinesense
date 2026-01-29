@@ -19,33 +19,29 @@ const emptyMetadata = "{}"
 
 // ChatEvent represents a chat event that can be processed by listeners.
 type ChatEvent struct {
-	Type      ChatEventType
-	UserID    int32
-	AgentType AgentType
-	MessageID string
-	// For UserMessage event
-	UserMessage string
-	// For AssistantResponse event
-	AssistantResponse string
-	// For Separator event
-	SeparatorContent string
-	// Context information
+	Type               ChatEventType
+	AgentType          AgentType
+	MessageID          string
+	UserMessage        string
+	AssistantResponse  string
+	SeparatorContent   string
+	Timestamp          int64
+	UserID             int32
 	ConversationID     int32
 	IsTempConversation bool
-	Timestamp          int64
 }
 
 // ChatEventType represents the type of chat event.
 type ChatEventType string
 
 const (
-	// EventConversationStart is fired when a conversation should be created/retrieved
+	// EventConversationStart is fired when a conversation should be created/retrieved.
 	EventConversationStart ChatEventType = "conversation_start"
-	// EventUserMessage is fired when a user sends a message
+	// EventUserMessage is fired when a user sends a message.
 	EventUserMessage ChatEventType = "user_message"
-	// EventAssistantResponse is fired when an assistant responds
+	// EventAssistantResponse is fired when an assistant responds.
 	EventAssistantResponse ChatEventType = "assistant_response"
-	// EventSeparator is fired when a separator (---) is sent
+	// EventSeparator is fired when a separator (---) is sent.
 	EventSeparator ChatEventType = "separator"
 )
 

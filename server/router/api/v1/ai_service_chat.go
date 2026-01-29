@@ -244,14 +244,14 @@ func (w *grpcStreamWrapper) Context() context.Context {
 // eventCollectingStream wraps the stream and emits assistant response events.
 type eventCollectingStream struct {
 	*grpcStreamWrapper
-	service        *AIService // Service reference for accessing summarizer
+	service        *AIService
 	eventBus       *aichat.EventBus
-	userID         int32
 	agentType      aichat.AgentType
+	builder        strings.Builder
+	mu             sync.Mutex
+	userID         int32
 	conversationID int32
 	isTemp         bool
-	mu             sync.Mutex
-	builder        strings.Builder
 }
 
 func (s *eventCollectingStream) Send(resp *v1pb.ChatResponse) error {

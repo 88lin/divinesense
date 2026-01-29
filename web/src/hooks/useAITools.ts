@@ -3,12 +3,12 @@ import type { UIAction, UIToolEvent } from "@/components/ScheduleAI/types";
 import type {
   ParsedEvent,
   UIConflictResolutionData,
-  UIScheduleSuggestionData,
-  UITimeSlotPickerData,
-  UIQuickActionsData,
   UIMemoPreviewData,
   UIProgressTrackerData,
+  UIQuickActionsData,
   UIScheduleListData,
+  UIScheduleSuggestionData,
+  UITimeSlotPickerData,
 } from "@/hooks/useScheduleAgent";
 
 /**

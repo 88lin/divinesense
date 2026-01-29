@@ -68,8 +68,8 @@ func TestCalculateConfidence(t *testing.T) {
 	past := now.Add(-24 * time.Hour)
 
 	tests := []struct {
-		name     string
 		schedule *ScheduleRequest
+		name     string
 		minScore float64
 		maxScore float64
 	}{
@@ -148,8 +148,8 @@ func TestFastCreateParser_Parse(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
-		canFast   bool
 		wantTitle string
+		canFast   bool
 	}{
 		{
 			name:      "simple create with time and action",
@@ -304,7 +304,7 @@ func TestApplyDefaults(t *testing.T) {
 	}
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkExtractTitle(b *testing.B) {
 	input := "明天下午3点开会讨论项目进度"
 	for i := 0; i < b.N; i++ {

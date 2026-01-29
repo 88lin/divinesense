@@ -31,11 +31,10 @@ func DefaultCleanupConfig() CleanupConfig {
 // SessionCleanupJob handles periodic cleanup of expired sessions.
 type SessionCleanupJob struct {
 	sessionSvc SessionService
+	stopChan   chan struct{}
 	config     CleanupConfig
-
-	mu       sync.Mutex
-	running  bool
-	stopChan chan struct{}
+	mu         sync.Mutex
+	running    bool
 }
 
 // NewSessionCleanupJob creates a new cleanup job.

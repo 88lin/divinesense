@@ -20,12 +20,7 @@ export function MemoQueryResult({ result, className }: MemoQueryResultProps) {
 
   if (count === 0) {
     return (
-      <div
-        className={cn(
-          "flex flex-col items-center justify-center py-8 px-4 rounded-lg bg-muted border border-border",
-          className,
-        )}
-      >
+      <div className={cn("flex flex-col items-center justify-center py-8 px-4 rounded-lg bg-muted border border-border", className)}>
         <FileText className="w-12 h-12 text-muted-foreground mb-3" />
         <p className="text-sm font-medium text-foreground">{t("ai.memo-query.no-results")}</p>
         <p className="text-xs text-muted-foreground mt-1">
@@ -84,9 +79,7 @@ function MemoQueryResultItem({ memo, rank }: MemoQueryResultItemProps) {
         <div
           className={cn(
             "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-            rank <= 3
-              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-              : "bg-muted text-muted-foreground",
+            rank <= 3 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "bg-muted text-muted-foreground",
           )}
         >
           {rank}

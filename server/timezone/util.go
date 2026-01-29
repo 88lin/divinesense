@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// Default location constants
+// Default location constants.
 var (
-	// UTC is the coordinated universal time timezone
+	// UTC is the coordinated universal time timezone.
 	UTC = time.UTC
 
-	// Local is the local timezone
+	// Local is the local timezone.
 	Local = time.Local
 )
 
@@ -105,8 +105,7 @@ func FormatScheduleTime(startTs int64, endTs *int64, allDay bool, tz *time.Locat
 	return startTime.Format("2006-01-02 15:04")
 }
 
-// FormatScheduleForContext formats a schedule for LLM context.
-// Format: "1. 2026-01-21 14:00 - 16:00 - Team Meeting @ Room A"
+// Format: "1. 2026-01-21 14:00 - 16:00 - Team Meeting @ Room A".
 func FormatScheduleForContext(startTs int64, endTs *int64, title string, location string, allDay bool, index int, tz *time.Location) string {
 	timeStr := FormatScheduleTime(startTs, endTs, allDay, tz)
 	result := fmt.Sprintf("%d. %s - %s", index+1, timeStr, title)
@@ -142,53 +141,53 @@ func NowInTimezone(tz *time.Location) time.Time {
 	return time.Now().In(tz)
 }
 
-// Common timezone constants
+// Common timezone constants.
 const (
-	// TimezoneUTC is the UTC timezone identifier
+	// TimezoneUTC is the UTC timezone identifier.
 	TimezoneUTC = "UTC"
 
-	// TimezoneAsiaShanghai is the China Standard Time timezone
+	// TimezoneAsiaShanghai is the China Standard Time timezone.
 	TimezoneAsiaShanghai = "Asia/Shanghai"
 
-	// TimezoneAmericaNewYork is the Eastern Time timezone
+	// TimezoneAmericaNewYork is the Eastern Time timezone.
 	TimezoneAmericaNewYork = "America/New_York"
 
-	// TimezoneAmericaLosAngeles is the Pacific Time timezone
+	// TimezoneAmericaLosAngeles is the Pacific Time timezone.
 	TimezoneAmericaLosAngeles = "America/Los_Angeles"
 
-	// TimezoneEuropeLondon is the GMT/BST timezone
+	// TimezoneEuropeLondon is the GMT/BST timezone.
 	TimezoneEuropeLondon = "Europe/London"
 
-	// TimezoneEuropeParis is the CET/CEST timezone
+	// TimezoneEuropeParis is the CET/CEST timezone.
 	TimezoneEuropeParis = "Europe/Paris"
 
-	// TimezoneAsiaTokyo is the Japan Standard Time timezone
+	// TimezoneAsiaTokyo is the Japan Standard Time timezone.
 	TimezoneAsiaTokyo = "Asia/Tokyo"
 
-	// TimezoneAustraliaSydney is the AEST/AEDT timezone
+	// TimezoneAustraliaSydney is the AEST/AEDT timezone.
 	TimezoneAustraliaSydney = "Australia/Sydney"
 )
 
-// Common timezone locations (pre-loaded for performance)
+// Common timezone locations (pre-loaded for performance).
 var (
-	// LocationAsiaShanghai is the pre-loaded Asia/Shanghai location
+	// LocationAsiaShanghai is the pre-loaded Asia/Shanghai location.
 	LocationAsiaShanghai = MustParseTimezone(TimezoneAsiaShanghai)
 
-	// LocationAmericaNewYork is the pre-loaded America/New_York location
+	// LocationAmericaNewYork is the pre-loaded America/New_York location.
 	LocationAmericaNewYork = MustParseTimezone(TimezoneAmericaNewYork)
 
-	// LocationAmericaLosAngeles is the pre-loaded America/Los_Angeles location
+	// LocationAmericaLosAngeles is the pre-loaded America/Los_Angeles location.
 	LocationAmericaLosAngeles = MustParseTimezone(TimezoneAmericaLosAngeles)
 
-	// LocationEuropeLondon is the pre-loaded Europe/London location
+	// LocationEuropeLondon is the pre-loaded Europe/London location.
 	LocationEuropeLondon = MustParseTimezone(TimezoneEuropeLondon)
 
-	// LocationEuropeParis is the pre-loaded Europe/Paris location
+	// LocationEuropeParis is the pre-loaded Europe/Paris location.
 	LocationEuropeParis = MustParseTimezone(TimezoneEuropeParis)
 
-	// LocationAsiaTokyo is the pre-loaded Asia/Tokyo location
+	// LocationAsiaTokyo is the pre-loaded Asia/Tokyo location.
 	LocationAsiaTokyo = MustParseTimezone(TimezoneAsiaTokyo)
 
-	// LocationAustraliaSydney is the pre-loaded Australia/Sydney location
+	// LocationAustraliaSydney is the pre-loaded Australia/Sydney location.
 	LocationAustraliaSydney = MustParseTimezone(TimezoneAustraliaSydney)
 )

@@ -8,12 +8,12 @@ import (
 
 // MemoEmbedding represents the vector embedding of a memo.
 type MemoEmbedding struct {
-	ID        int32
-	MemoID    int32
-	Embedding []float32 // 1024-dimensional vector
-	Model     string    // Model identifier, e.g., "BAAI/bge-m3"
+	Model     string
+	Embedding []float32
 	CreatedTs int64
 	UpdatedTs int64
+	ID        int32
+	MemoID    int32
 }
 
 // FindMemoEmbedding is the find condition for memo embeddings.
@@ -36,9 +36,9 @@ type MemoWithScore struct {
 
 // VectorSearchOptions represents the options for vector search.
 type VectorSearchOptions struct {
-	UserID int32     // Required, only search memos of this user
-	Vector []float32 // Query vector
-	Limit  int       // Number of results to return, default 10
+	Vector []float32
+	Limit  int
+	UserID int32
 }
 
 // Validate validates the VectorSearchOptions.
@@ -63,10 +63,10 @@ func (o *VectorSearchOptions) Validate() error {
 
 // BM25SearchOptions represents the options for BM25 full-text search.
 type BM25SearchOptions struct {
-	UserID   int32   // Required, only search memos of this user
-	Query    string  // Search query
-	Limit    int     // Number of results to return, default 10
-	MinScore float32 // Minimum relevance score (default 0)
+	Query    string
+	Limit    int
+	UserID   int32
+	MinScore float32
 }
 
 // Validate validates the BM25SearchOptions.

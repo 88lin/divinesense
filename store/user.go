@@ -42,14 +42,7 @@ var (
 )
 
 type User struct {
-	ID int32
-
-	// Standard fields
-	RowStatus RowStatus
-	CreatedTs int64
-	UpdatedTs int64
-
-	// Domain specific fields
+	RowStatus    RowStatus
 	Username     string
 	Role         Role
 	Email        string
@@ -57,11 +50,12 @@ type User struct {
 	PasswordHash string
 	AvatarURL    string
 	Description  string
+	CreatedTs    int64
+	UpdatedTs    int64
+	ID           int32
 }
 
 type UpdateUser struct {
-	ID int32
-
 	UpdatedTs    *int64
 	RowStatus    *RowStatus
 	Username     *string
@@ -72,6 +66,7 @@ type UpdateUser struct {
 	AvatarURL    *string
 	PasswordHash *string
 	Description  *string
+	ID           int32
 }
 
 type FindUser struct {
@@ -81,12 +76,8 @@ type FindUser struct {
 	Role      *Role
 	Email     *string
 	Nickname  *string
-
-	// Domain specific fields
-	Filters []string
-
-	// The maximum number of users to return.
-	Limit *int
+	Limit     *int
+	Filters   []string
 }
 
 type DeleteUser struct {

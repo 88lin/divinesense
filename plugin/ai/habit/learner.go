@@ -15,11 +15,10 @@ type HabitLearner struct {
 	analyzer      HabitAnalyzer
 	memoryService memory.MemoryService
 	config        *AnalysisConfig
-	runHour       int // Hour of day to run (0-23)
-
-	mu       sync.Mutex
-	running  bool
-	stopChan chan struct{}
+	stopChan      chan struct{}
+	runHour       int
+	mu            sync.Mutex
+	running       bool
 }
 
 // NewHabitLearner creates a new HabitLearner.

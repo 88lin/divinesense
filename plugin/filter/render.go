@@ -8,11 +8,11 @@ import (
 )
 
 type renderer struct {
-	schema             Schema
 	dialect            DialectName
+	schema             Schema
+	args               []any
 	placeholderOffset  int
 	placeholderCounter int
-	args               []any
 }
 
 type renderResult struct {

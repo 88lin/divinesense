@@ -4,22 +4,22 @@ import "time"
 
 // AgentMetrics represents hourly aggregated metrics for an agent type.
 type AgentMetrics struct {
-	ID           int64
 	HourBucket   time.Time
 	AgentType    string
+	Errors       string
+	ID           int64
 	RequestCount int64
 	SuccessCount int64
 	LatencySumMs int64
 	LatencyP50Ms int32
 	LatencyP95Ms int32
-	Errors       string // JSON: {"error_type": count}
 }
 
 // ToolMetrics represents hourly aggregated metrics for a tool.
 type ToolMetrics struct {
-	ID           int64
 	HourBucket   time.Time
 	ToolName     string
+	ID           int64
 	CallCount    int64
 	SuccessCount int64
 	LatencySumMs int64
@@ -29,12 +29,12 @@ type ToolMetrics struct {
 type UpsertAgentMetrics struct {
 	HourBucket   time.Time
 	AgentType    string
+	Errors       string
 	RequestCount int64
 	SuccessCount int64
 	LatencySumMs int64
 	LatencyP50Ms int32
 	LatencyP95Ms int32
-	Errors       string
 }
 
 // UpsertToolMetrics specifies the data for upserting tool metrics.
@@ -75,14 +75,14 @@ type DeleteToolMetrics struct {
 // PromptVersionMetrics represents metrics for a specific prompt version in an A/B experiment.
 // This enables comparison of prompt performance across versions.
 type PromptVersionMetrics struct {
-	ID               int64
 	HourBucket       time.Time
 	AgentType        string
-	PromptVersion    string // e.g., "v1", "v2"
+	PromptVersion    string
+	ID               int64
 	RequestCount     int64
 	SuccessCount     int64
 	AvgLatencyMs     int64
-	UserSatisfaction float32 // Optional: derived from user feedback
+	UserSatisfaction float32
 }
 
 // UpsertPromptVersionMetrics specifies the data for upserting prompt version metrics.
@@ -107,16 +107,16 @@ type FindPromptVersionMetrics struct {
 // PromptExperimentSummary represents aggregated metrics for an A/B experiment.
 // Used for comparing control vs treatment performance.
 type PromptExperimentSummary struct {
-	AgentType              string
-	ControlVersion         string
-	TreatmentVersion       string
-	ControlRequests        int64
-	TreatmentRequests      int64
-	ControlSuccessRate     float64
-	TreatmentSuccessRate   float64
-	ControlAvgLatencyMs    int64
-	TreatmentAvgLatencyMs  int64
-	ImprovementRate        float64 // Percentage improvement of treatment over control
+	AgentType                  string
+	ControlVersion             string
+	TreatmentVersion           string
+	Recommendation             string
+	ControlRequests            int64
+	TreatmentRequests          int64
+	ControlSuccessRate         float64
+	TreatmentSuccessRate       float64
+	ControlAvgLatencyMs        int64
+	TreatmentAvgLatencyMs      int64
+	ImprovementRate            float64
 	IsStatisticallySignificant bool
-	Recommendation         string // "keep_control", "rollout_treatment", "inconclusive"
 }

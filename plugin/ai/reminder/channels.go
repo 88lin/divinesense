@@ -100,14 +100,14 @@ type AppNotificationStore interface {
 
 // AppNotification represents an in-app notification.
 type AppNotification struct {
+	CreatedAt time.Time      `json:"created_at"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	ID        string         `json:"id"`
-	UserID    int32          `json:"user_id"`
 	Type      string         `json:"type"`
 	Title     string         `json:"title"`
 	Message   string         `json:"message"`
+	UserID    int32          `json:"user_id"`
 	Read      bool           `json:"read"`
-	CreatedAt time.Time      `json:"created_at"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 // NewAppNotificationSender creates a new app notification sender.
@@ -148,19 +148,19 @@ func (s *AppNotificationSender) Name() string {
 // EmailConfig holds email configuration.
 type EmailConfig struct {
 	SMTPHost     string
-	SMTPPort     int
 	Username     string
 	Password     string
 	FromAddress  string
 	FromName     string
 	TemplateHTML string
+	SMTPPort     int
 }
 
 // EmailSender sends email notifications.
 type EmailSender struct {
-	config       EmailConfig
 	userResolver UserEmailResolver
 	logger       *slog.Logger
+	config       EmailConfig
 }
 
 // UserEmailResolver resolves user ID to email address.
@@ -207,11 +207,11 @@ func (s *EmailSender) Name() string {
 
 // WebhookConfig holds webhook configuration.
 type WebhookConfig struct {
+	Headers       map[string]string
 	URL           string
 	Secret        string
 	Timeout       time.Duration
 	RetryAttempts int
-	Headers       map[string]string
 }
 
 // WebhookSender sends webhook notifications.
@@ -223,11 +223,11 @@ type WebhookSender struct {
 
 // WebhookPayload represents the webhook request body.
 type WebhookPayload struct {
-	Event     string         `json:"event"`
-	UserID    int32          `json:"user_id"`
-	Message   string         `json:"message"`
 	Timestamp time.Time      `json:"timestamp"`
 	Metadata  map[string]any `json:"metadata,omitempty"`
+	Event     string         `json:"event"`
+	Message   string         `json:"message"`
+	UserID    int32          `json:"user_id"`
 }
 
 // NewWebhookSender creates a new webhook sender.

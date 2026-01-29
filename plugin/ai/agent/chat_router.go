@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sashabaranov/go-openai"
 	"github.com/hrygo/divinesense/plugin/ai/router"
+	"github.com/sashabaranov/go-openai"
 )
 
 // ChatRouteType represents the type of chat routing.
@@ -29,8 +29,8 @@ const (
 // ChatRouteResult represents the routing classification result.
 type ChatRouteResult struct {
 	Route      ChatRouteType `json:"route"`
+	Method     string        `json:"method"`
 	Confidence float64       `json:"confidence"`
-	Method     string        `json:"method"` // "rule" or "llm"
 }
 
 // ChatRouterConfig holds configuration for the chat router.
@@ -45,7 +45,7 @@ type ChatRouterConfig struct {
 // Optionally uses the three-layer router.Service for enhanced history matching.
 type ChatRouter struct {
 	routerService *router.Service // Optional: three-layer router service
-	client        *openai.Client // Reserved for LLM classification
+	client        *openai.Client  // Reserved for LLM classification
 	model         string
 }
 

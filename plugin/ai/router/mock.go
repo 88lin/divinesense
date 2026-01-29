@@ -154,5 +154,5 @@ func containsAny(s string, patterns []string) bool {
 	return false
 }
 
-// Ensure MockRouterService implements RouterService
+// Ensure MockRouterService implements RouterService.
 var _ RouterService = (*MockRouterService)(nil)

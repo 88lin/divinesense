@@ -9,13 +9,13 @@ import (
 
 // Message represents an email message to be sent.
 type Message struct {
-	To      []string // Required: recipient email addresses
-	Cc      []string // Optional: carbon copy recipients
-	Bcc     []string // Optional: blind carbon copy recipients
-	Subject string   // Required: email subject
-	Body    string   // Required: email body content
-	IsHTML  bool     // Whether the body is HTML (default: false for plain text)
-	ReplyTo string   // Optional: reply-to address
+	Subject string
+	Body    string
+	ReplyTo string
+	To      []string
+	Cc      []string
+	Bcc     []string
+	IsHTML  bool
 }
 
 // Validate checks that the message has all required fields.

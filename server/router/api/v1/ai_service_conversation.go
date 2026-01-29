@@ -301,10 +301,7 @@ func convertAIMessageFromStore(m *store.AIMessage) *v1pb.AIMessage {
 	}
 }
 
-// ListMessages returns messages for a conversation with incremental sync support.
-// - First load (lastMessageUid empty): returns latest MaxMessageLimit MSG (SEP included)
-// - Incremental load (lastMessageUid provided): returns messages after that UID, max MaxMessageLimit MSG
-// - SUMMARY messages are filtered out (never returned to frontend)
+// - SUMMARY messages are filtered out (never returned to frontend).
 func (s *AIService) ListMessages(ctx context.Context, req *v1pb.ListMessagesRequest) (*v1pb.ListMessagesResponse, error) {
 	// Parameter validation
 	if req.ConversationId == 0 {

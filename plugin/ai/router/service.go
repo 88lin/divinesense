@@ -9,10 +9,7 @@ import (
 	"github.com/hrygo/divinesense/plugin/ai/memory"
 )
 
-// Service implements the three-layer RouterService.
-// Layer 1: Rule-based matching (0ms) - handles 60%+ requests
-// Layer 2: History matching (~10ms) - handles 20%+ requests
-// Layer 3: LLM classification (~400ms) - fallback for remaining ~20%
+// Layer 3: LLM classification (~400ms) - fallback for remaining ~20%.
 type Service struct {
 	ruleMatcher    *RuleMatcher
 	historyMatcher *HistoryMatcher
@@ -36,9 +33,7 @@ func NewService(cfg Config) *Service {
 	}
 }
 
-// ClassifyIntent classifies user intent from input text.
-// Returns: intent type, confidence (0-1), error
-// Implementation: rule-based first (0ms) -> history match (~10ms) -> LLM fallback (~400ms)
+// Implementation: rule-based first (0ms) -> history match (~10ms) -> LLM fallback (~400ms).
 func (s *Service) ClassifyIntent(ctx context.Context, input string) (Intent, float32, error) {
 	start := time.Now()
 
@@ -108,8 +103,7 @@ func (s *Service) ClassifyIntent(ctx context.Context, input string) (Intent, flo
 	return IntentUnknown, 0, nil
 }
 
-// SelectModel selects an appropriate model based on task type.
-// Returns: model configuration (local/cloud)
+// Returns: model configuration (local/cloud).
 func (s *Service) SelectModel(ctx context.Context, task TaskType) (ModelConfig, error) {
 	// Model selection strategy based on task complexity
 	switch task {
@@ -191,5 +185,5 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
-// Ensure Service implements RouterService
+// Ensure Service implements RouterService.
 var _ RouterService = (*Service)(nil)

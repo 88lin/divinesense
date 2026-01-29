@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hrygo/divinesense/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/hrygo/divinesense/store"
 )
 
 // TestConflictResolver_Resolve_NoConflict tests resolution when there's no conflict.
@@ -205,9 +205,9 @@ func TestConflictResolver_CalculateScore(t *testing.T) {
 
 	tests := []struct {
 		name           string
+		expectedReason string
 		alternative    TimeSlot
 		minScore       int
-		expectedReason string
 	}{
 		{
 			name: "same day, same time",

@@ -1,20 +1,22 @@
-import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
+import { lazy, Suspense } from "react";
 
 const KnowledgeGraphView = lazy(() => import("@/components/KnowledgeGraphView"));
 
 const KnowledgeGraph = () => {
-    return (
-        <div className="w-full h-full p-4 overflow-hidden">
-            <Suspense fallback={
-                <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                </div>
-            }>
-                <KnowledgeGraphView className="w-full h-full border rounded-xl overflow-hidden bg-background shadow-sm" />
-            </Suspense>
-        </div>
-    );
+  return (
+    <div className="w-full h-full p-4 overflow-hidden">
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <KnowledgeGraphView className="w-full h-full border rounded-xl overflow-hidden bg-background shadow-sm" />
+      </Suspense>
+    </div>
+  );
 };
 
 export default KnowledgeGraph;

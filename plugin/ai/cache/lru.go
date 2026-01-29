@@ -9,19 +9,18 @@ import (
 
 // LRUCache implements an LRU cache with TTL support.
 type LRUCache struct {
+	cache      map[string]*entry
+	order      *list.List
 	capacity   int
 	defaultTTL time.Duration
 	mu         sync.RWMutex
-
-	cache map[string]*entry
-	order *list.List // Doubly linked list for LRU ordering
 }
 
 type entry struct {
-	key       string
-	value     []byte
 	expiresAt time.Time
 	element   *list.Element
+	key       string
+	value     []byte
 }
 
 // NewLRUCache creates a new LRU cache.

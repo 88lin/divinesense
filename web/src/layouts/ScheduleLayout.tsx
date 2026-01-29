@@ -4,8 +4,8 @@ import { Outlet } from "react-router-dom";
 import { ScheduleCalendar } from "@/components/AIChat/ScheduleCalendar";
 import { ScheduleSearchBar } from "@/components/AIChat/ScheduleSearchBar";
 import NavigationDrawer from "@/components/NavigationDrawer";
-import { Button } from "@/components/ui/button";
 import RouteHeaderImage from "@/components/RouteHeaderImage";
+import { Button } from "@/components/ui/button";
 import { useScheduleContext } from "@/contexts/ScheduleContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { useSchedulesOptimized } from "@/hooks/useScheduleQueries";
@@ -49,7 +49,14 @@ const ScheduleLayout = () => {
               className="flex-1 min-w-0"
               autoFocus
             />
-            <Button variant="ghost" size="icon" onClick={() => { setShowSearch(false); setHasSearchFilter(false); }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setShowSearch(false);
+                setHasSearchFilter(false);
+              }}
+            >
               <X className="w-5 h-5" />
             </Button>
           </div>

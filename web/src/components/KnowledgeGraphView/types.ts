@@ -1,4 +1,4 @@
-import { GraphNode, GraphEdge, GraphStats } from "@/types/proto/api/v1/ai_service_pb";
+import { GraphEdge, GraphNode, GraphStats } from "@/types/proto/api/v1/ai_service_pb";
 
 export interface GraphNodeData {
   id: string;
@@ -51,12 +51,7 @@ export const EDGE_TYPE_COLORS: Record<string, string> = {
   semantic: "#8b5cf6", // violet - semantic similarity
 };
 
-export function convertProtoToGraphData(
-  nodes: GraphNode[],
-  edges: GraphEdge[],
-  stats: GraphStats | null,
-  buildMs: bigint
-): GraphData {
+export function convertProtoToGraphData(nodes: GraphNode[], edges: GraphEdge[], stats: GraphStats | null, buildMs: bigint): GraphData {
   return {
     nodes: nodes.map((n) => ({
       id: n.id,

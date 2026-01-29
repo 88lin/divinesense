@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// TimeService defines the time parsing service interface.
-// Consumers: Team B (Assistant+Schedule)
+// Consumers: Team B (Assistant+Schedule).
 type TimeService interface {
 	// Normalize standardizes time expressions.
 	// Supports: "明天3点", "下午三点", "2026-1-28", "15:00"

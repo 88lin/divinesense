@@ -10,11 +10,11 @@ import (
 )
 
 type IdentityProvider struct {
-	ID               int32
 	Name             string
-	Type             storepb.IdentityProvider_Type
 	IdentifierFilter string
 	Config           string
+	ID               int32
+	Type             storepb.IdentityProvider_Type
 }
 
 type FindIdentityProvider struct {
@@ -22,10 +22,10 @@ type FindIdentityProvider struct {
 }
 
 type UpdateIdentityProvider struct {
-	ID               int32
 	Name             *string
 	IdentifierFilter *string
 	Config           *string
+	ID               int32
 }
 
 type DeleteIdentityProvider struct {
@@ -83,11 +83,11 @@ func (s *Store) GetIdentityProvider(ctx context.Context, find *FindIdentityProvi
 }
 
 type UpdateIdentityProviderV1 struct {
-	ID               int32
-	Type             storepb.IdentityProvider_Type
 	Name             *string
 	IdentifierFilter *string
 	Config           *storepb.IdentityProviderConfig
+	ID               int32
+	Type             storepb.IdentityProvider_Type
 }
 
 func (s *Store) UpdateIdentityProvider(ctx context.Context, update *UpdateIdentityProviderV1) (*storepb.IdentityProvider, error) {

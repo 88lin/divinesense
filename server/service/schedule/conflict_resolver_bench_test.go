@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/hrygo/divinesense/store"
+	"github.com/stretchr/testify/require"
 )
 
 // BenchmarkConflictResolver_Resolve_NoConflict benchmarks conflict resolution with no conflicts.

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// DefaultTimezone is used when no timezone is specified
+	// DefaultTimezone is used when no timezone is specified.
 	DefaultTimezone = "Asia/Shanghai"
 
 	// maxTimezoneCacheEntries limits the cache size to prevent unbounded growth.
@@ -22,29 +22,28 @@ const (
 	// for typical usage while preventing potential DoS via malicious inputs.
 	maxTimezoneCacheEntries = 100
 
-	// Audit log field length limits (for sensitive data sanitization)
+	// Audit log field length limits (for sensitive data sanitization).
 	maxTitleLengthForLog       = 50
 	maxDescriptionLengthForLog = 100
 
-	// Schedule time constants
-	// Business hours for scheduling: 6 AM to 10 PM (22:00)
-	businessHourStart = 6   // 6 AM - first schedulable hour
-	businessHourEnd   = 22  // 10 PM - end of schedulable hours
-	lastScheduleSlot   = 21  // 9 PM - last slot that can start (21:00-22:00)
+	// Business hours for scheduling: 6 AM to 10 PM (22:00).
+	businessHourStart = 6  // 6 AM - first schedulable hour
+	businessHourEnd   = 22 // 10 PM - end of schedulable hours
+	lastScheduleSlot  = 21 // 9 PM - last slot that can start (21:00-22:00)
 
-	// Duration constants
+	// Duration constants.
 	defaultSlotDurationSeconds = 3600 // 1 hour in seconds
-	minimumSlotDurationSeconds = 900   // 15 minutes in seconds
+	minimumSlotDurationSeconds = 900  // 15 minutes in seconds
 )
 
 // timezoneCache caches parsed timezone locations for performance.
 // Uses a simple LRU-style cache with bounded size.
 var timezoneCache struct {
+	locations  map[string]*time.Location
+	accessList []string
+	hits       int64
+	misses     int64
 	sync.RWMutex
-	locations map[string]*time.Location
-	accessList []string // Track access order for LRU eviction
-	hits       int64    // Cache hit counter for metrics
-	misses     int64    // Cache miss counter for metrics
 }
 
 // init initializes the timezone cache.
@@ -300,20 +299,20 @@ func (t *ScheduleQueryTool) Validate(ctx context.Context, inputJSON string) erro
 type ScheduleSummary struct {
 	UID      string `json:"uid"`
 	Title    string `json:"title"`
+	Location string `json:"location,omitempty"`
+	Status   string `json:"status"`
 	StartTs  int64  `json:"start_ts"`
 	EndTs    int64  `json:"end_ts"`
 	AllDay   bool   `json:"all_day"`
-	Location string `json:"location,omitempty"`
-	Status   string `json:"status"`
 }
 
 // ScheduleQueryToolResult represents the structured result of schedule query.
 type ScheduleQueryToolResult struct {
-	Schedules            []ScheduleSummary `json:"schedules"`
 	Query                string            `json:"query"`
-	Count                int               `json:"count"`
 	TimeRangeDescription string            `json:"time_range_description"`
 	QueryType            string            `json:"query_type"`
+	Schedules            []ScheduleSummary `json:"schedules"`
+	Count                int               `json:"count"`
 }
 
 // RunWithStructuredResult executes the tool and returns a structured result.
@@ -617,7 +616,7 @@ func (t *ScheduleAddTool) Run(ctx context.Context, inputJSON string) (string, er
 		// Use ConflictResolver to find best alternative
 		resolution, resErr := t.conflictResolver.Resolve(ctx, userID, startTime, time.Time{}, duration)
 		if resErr != nil {
-			return "", fmt.Errorf("failed to create schedule: %w (and failed to find alternatives: %v)", err, resErr)
+			return "", fmt.Errorf("failed to create schedule: %w (and failed to find alternatives: %w)", err, resErr)
 		}
 
 		// If auto-resolved slot available, retry with that time
@@ -884,8 +883,8 @@ func (t *FindFreeTimeTool) Run(ctx context.Context, inputJSON string) (string, e
 
 	// PRINCIPLE 3: Find free slots from 6:00 AM to 22:00 PM (excludes night hours 22:00-06:00)
 	// Uses businessHourStart and lastScheduleSlot constants
-	hourStart := businessHourStart  // 6 AM
-	hourEnd := lastScheduleSlot     // 9 PM (last slot starts at 21:00, ends at 22:00)
+	hourStart := businessHourStart // 6 AM
+	hourEnd := lastScheduleSlot    // 9 PM (last slot starts at 21:00, ends at 22:00)
 
 	// Check each hour slot
 	for hour := hourStart; hour <= hourEnd; hour++ {
@@ -1001,13 +1000,13 @@ func (t *ScheduleUpdateTool) Run(ctx context.Context, inputJSON string) (string,
 
 	// Parse input
 	var input struct {
-		ID          int32  `json:"id,omitempty"`
 		Date        string `json:"date,omitempty"`
 		Title       string `json:"title,omitempty"`
 		StartTime   string `json:"start_time,omitempty"`
 		EndTime     string `json:"end_time,omitempty"`
 		Description string `json:"description,omitempty"`
 		Location    string `json:"location,omitempty"`
+		ID          int32  `json:"id,omitempty"`
 	}
 
 	if err := json.Unmarshal([]byte(normalizedJSON), &input); err != nil {

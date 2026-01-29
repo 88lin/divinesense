@@ -32,8 +32,8 @@ func NewLLMClassifier(client LLMClient) *LLMClassifier {
 // LLMClassifyResult contains the result of LLM classification.
 type LLMClassifyResult struct {
 	Intent     Intent
-	Confidence float32
 	Reasoning  string
+	Confidence float32
 }
 
 // ClassificationPrompt is the prompt template for intent classification.
@@ -106,8 +106,8 @@ func (c *LLMClassifier) Classify(ctx context.Context, input string) (*LLMClassif
 // llmResponse is the expected JSON structure from LLM.
 type llmResponse struct {
 	Intent     string  `json:"intent"`
-	Confidence float64 `json:"confidence"`
 	Reasoning  string  `json:"reasoning"`
+	Confidence float64 `json:"confidence"`
 }
 
 // parseResponse parses the LLM JSON response.

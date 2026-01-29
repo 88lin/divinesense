@@ -7,14 +7,14 @@ import (
 
 // GraphNode represents a node in the knowledge graph.
 type GraphNode struct {
-	ID         string    `json:"id"`
-	Label      string    `json:"label"` // memo title
-	Type       string    `json:"type"`  // "memo" or "tag"
-	Tags       []string  `json:"tags,omitempty"`
-	Importance float64   `json:"importance"` // PageRank score
-	Cluster    int       `json:"cluster"`    // community ID
 	CreatedAt  time.Time `json:"created_at"`
-	X          float64   `json:"x,omitempty"` // position for visualization
+	ID         string    `json:"id"`
+	Label      string    `json:"label"`
+	Type       string    `json:"type"`
+	Tags       []string  `json:"tags,omitempty"`
+	Importance float64   `json:"importance"`
+	Cluster    int       `json:"cluster"`
+	X          float64   `json:"x,omitempty"`
 	Y          float64   `json:"y,omitempty"`
 }
 

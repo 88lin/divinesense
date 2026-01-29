@@ -57,14 +57,13 @@
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(
-    45deg,
-    var(--geek-primary-dim),
-    var(--geek-cyan),
-    var(--geek-primary-dim)
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  background: linear-gradient(45deg, var(--geek-primary-dim), var(--geek-cyan), var(--geek-primary-dim));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0.7;
@@ -72,7 +71,9 @@
 }
 
 .geek-mode .geek-glow-pulse::before {
-  animation: geek-rotate 3s linear infinite, geek-pulse 2s ease-in-out infinite;
+  animation:
+    geek-rotate 3s linear infinite,
+    geek-pulse 2s ease-in-out infinite;
 }
 
 /* ============================================================
@@ -134,12 +135,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--geek-glow),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--geek-glow), transparent);
   transition: left 0.5s ease;
 }
 
@@ -166,13 +162,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    var(--geek-scanline-color) 2px,
-    var(--geek-scanline-color) 4px
-  );
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--geek-scanline-color) 2px, var(--geek-scanline-color) 4px);
   pointer-events: none;
   opacity: 0.3;
 }
@@ -215,43 +205,71 @@
    Geek Mode Animations
    ============================================================ */
 @keyframes geek-blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes geek-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes geek-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes geek-scan {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
 }
 
 @keyframes geek-flicker {
-  0%, 100% { opacity: 1; }
-  41% { opacity: 1; }
-  42% { opacity: 0.8; }
-  43% { opacity: 1; }
-  45% { opacity: 0.3; }
-  46% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  41% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 0.8;
+  }
+  43% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.3;
+  }
+  46% {
+    opacity: 1;
+  }
 }
 
 /* ============================================================
    Geek Mode Header Special Style
    ============================================================ */
 .geek-mode .geek-header {
-  background: linear-gradient(
-    180deg,
-    var(--geek-bg-dim) 0%,
-    var(--geek-bg) 100%
-  );
+  background: linear-gradient(180deg, var(--geek-bg-dim) 0%, var(--geek-bg) 100%);
   border-bottom: 1px solid var(--geek-primary-dim);
   position: relative;
 }
@@ -263,12 +281,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--geek-primary),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--geek-primary), transparent);
   opacity: 0.5;
 }
 

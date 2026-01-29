@@ -1,15 +1,15 @@
 package store
 
 type AIConversation struct {
-	ID        int32
 	UID       string
-	CreatorID int32
 	Title     string
 	ParrotID  string
-	Pinned    bool
+	RowStatus RowStatus
 	CreatedTs int64
 	UpdatedTs int64
-	RowStatus RowStatus
+	ID        int32
+	CreatorID int32
+	Pinned    bool
 }
 
 type FindAIConversation struct {
@@ -21,12 +21,12 @@ type FindAIConversation struct {
 }
 
 type UpdateAIConversation struct {
-	ID        int32
 	Title     *string
 	ParrotID  *string
 	Pinned    *bool
 	RowStatus *RowStatus
 	UpdatedTs *int64
+	ID        int32
 }
 
 type DeleteAIConversation struct {
@@ -50,14 +50,14 @@ const (
 )
 
 type AIMessage struct {
-	ID             int32
 	UID            string
-	ConversationID int32
 	Type           AIMessageType
 	Role           AIMessageRole
 	Content        string
-	Metadata       string // JSON string
+	Metadata       string
 	CreatedTs      int64
+	ID             int32
+	ConversationID int32
 }
 
 type FindAIMessage struct {

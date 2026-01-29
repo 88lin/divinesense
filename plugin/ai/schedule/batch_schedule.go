@@ -13,23 +13,23 @@ import (
 
 // BatchCreateRequest represents a batch schedule creation request.
 type BatchCreateRequest struct {
-	Title      string          `json:"title"`
 	StartTime  time.Time       `json:"start_time"`
-	Duration   int             `json:"duration"` // minutes
-	Location   string          `json:"location,omitempty"`
 	Recurrence *RecurrenceRule `json:"recurrence"`
-	EndDate    *time.Time      `json:"end_date,omitempty"` // When to stop generating
-	Count      int             `json:"count,omitempty"`    // Max number of instances
+	EndDate    *time.Time      `json:"end_date,omitempty"`
+	Title      string          `json:"title"`
+	Location   string          `json:"location,omitempty"`
+	Duration   int             `json:"duration"`
+	Count      int             `json:"count,omitempty"`
 }
 
 // BatchCreateResult represents the result of batch schedule parsing.
 type BatchCreateResult struct {
-	CanBatchCreate bool                `json:"can_batch_create"`
 	Request        *BatchCreateRequest `json:"request,omitempty"`
 	Preview        []*ScheduleRequest  `json:"preview,omitempty"`
-	TotalCount     int                 `json:"total_count"`
 	MissingFields  []string            `json:"missing_fields,omitempty"`
+	TotalCount     int                 `json:"total_count"`
 	Confidence     float64             `json:"confidence"`
+	CanBatchCreate bool                `json:"can_batch_create"`
 }
 
 // BatchScheduleParser parses user input for batch schedule creation.
@@ -44,7 +44,7 @@ func NewBatchScheduleParser(timeSvc *aitime.Service) *BatchScheduleParser {
 	}
 }
 
-// recurrence patterns for natural language
+// recurrence patterns for natural language.
 var recurrencePatterns = []struct {
 	pattern *regexp.Regexp
 	handler func(matches []string) *RecurrenceRule
@@ -231,7 +231,7 @@ func (p *BatchScheduleParser) simpleTimeExtract(input string) (time.Time, error)
 	return time.Time{}, fmt.Errorf("no time pattern found")
 }
 
-// Batch title removal patterns
+// Batch title removal patterns.
 var batchTitleRemovalPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`每天|每日|每个?工作日`),
 	regexp.MustCompile(`每(周|星期)[一二三四五六日天]+`),

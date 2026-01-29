@@ -16,43 +16,31 @@ import (
 	"github.com/hrygo/divinesense/store"
 )
 
-// Global AI rate limiter
+// Global AI rate limiter.
 var globalAILimiter = middleware.NewRateLimiter()
 
-// Default history retention count for router memory service
+// Default history retention count for router memory service.
 const DefaultHistoryRetention = 10
 
 // AIService provides AI-powered features for memo management.
 type AIService struct {
 	v1pb.UnimplementedAIServiceServer
-
-	Store *store.Store
-
-	EmbeddingService pluginai.EmbeddingService
-	EmbeddingModel   string // embedding model name for duplicate detection
-	RerankerService  pluginai.RerankerService
-	LLMService       pluginai.LLMService
-
-	// Adaptive retriever for RAG operations
-	AdaptiveRetriever *retrieval.AdaptiveRetriever
-
-	// Intent classifier configuration for chat routing
-	IntentClassifierConfig *pluginai.IntentClassifierConfig
-
-	// Router service for three-layer intent classification (lazily initialized)
-	routerServiceMu sync.RWMutex
-	routerService   *router.Service
-
-	// Chat event bus and conversation service (lazily initialized)
-	chatEventBusMu      sync.RWMutex
-	chatEventBus        *aichat.EventBus
-	conversationService *aichat.ConversationService
-
-	// Context builder and summarizer (lazily initialized)
-	contextBuilderMu         sync.RWMutex
+	RerankerService          pluginai.RerankerService
+	EmbeddingService         pluginai.EmbeddingService
+	LLMService               pluginai.LLMService
+	conversationService      *aichat.ConversationService
+	AdaptiveRetriever        *retrieval.AdaptiveRetriever
+	IntentClassifierConfig   *pluginai.IntentClassifierConfig
+	routerService            *router.Service
+	chatEventBus             *aichat.EventBus
+	Store                    *store.Store
 	contextBuilder           *aichat.ContextBuilder
-	conversationSummarizerMu sync.RWMutex
 	conversationSummarizer   *aichat.ConversationSummarizer
+	EmbeddingModel           string
+	routerServiceMu          sync.RWMutex
+	chatEventBusMu           sync.RWMutex
+	contextBuilderMu         sync.RWMutex
+	conversationSummarizerMu sync.RWMutex
 }
 
 // IsEnabled returns whether AI features are enabled.

@@ -20,11 +20,11 @@ func main() {
 	// 1. 加载配置
 	log.Println("加载配置...")
 	profile := &profile.Profile{
-		Mode:    "dev",
-		Driver:  "postgres",
-		DSN:     "postgres://memos:memos@localhost:25432/memos?sslmode=disable",
-		Data:    "./memos",
-		Port:    28081,
+		Mode:   "dev",
+		Driver: "postgres",
+		DSN:    "postgres://memos:memos@localhost:25432/memos?sslmode=disable",
+		Data:   "./memos",
+		Port:   28081,
 	}
 	profile.FromEnv()
 
@@ -48,7 +48,7 @@ func main() {
 	llmCfg := ai.LLMConfig{
 		Provider: profile.AILLMProvider,
 		APIKey:   profile.AIDeepSeekAPIKey,
-		BaseURL: profile.AIDeepSeekBaseURL,
+		BaseURL:  profile.AIDeepSeekBaseURL,
 		Model:    profile.AILLMModel,
 	}
 
