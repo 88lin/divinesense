@@ -29,8 +29,8 @@ export function MobileGeekModeToggle({
     <button
       onClick={() => onToggle(!enabled)}
       className={cn(
-        // Base styles
-        "fixed bottom-6 right-6 z-50",
+        // Base styles - positioned on left to avoid overlapping input
+        "fixed bottom-6 left-6 z-50",
         "w-14 h-14 rounded-full",
         "flex items-center justify-center",
         "transition-all duration-300",

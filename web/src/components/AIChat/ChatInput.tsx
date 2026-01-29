@@ -3,6 +3,7 @@ import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { GeekModeToggle } from "./GeekModeToggle";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
@@ -12,6 +13,7 @@ interface ChatInputProps {
   onNewChat?: () => void;
   onClearContext?: () => void;
   onClearChat?: () => void;
+  onGeekModeToggle?: (enabled: boolean) => void;
   disabled?: boolean;
   isTyping?: boolean;
   placeholder?: string;
@@ -28,6 +30,7 @@ export function ChatInput({
   onNewChat,
   onClearContext,
   onClearChat,
+  onGeekModeToggle,
   disabled = false,
   isTyping = false,
   placeholder,
@@ -82,10 +85,10 @@ export function ChatInput({
     }
   }, [value]);
 
-  const defaultPlaceholder = placeholder || t("ai.parrot.chat-default-placeholder");
-
-  // Geek mode placeholder
-  const geekPlaceholder = geekMode ? "$ " + defaultPlaceholder : defaultPlaceholder;
+  // Use geek-specific placeholder in geek mode, otherwise use default
+  const placeholderText = geekMode
+    ? t("ai.parrot.geek-chat-placeholder")
+    : (placeholder || t("ai.parrot.chat-default-placeholder"));
 
   return (
     <div
@@ -100,13 +103,13 @@ export function ChatInput({
         {showQuickActions && quickActions}
 
         {/* Toolbar - 工具栏 */}
-        {(onNewChat || onClearContext || onClearChat) && (
+        {(onNewChat || onClearContext || onClearChat || onGeekModeToggle) && (
           <div className="flex items-center gap-1 mb-2">
             {onNewChat && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onNewChat}
+                onClick={() => onNewChat && onNewChat()}
                 aria-label={t("ai.aichat.sidebar.new-chat")}
                 className="group/btn h-7 w-7 hover:w-auto px-0 hover:px-2 text-xs text-primary hover:text-primary hover:bg-accent transition-all overflow-hidden"
                 title="⌘N"
@@ -122,7 +125,7 @@ export function ChatInput({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onClearContext}
+                onClick={() => onClearContext && onClearContext()}
                 aria-label={t("ai.clear-context")}
                 className="group/btn h-7 w-7 hover:w-auto px-0 hover:px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-all overflow-hidden"
                 title="⌘K"
@@ -138,7 +141,7 @@ export function ChatInput({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onClearChat}
+                onClick={() => onClearChat && onClearChat()}
                 aria-label={t("ai.clear-chat")}
                 className="group/btn h-7 w-7 hover:w-auto px-0 hover:px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all overflow-hidden"
                 title="⌘L"
@@ -149,6 +152,16 @@ export function ChatInput({
                   <kbd className="ml-1.5 px-1 py-0.5 text-[10px] bg-destructive/20 rounded">⌘L</kbd>
                 </span>
               </Button>
+            )}
+            {/* Spacer to push geek mode toggle to the right */}
+            <div className="flex-1" />
+            {/* Geek Mode Toggle - always shown in toolbar on all screen sizes */}
+            {onGeekModeToggle && (
+              <GeekModeToggle
+                enabled={geekMode}
+                onToggle={onGeekModeToggle}
+                variant="toolbar"
+              />
             )}
           </div>
         )}
@@ -171,7 +184,7 @@ export function ChatInput({
               handleInput(e);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={geekPlaceholder}
+            placeholder={placeholderText}
             disabled={disabled || isTyping}
             className={cn(
               "flex-1 min-h-[44px] max-h-[120px] bg-transparent border-0 outline-none resize-none text-sm leading-relaxed",
@@ -190,9 +203,9 @@ export function ChatInput({
               // Geek mode styles
               geekMode && "geek-btn",
             )}
-            onClick={onSend}
+            onClick={() => onSend()}
             disabled={!value.trim() || isTyping || disabled}
-            aria-label="Send message"
+            aria-label={t("ai.send-shortcut")}
           >
             {geekMode && value.trim() ? (
               <Terminal className="w-5 h-5" />

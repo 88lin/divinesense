@@ -388,4 +388,5 @@ var (
 	_ ParrotAgent = (*MemoParrot)(nil)       // 灰灰 (Memo)
 	_ ParrotAgent = (*AmazingParrot)(nil)    // 惊奇 (Amazing)
 	_ ParrotAgent = (*ScheduleParrotV2)(nil) // 金刚 (Schedule V2)
+	_ ParrotAgent = (*GeekParrot)(nil)       // 极客 (Geek Mode)
 )

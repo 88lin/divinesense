@@ -40,18 +40,24 @@
 
 ### 🦜 AI 智能代理
 
-三位各具专长的「鹦鹉」代理，协同处理你的任务：
+四位各具专长的「鹦鹉」代理，协同处理你的任务：
 
 | 代理  | 名称     | 擅长     | 示例                            |
 | :---: | :------- | :------- | :------------------------------ |
 |   🦜   | **灰灰** | 知识检索 | "我写过关于 React 的什么内容？" |
 |   🦜   | **金刚** | 日程管理 | "帮我安排明天下午3点的会议"     |
 |   🦜   | **惊奇** | 综合助理 | "总结我这周的工作和待办"        |
+|   🦜   | **极客** | 代码执行 | "重构这段代码"（Geek Mode 专用）|
 
 **智能路由**：
 - 规则匹配（0ms）—— 常见模式瞬间响应
 - 历史感知（~10ms）—— 结合对话上下文
 - LLM 降级（~400ms）—— 复杂语义理解
+
+**Geek Mode（极客模式）**：
+- 开启后，所有消息直接路由到 **极客鹦鹉**
+- 零 LLM 延迟，直接调用 Claude Code CLI
+- 适用于代码重构、调试、技术分析场景
 
 **会话记忆**：
 - 跨会话上下文持续
@@ -175,11 +181,13 @@ curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyu
 
 ```
 ChatRouter (意图分类)
+    ├── GeekMode? ─Yes→ GeekParrot (极客) - Claude Code CLI 直接执行
     ├── 规则引擎 (0ms) - 关键词、模式匹配
     ├── 历史感知 (~10ms) - 对话上下文
     └── LLM 降级 (~400ms) - 语义理解
 
 路由到：
+    ├── GeekParrot (极客) - Claude Code CLI 通信层（零 LLM）
     ├── MemoParrot (灰灰) - memo_search 工具
     ├── ScheduleParrotV2 (金刚) - schedule_add/query/update/find_free_time
     └── AmazingParrot (惊奇) - 并发多工具编排

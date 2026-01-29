@@ -7,7 +7,6 @@ import { AmazingInsightCard } from "@/components/AIChat/AmazingInsightCard";
 import { ChatHeader } from "@/components/AIChat/ChatHeader";
 import { ChatInput } from "@/components/AIChat/ChatInput";
 import { ChatMessages } from "@/components/AIChat/ChatMessages";
-import { MobileGeekModeToggle } from "@/components/AIChat/MobileGeekModeToggle";
 import { ParrotHub } from "@/components/AIChat/ParrotHub";
 import { PartnerGreeting } from "@/components/AIChat/PartnerGreeting";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -127,18 +126,11 @@ function UnifiedChatView({
         onNewChat={onNewChat}
         onClearContext={onClearContext}
         onClearChat={() => setClearDialogOpen(true)}
+        onGeekModeToggle={onGeekModeToggle}
         disabled={isTyping}
         isTyping={isTyping}
         geekMode={geekMode}
       />
-
-      {/* Mobile Geek Mode Toggle - Floating Action Button */}
-      {!md && (
-        <MobileGeekModeToggle
-          enabled={geekMode}
-          onToggle={onGeekModeToggle}
-        />
-      )}
 
       {/* Clear Chat Confirmation Dialog */}
       <ConfirmDialog
@@ -284,8 +276,10 @@ const AIChat = () => {
           {
             onThinking: (msg) => {
               if (lastAssistantMessageIdRef.current) {
+                // Handle i18n keys from backend (e.g., "ai.geek_mode.thinking")
+                const content = msg.startsWith("ai.") ? t(msg) : msg;
                 updateMessage(conversationId, lastAssistantMessageIdRef.current, {
-                  content: msg,
+                  content,
                 });
               }
             },

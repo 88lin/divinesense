@@ -75,19 +75,7 @@ func NewChatRouter(cfg ChatRouterConfig, routerSvc *router.Service) *ChatRouter 
 
 // Route determines the appropriate Parrot agent for the user input.
 // Uses hybrid approach: rule matching (0ms) → history matching (~10ms) → LLM classification (~400ms) if uncertain.
-// If geekMode is enabled and the input is code-related, routes to Amazing with claude_code tool available.
-func (r *ChatRouter) Route(ctx context.Context, input string, geekMode bool) (*ChatRouteResult, error) {
-	// Geek Mode: If enabled and input is code-related, route to Amazing
-	if geekMode && r.isCodeRelated(input) {
-		slog.Info("Geek mode routing to Amazing",
-			"input", truncateString(input, 30))
-		return &ChatRouteResult{
-			Route:      RouteTypeAmazing,
-			Confidence: 0.90,
-			Method:     "geek_mode",
-		}, nil
-	}
-
+func (r *ChatRouter) Route(ctx context.Context, input string) (*ChatRouteResult, error) {
 	// Step 1: Try router.Service (three-layer routing) if available
 	if r.routerService != nil {
 		intent, confidence, err := r.routerService.ClassifyIntent(ctx, input)
@@ -340,22 +328,4 @@ func mapIntentToRouteType(intent router.Intent) ChatRouteType {
 	default:
 		return RouteTypeAmazing
 	}
-}
-
-// isCodeRelated checks if the input contains code-related keywords.
-// Used for Geek Mode routing to determine if Claude Code CLI should be used.
-func (r *ChatRouter) isCodeRelated(input string) bool {
-	lower := strings.ToLower(input)
-	codeKeywords := []string{
-		"代码", "code", "函数", "function", "bug", "修复", "fix",
-		"测试", "test", "重构", "refactor", "部署", "deploy",
-		"编程", "program", "开发", "develop", "调试", "debug",
-		"git", "commit", "push", "pull", "merge", "分支", "branch",
-	}
-	for _, kw := range codeKeywords {
-		if strings.Contains(lower, kw) {
-			return true
-		}
-	}
-	return false
 }

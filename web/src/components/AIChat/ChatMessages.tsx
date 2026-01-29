@@ -267,7 +267,7 @@ function MessageBubble({
         {/* Assistant Actions Header */}
         {role === "assistant" && isLastAssistant && onRegenerate && onDelete && (
           <div className="flex items-center gap-2 mb-0.5 opacity-0 group-row:opacity-100 transition-opacity">
-            <MessageActions onCopy={handleCopy} onRegenerate={onRegenerate} onDelete={onDelete} />
+            <MessageActions onRegenerate={onRegenerate} onDelete={onDelete} />
           </div>
         )}
 
@@ -320,7 +320,13 @@ function MessageBubble({
                         pre: ({ node, ...props }) => <CodeBlock {...props} />,
                         code: ({ className, children, inline, ...props }: CodeComponentProps) => {
                           return inline ? (
-                            <code className={cn("px-1.5 py-0.5 rounded-md bg-muted text-xs", className)} {...props}>
+                            <code
+                              className={cn(
+                                "px-1.5 py-0.5 rounded-md bg-muted text-xs break-all whitespace-pre-wrap",
+                                className,
+                              )}
+                              {...props}
+                            >
                               {children}
                             </code>
                           ) : (

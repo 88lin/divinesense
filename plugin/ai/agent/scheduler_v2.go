@@ -222,7 +222,7 @@ func (a *SchedulerAgentV2) ExecuteWithCallback(ctx context.Context, userInput st
 	}
 
 	// Wrap the callback to inject UI events
-	uiCallback := a.wrapUICallback(ctx, callback)
+	uiCallback := a.wrapUICallback(callback)
 
 	// Run the agent
 	// TODO: For IntentBatchCreate, use Plan-Execute mode instead of ReAct
@@ -258,7 +258,7 @@ func (a *SchedulerAgentV2) intentToHint(intent TaskIntent) string {
 // This enables generative UI by emitting structured UI events when tools are called.
 // Creates a detached context with timeout for async callback operations to prevent
 // issues when the original request context is cancelled before the callback fires.
-func (a *SchedulerAgentV2) wrapUICallback(ctx context.Context, originalCallback func(event string, data string)) func(event string, data string) {
+func (a *SchedulerAgentV2) wrapUICallback(originalCallback func(event string, data string)) func(event string, data string) {
 	var pendingSchedule *UIScheduleSuggestionData
 
 	return func(event string, data string) {
@@ -371,10 +371,10 @@ func (a *SchedulerAgentV2) buildConflictResolutionData(toolResult string, pendin
 	if idx == -1 {
 		// Fallback: return basic conflict data without suggestions
 		return &UIConflictResolutionData{
-			NewSchedule:        *pending,
+			NewSchedule:          *pending,
 			ConflictingSchedules: []UIConflictSchedule{},
-			SuggestedSlots:     []UITimeSlotData{},
-			Actions:            []string{"override", "cancel"},
+			SuggestedSlots:       []UITimeSlotData{},
+			Actions:              []string{"override", "cancel"},
 		}
 	}
 
@@ -384,14 +384,14 @@ func (a *SchedulerAgentV2) buildConflictResolutionData(toolResult string, pendin
 	// Parse the conflict error JSON
 	var conflictErr struct {
 		Conflicts []struct {
-			ID        int64  `json:"id"`
-			Title     string `json:"title"`
-			StartTs   int64  `json:"start_ts"`
-			EndTs     int64  `json:"end_ts"`
+			ID      int64  `json:"id"`
+			Title   string `json:"title"`
+			StartTs int64  `json:"start_ts"`
+			EndTs   int64  `json:"end_ts"`
 		} `json:"conflicts"`
 		Alternatives []struct {
-			Start *time.Time `json:"start"`
-			End   *time.Time `json:"end"`
+			Start  *time.Time `json:"start"`
+			End    *time.Time `json:"end"`
 			Reason string     `json:"reason"`
 		} `json:"alternatives"`
 		OriginalStart *time.Time `json:"original_start"`
@@ -401,10 +401,10 @@ func (a *SchedulerAgentV2) buildConflictResolutionData(toolResult string, pendin
 		slog.Debug("failed to parse conflict error JSON", "error", err, "json_part", jsonPart)
 		// Fallback: return basic conflict data
 		return &UIConflictResolutionData{
-			NewSchedule:        *pending,
+			NewSchedule:          *pending,
 			ConflictingSchedules: []UIConflictSchedule{},
-			SuggestedSlots:     []UITimeSlotData{},
-			Actions:            []string{"override", "cancel"},
+			SuggestedSlots:       []UITimeSlotData{},
+			Actions:              []string{"override", "cancel"},
 		}
 	}
 
@@ -423,10 +423,10 @@ func (a *SchedulerAgentV2) buildConflictResolutionData(toolResult string, pendin
 	suggestedSlots := make([]UITimeSlotData, 0, len(conflictErr.Alternatives))
 	for _, alt := range conflictErr.Alternatives {
 		suggestedSlots = append(suggestedSlots, UITimeSlotData{
-			Label:    alt.Start.In(a.timezoneLoc).Format("15:04") + "-" + alt.End.In(a.timezoneLoc).Format("15:04"),
-			StartTs:  alt.Start.Unix(),
-			EndTs:    alt.End.Unix(),
-			Reason:   alt.Reason,
+			Label:   alt.Start.In(a.timezoneLoc).Format("15:04") + "-" + alt.End.In(a.timezoneLoc).Format("15:04"),
+			StartTs: alt.Start.Unix(),
+			EndTs:   alt.End.Unix(),
+			Reason:  alt.Reason,
 		})
 	}
 
@@ -437,10 +437,10 @@ func (a *SchedulerAgentV2) buildConflictResolutionData(toolResult string, pendin
 		firstAlt := conflictErr.Alternatives[0]
 		if pending.StartTs == firstAlt.Start.Unix() {
 			autoResolved = &UITimeSlotData{
-				Label:    firstAlt.Start.In(a.timezoneLoc).Format("15:04") + "-" + firstAlt.End.In(a.timezoneLoc).Format("15:04"),
-				StartTs:  firstAlt.Start.Unix(),
-				EndTs:    firstAlt.End.Unix(),
-				Reason:   firstAlt.Reason,
+				Label:   firstAlt.Start.In(a.timezoneLoc).Format("15:04") + "-" + firstAlt.End.In(a.timezoneLoc).Format("15:04"),
+				StartTs: firstAlt.Start.Unix(),
+				EndTs:   firstAlt.End.Unix(),
+				Reason:  firstAlt.Reason,
 			}
 		}
 	}
@@ -448,9 +448,9 @@ func (a *SchedulerAgentV2) buildConflictResolutionData(toolResult string, pendin
 	return &UIConflictResolutionData{
 		NewSchedule:          *pending,
 		ConflictingSchedules: conflictingSchedules,
-		SuggestedSlots:        suggestedSlots,
-		Actions:               []string{"reschedule", "override", "cancel"},
-		AutoResolved:          autoResolved,
+		SuggestedSlots:       suggestedSlots,
+		Actions:              []string{"reschedule", "override", "cancel"},
+		AutoResolved:         autoResolved,
 	}
 }
 

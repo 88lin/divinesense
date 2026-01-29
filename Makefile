@@ -191,7 +191,7 @@ db-connect: ## 连接 PostgreSQL shell
 db-reset: ## 重置数据库 schema
 	@echo "Resetting database schema..."
 	@docker exec $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-	@go run ./$(BACKEND_CMD) --mode dev --driver postgres --dsn "$(DIVINESENSE_DSN)" --migrate
+	@go run ./$(BACKEND_CMD) --mode dev --driver postgres --dsn "$(DIVINESENSE_DSN)"
 
 db-vector: ## 验证 pgvector 扩展
 	@docker exec $(POSTGRES_CONTAINER) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB) -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"

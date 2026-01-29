@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,7 +29,6 @@ type AmazingParrot struct {
 	scheduleAddTool    *tools.ScheduleAddTool
 	findFreeTimeTool   *tools.FindFreeTimeTool
 	scheduleUpdateTool *tools.ScheduleUpdateTool
-	claudeCodeTool     *tools.ClaudeCodeTool // Optional: Claude Code CLI integration
 }
 
 // retrievalPlan represents the plan for concurrent retrieval.
@@ -45,8 +43,6 @@ type retrievalPlan struct {
 	freeTimeDate        string
 	needsScheduleUpdate bool
 	needsDirectAnswer   bool // If true, skip retrieval and answer directly
-	needsClaudeCode     bool // If true, use Claude Code CLI for code-related tasks
-	claudeCodePrompt    string // The prompt to send to Claude Code
 }
 
 // NewAmazingParrot creates a new amazing parrot agent.
@@ -82,18 +78,6 @@ func NewAmazingParrot(
 	findFreeTimeTool := tools.NewFindFreeTimeTool(scheduleService, userIDGetter)
 	scheduleUpdateTool := tools.NewScheduleUpdateTool(scheduleService, userIDGetter)
 
-	// Initialize Claude Code Tool (optional, may be nil if disabled)
-	var claudeCodeTool *tools.ClaudeCodeTool
-	// Check if Claude Code feature is enabled via environment variable
-	enabled := os.Getenv("DIVINESENSE_CLAUDE_CODE_ENABLED") == "true"
-	if enabled {
-		claudeCodeTool, err = tools.NewClaudeCodeTool(enabled, "", userIDGetter)
-		if err != nil {
-			slog.Warn("Failed to create Claude Code tool, geek mode will be unavailable",
-				"error", err)
-		}
-	}
-
 	return &AmazingParrot{
 		llm:                llm,
 		cache:              NewLRUCache(DefaultCacheEntries, DefaultCacheTTL),
@@ -103,7 +87,6 @@ func NewAmazingParrot(
 		scheduleAddTool:    scheduleAddTool,
 		findFreeTimeTool:   findFreeTimeTool,
 		scheduleUpdateTool: scheduleUpdateTool,
-		claudeCodeTool:     claudeCodeTool,
 	}, nil
 }
 
@@ -178,7 +161,6 @@ func (p *AmazingParrot) ExecuteWithCallback(
 		"needs_schedule_add", plan.needsScheduleAdd,
 		"needs_schedule_update", plan.needsScheduleUpdate,
 		"needs_direct_answer", plan.needsDirectAnswer,
-		"needs_claude_code", plan.needsClaudeCode,
 	)
 
 	// Step 3: Execute concurrent retrieval (skip for direct answer/casual chat)
@@ -479,31 +461,6 @@ func (p *AmazingParrot) executeConcurrentRetrieval(ctx context.Context, plan *re
 		}()
 	}
 
-	// Execute Claude Code (if enabled and code-related input detected)
-	// Note: This runs synchronously (not concurrent) because Claude Code CLI manages its own execution
-	if plan.needsClaudeCode && p.claudeCodeTool != nil && p.claudeCodeTool.IsEnabled() {
-		safeCallback(EventTypeToolUse, "正在使用 Claude Code CLI 处理代码任务...")
-
-		input := fmt.Sprintf(`{"prompt": "%s"}`, plan.claudeCodePrompt)
-		result, err := p.claudeCodeTool.Run(ctx, input)
-
-		mu.Lock()
-		defer mu.Unlock()
-
-		if err != nil {
-			results["claude_code_error"] = err.Error()
-			atomic.AddInt32(&errorCount, 1)
-			if callback != nil {
-				callback(EventTypeError, fmt.Sprintf("Claude Code 失败: %v", err))
-			}
-		} else {
-			results["claude_code"] = result
-			if callback != nil {
-				callback(EventTypeToolResult, result)
-			}
-		}
-	}
-
 	// Wait for all retrievals with timeout protection
 	// Even with context timeout, add explicit WaitGroup timeout to prevent
 	// permanent blocking if a goroutine ignores context
@@ -538,9 +495,6 @@ func (p *AmazingParrot) executeConcurrentRetrieval(ctx context.Context, plan *re
 			expectedResults++
 		}
 		if plan.needsFreeTime {
-			expectedResults++
-		}
-		if plan.needsClaudeCode {
 			expectedResults++
 		}
 
@@ -626,19 +580,6 @@ func (p *AmazingParrot) synthesizeAnswer(ctx context.Context, userInput string, 
 func (p *AmazingParrot) parseRetrievalPlan(response string, userInput string, now time.Time) *retrievalPlan {
 	plan := &retrievalPlan{
 		needsDirectAnswer: false,
-	}
-
-	// Check if this is a code-related input (Geek Mode feature)
-	// This takes precedence over other retrieval types
-	if p.isCodeRelatedInput(userInput) {
-		plan.needsClaudeCode = true
-		plan.claudeCodePrompt = userInput
-		// For code-related tasks, we skip memo/schedule retrieval
-		plan.needsDirectAnswer = false
-		slog.Info("amazing_parrot: detected code-related input, using Claude Code",
-			"user_input_preview", truncateString(userInput, 50),
-		)
-		return plan
 	}
 
 	lines := strings.Split(response, "\n")
@@ -730,31 +671,6 @@ func (p *AmazingParrot) isCasualChatInput(input string) bool {
 	return len(input) < 100
 }
 
-// isCodeRelatedInput detects if the input is code-related and should use Claude Code CLI.
-// This is used for Geek Mode feature routing.
-func (p *AmazingParrot) isCodeRelatedInput(input string) bool {
-	// Claude Code tool must be enabled
-	if p.claudeCodeTool == nil || !p.claudeCodeTool.IsEnabled() {
-		return false
-	}
-
-	lower := strings.ToLower(input)
-	codeKeywords := []string{
-		"代码", "code", "函数", "function", "bug", "修复", "fix",
-		"测试", "test", "重构", "refactor", "部署", "deploy",
-		"编程", "program", "开发", "develop", "调试", "debug",
-		"git", "commit", "push", "pull", "merge", "分支", "branch",
-		"实现", "implement", "接口", "api", "数据库", "database",
-		"查询", "query", "算法", "algorithm", "优化", "optimize",
-	}
-	for _, kw := range codeKeywords {
-		if strings.Contains(lower, kw) {
-			return true
-		}
-	}
-	return false
-}
-
 // buildPlanningPrompt builds the prompt for retrieval planning.
 // Optimized for clarity and efficiency: minimal tokens, direct output format.
 // Uses PromptRegistry for centralized prompt management.
@@ -784,15 +700,6 @@ func (p *AmazingParrot) buildSynthesisPrompt(results map[string]string) string {
 			contextBuilder.WriteString("\n")
 		}
 		contextBuilder.WriteString(freeTimeResult)
-	}
-
-	// Handle Claude Code results (Geek Mode)
-	if claudeCodeResult, ok := results["claude_code"]; ok {
-		if contextBuilder.Len() > 0 {
-			contextBuilder.WriteString("\n")
-		}
-		// Add Claude Code output as context
-		contextBuilder.WriteString(fmt.Sprintf("[Claude Code Output]:\n%s", claudeCodeResult))
 	}
 
 	return GetAmazingSynthesisPrompt(contextBuilder.String())

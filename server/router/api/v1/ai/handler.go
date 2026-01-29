@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -45,6 +47,12 @@ func (h *ParrotHandler) SetChatRouter(router *agentpkg.ChatRouter) {
 
 // Handle implements Handler interface for parrot agent requests.
 func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream ChatStream) error {
+	// PRIORITY CHECK: GeekMode bypasses ALL normal routing
+	// 优先检查：极客模式绕过所有常规路由
+	if req.GeekMode {
+		return h.handleGeekMode(ctx, req, stream)
+	}
+
 	if h.llm == nil {
 		return status.Error(codes.Unavailable, "LLM service is not available")
 	}
@@ -55,7 +63,7 @@ func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream Cha
 		// Add user ID to context for history matching.
 		// Note: req.UserID is already authenticated by the gRPC interceptor middleware.
 		ctx = router.WithUserID(ctx, req.UserID)
-		routeResult, err := h.chatRouter.Route(ctx, req.Message, req.GeekMode)
+		routeResult, err := h.chatRouter.Route(ctx, req.Message)
 		if err != nil {
 			slog.Warn("chat router failed, defaulting to amazing",
 				"error", err,
@@ -90,7 +98,7 @@ func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream Cha
 
 	// Create agent using factory
 	agent, err := h.factory.Create(ctx, &CreateConfig{
-		Type:     req.AgentType,
+		Type:     agentType,
 		UserID:   req.UserID,
 		Timezone: req.Timezone,
 	})
@@ -114,6 +122,76 @@ func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream Cha
 	)
 
 	return nil
+}
+
+// handleGeekMode creates and executes GeekParrot directly.
+// handleGeekMode 创建并直接执行 GeekParrot。
+// GeekMode bypasses all LLM processing and routing, providing direct
+// access to Claude Code CLI.
+// 极客模式绕过所有 LLM 处理和路由，提供对 Claude Code CLI 的直接访问。
+func (h *ParrotHandler) handleGeekMode(
+	ctx context.Context,
+	req *ChatRequest,
+	stream ChatStream,
+) error {
+	// Create logger for this request
+	logger := observability.NewRequestContext(slog.Default(), "geek", req.UserID)
+	logger.Info("AI chat started (Geek Mode - direct Claude Code)",
+		slog.Int(observability.LogFieldMessageLen, len(req.Message)),
+		slog.Int("history_count", len(req.History)),
+	)
+
+	// Generate a stable session ID based on Conversation ID using UUID v5
+	// Using a fixed namespace ensures the same conversation ID always generates the same UUID
+	// 使用固定的命名空间确保相同的 Conversation ID 总是生成相同的 UUID
+	namespace := uuid.MustParse("00000000-0000-0000-0000-000000000000") // Null UUID as namespace
+	sessionID := uuid.NewSHA1(namespace, []byte(fmt.Sprintf("conversation_%d", req.ConversationID))).String()
+
+	// Create GeekParrot directly (no factory needed, no LLM dependency)
+	// 直接创建 GeekParrot（无需工厂，无 LLM 依赖）
+	geekParrot, err := agentpkg.NewGeekParrot(
+		h.getWorkDirForUser(req.UserID),
+		req.UserID,
+		sessionID,
+	)
+	if err != nil {
+		logger.Error("Failed to create GeekParrot", err)
+		return status.Error(codes.Internal, fmt.Sprintf("failed to create GeekParrot: %v", err))
+	}
+
+	logger.Debug("GeekParrot created",
+		slog.String("agent_name", geekParrot.Name()),
+		slog.String("work_dir", geekParrot.GetWorkDir()),
+		slog.String("session_id", sessionID),
+	)
+
+	// Execute with streaming (same pattern as other agents)
+	// 执行并流式输出（与其他 Agent 相同的模式）
+	if err := h.executeAgent(ctx, geekParrot, req, stream, logger); err != nil {
+		logger.Error("GeekMode execution failed", err)
+		return status.Error(codes.Internal, fmt.Sprintf("GeekMode execution failed: %v", err))
+	}
+
+	logger.Info("AI chat completed (Geek Mode)",
+		slog.Int64(observability.LogFieldDuration, logger.DurationMs()),
+	)
+
+	return nil
+}
+
+// getWorkDirForUser returns the working directory for Claude Code CLI for a specific user.
+// getWorkDirForUser 返回特定用户的 Claude Code CLI 工作目录。
+// Each user gets an isolated working directory for security and session management.
+// 每个用户都有独立的工作目录，用于安全和会话管理。
+func (h *ParrotHandler) getWorkDirForUser(userID int32) string {
+	// Use persistent directory in user's home to avoid data loss on restart
+	// 使用用户主目录下的持久化目录，避免重启时数据丢失
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "/tmp" // Fallback if home dir cannot be determined
+	}
+
+	return fmt.Sprintf("%s/.divinesense/claude/user_%d", homeDir, userID)
 }
 
 // executeAgent executes the agent and streams responses.

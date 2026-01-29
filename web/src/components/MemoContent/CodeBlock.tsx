@@ -133,7 +133,7 @@ export const CodeBlock = ({ children, className, ...props }: CodeBlockProps) => 
   };
 
   return (
-    <pre className="relative">
+    <pre className="relative overflow-x-auto">
       <div className="absolute right-2 leading-3 top-1.5 flex flex-row justify-end items-center gap-1 opacity-60 hover:opacity-80">
         <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider select-none">{language}</span>
         <button

@@ -1,15 +1,14 @@
-import { CopyIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
+import { RefreshCwIcon, TrashIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface MessageActionsProps {
-  onCopy: () => void;
   onRegenerate: () => void;
   onDelete: () => void;
 }
 
-const MessageActions = ({ onCopy, onRegenerate, onDelete }: MessageActionsProps) => {
+const MessageActions = ({ onRegenerate, onDelete }: MessageActionsProps) => {
   const { t } = useTranslation();
 
   return (
@@ -29,10 +28,6 @@ const MessageActions = ({ onCopy, onRegenerate, onDelete }: MessageActionsProps)
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={4}>
-        <DropdownMenuItem onClick={onCopy} className="cursor-pointer">
-          <CopyIcon className="w-4 h-4 mr-2" />
-          {t("common.copy")}
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={onRegenerate} className="cursor-pointer">
           <RefreshCwIcon className="w-4 h-4 mr-2" />
           {t("ai.regenerate")}

@@ -137,6 +137,7 @@
       },
       "chat-default-placeholder": "询问你的笔记或日程...",
       "chat-placeholder": "与 {{name}} 对话...",
+      "geek-chat-placeholder": "输入你想让 Claude Code 完成的任务…",
       "close": "关闭",
       "cognition": {
         "amazing": {
@@ -330,7 +331,9 @@
       "enabled": "极客模式已启用",
       "disabled": "极客模式已关闭",
       "enable_label": "启用极客模式",
-      "disable_label": "禁用极客模式"
+      "disable_label": "退出极客",
+      "exit_label": "退出",
+      "thinking": "Claude Code 思考中..."
     }
   },
   "auth": {

@@ -16,16 +16,10 @@ interface ChatHeaderProps {
 /**
  * Chat Header - 简洁状态显示
  *
- * UX/UI 设计原则：
- * - 仅展示助手信息和状态
- * - 工具按钮移至输入框工具栏
- * - 简洁清晰的视觉层次
- *
- * Geek Mode 变化：
- * - 头部背景变为终端深色
- * - 底部边框出现绿色渐变光效
- * - 助手名称使用等宽字体
- * - 状态指示器变为绿色闪烁点
+ * 设计原则：
+ * - 极客模式下保持清爽，不使用过度特效
+ * - 通过颜色、字体、状态点传达状态
+ * - 移动端和桌面端体验一致
  */
 
 /**
@@ -69,53 +63,49 @@ export function ChatHeader({
   return (
     <header
       className={cn(
-        "flex items-center justify-between px-4 h-14 shrink-0",
+        "flex items-center justify-between px-4 h-14 shrink-0 transition-all",
         "border-b border-border/80",
         "bg-background/80 backdrop-blur-sm",
-        // Geek mode header styles
-        geekMode && "geek-header",
+        // Geek mode: subtle green border and background
+        geekMode && "border-green-500/20 bg-green-50/50 dark:bg-green-950/20",
         className,
       )}
     >
       {/* Left Section */}
       <div className="flex items-center gap-2.5">
+        {/* Avatar with subtle geek mode border */}
         <div className={cn(
-          "w-9 h-9 flex items-center justify-center",
-          geekMode && "geek-border rounded"
+          "w-9 h-9 flex items-center justify-center rounded-lg transition-all",
+          geekMode && "border border-green-500/30 bg-green-500/10"
         )}>
           <img
             src="/assistant-avatar.webp"
             alt={assistantName}
-            className={cn(
-              "h-9 w-auto object-contain",
-              geekMode && "brightness-110 contrast-125"
-            )}
+            className="h-9 w-auto object-contain"
           />
         </div>
         <div className="flex flex-col">
           <h1 className={cn(
             "font-semibold text-foreground text-sm leading-tight",
-            geekMode && "geek-mono"
+            geekMode && "font-mono"
           )}>
-            {geekMode ? `[${assistantName}]` : assistantName}
+            {assistantName}
           </h1>
-          {/* 动作描述 - 替代能力徽章 */}
+          {/* Status */}
           {actionDescription ? (
             <span className={cn(
-              "text-xs flex items-center gap-1",
-              geekMode ? "geek-text" : "text-primary"
+              "text-xs flex items-center gap-1.5",
+              geekMode ? "text-green-600 dark:text-green-400" : "text-primary"
             )}>
-              {geekMode ? (
-                <span className="geek-status-dot active" />
-              ) : (
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+              {geekMode && (
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               )}
               {actionDescription}
             </span>
           ) : (
             <span className={cn(
-              "text-xs",
-              geekMode ? "geek-mono text-muted-foreground" : "text-muted-foreground"
+              "text-xs text-muted-foreground",
+              geekMode && "font-mono"
             )}>
               {geekMode ? "$ ready" : t("ai.ready")}
             </span>
@@ -123,7 +113,7 @@ export function ChatHeader({
         </div>
       </div>
 
-      {/* Right Section - Geek Mode Toggle + Status indicator */}
+      {/* Right Section - Geek Mode Toggle + Thinking indicator */}
       <div className="flex items-center gap-2">
         <GeekModeToggle
           enabled={geekMode}
@@ -131,10 +121,10 @@ export function ChatHeader({
           variant="header"
         />
         {isThinking && (
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-sm">
             <Sparkles className={cn(
-              "w-4 h-4",
-              geekMode ? "geek-text-glow animate-pulse" : "animate-pulse text-primary"
+              "w-4 h-4 animate-pulse",
+              geekMode ? "text-green-600 dark:text-green-400" : "text-primary"
             )} />
           </div>
         )}

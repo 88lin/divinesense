@@ -137,6 +137,7 @@
       },
       "chat-default-placeholder": "Ask about your notes or schedules...",
       "chat-placeholder": "Chat with {{name}}...",
+      "geek-chat-placeholder": "Enter a task for Claude Code to complete…",
       "close": "Close",
       "cognition": {
         "amazing": {
@@ -330,7 +331,9 @@
       "enabled": "Geek Mode enabled",
       "disabled": "Geek Mode disabled",
       "enable_label": "Enable Geek Mode",
-      "disable_label": "Disable Geek Mode"
+      "disable_label": "Exit Geek",
+      "exit_label": "Exit",
+      "thinking": "Claude Code thinking..."
     }
   },
   "auth": {

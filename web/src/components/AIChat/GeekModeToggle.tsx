@@ -1,4 +1,4 @@
-import { Cpu, Terminal } from "lucide-react";
+import { Terminal, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -12,19 +12,14 @@ interface GeekModeToggleProps {
 /**
  * Geek Mode Toggle Component
  *
- * Allows users to enable/disable Geek Mode for code-related tasks.
- * When enabled, the backend can use Claude Code CLI headless mode.
+ * Clear state indication:
+ * - Not enabled: Shows "极客" + Terminal icon (click to enter geek mode)
+ * - Enabled: Shows "退出极客" + X icon (click to exit geek mode)
  *
- * Visual Changes when enabled:
- * - Green terminal glow effect
- * - Animated border
- * - CPU icon transforms to Terminal icon
- * - Monospace font for label
- *
- * Variants:
- * - "header": Shown in ChatHeader (default)
- * - "toolbar": Shown in input toolbar
- * - "mobile": Mobile-optimized floating style
+ * Design:
+ * - Minimal and clean, no overwhelming effects
+ * - Green color when active to indicate state
+ * - Consistent across all variants
  */
 export function GeekModeToggle({
   enabled,
@@ -34,60 +29,55 @@ export function GeekModeToggle({
 }: GeekModeToggleProps) {
   const { t } = useTranslation();
 
+  const isToolbar = variant === "toolbar";
   const isHeader = variant === "header";
-  const isMobile = variant === "mobile";
+
+  // Label based on state
+  const label = enabled ? t("ai.geek_mode.disable_label") : t("ai.geek_mode.label");
 
   return (
     <button
       onClick={() => onToggle(!enabled)}
       disabled={disabled}
       className={cn(
-        "relative overflow-hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all",
-        "hover:bg-muted active:scale-[0.98]",
+        "relative flex items-center justify-center transition-all",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        // Geek mode styles
-        enabled && "geek-border geek-glow-pulse",
-        // Base colors
-        enabled ? "text-primary" : "text-muted-foreground",
-        // Mobile specific
-        isMobile && "px-3 py-2",
+        // Toolbar variant - compact, always shows label
+        isToolbar && [
+          "h-7 px-2 text-xs",
+          !enabled
+            ? "text-muted-foreground hover:text-foreground hover:bg-muted"
+            : "text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-500/10",
+        ],
+        // Header variant - shows label on larger screens
+        isHeader && [
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium",
+          "hover:bg-muted",
+          !enabled ? "text-muted-foreground" : "text-green-600 dark:text-green-400",
+        ],
       )}
       title={enabled ? t("ai.geek_mode.enabled") : t("ai.geek_mode.tooltip")}
       aria-pressed={enabled}
-      aria-label={enabled ? t("ai.geek_mode.disable_label") : t("ai.geek_mode.enable_label")}
     >
-      {/* Scanline effect overlay when enabled */}
-      {enabled && (
-        <span className="absolute inset-0 pointer-events-none opacity-20 geek-scanlines" />
-      )}
-
-      {/* Icon - switches from Cpu to Terminal when enabled */}
-      <span className={cn("relative z-10", enabled && "geek-text-glow")}>
+      {/* Icon - Terminal for entering, X for exiting */}
+      <span className="shrink-0">
         {enabled ? (
-          <Terminal className={cn("w-4 h-4", enabled && "animate-pulse")} />
+          <X className={cn("w-4 h-4", isToolbar && "w-3.5 h-3.5")} />
         ) : (
-          <Cpu className="w-4 h-4" />
+          <Terminal className={cn("w-4 h-4", isToolbar && "w-3.5 h-3.5")} />
         )}
       </span>
 
-      {/* Label - monospace in geek mode, hidden on mobile variant */}
-      {!isMobile && (
-        <span
-          className={cn(
-            "relative z-10",
-            isHeader ? "hidden sm:inline" : "hidden md:inline",
-            enabled && "geek-mono"
-          )}
-        >
-          {t("ai.geek_mode.label")}
+      {/* Label */}
+      {isToolbar || isHeader ? (
+        <span className={cn(
+          isHeader && "hidden sm:inline",
+          isToolbar && "ml-1 whitespace-nowrap",
+        )}>
+          {label}
         </span>
-      )}
-
-      {/* Status indicator - becomes a "terminal cursor" when enabled */}
-      {enabled && (
-        <span className="relative z-10 geek-cursor ml-0.5" />
-      )}
+      ) : null}
     </button>
   );
 }

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.62.0] - 2026-01-30
+
+### 🤓 Geek Mode: The 4th Parrot
+- **GeekParrot Agent**: Dedicated agent for code-related tasks. It communicates directly with Claude Code CLI, offering zero LLM latency and robust execution capabilities.
+- **Dedicated Routing**: Replaced heuristic keyword matching with a clean, user-controlled Geek Mode toggle that routes inputs directly to the GeekParrot.
+- **UI Integration**: Added a dedicated Geek Mode toggle in the `ChatInput` toolbar for quick switching between conversational and coding modes.
+
+### 🎨 UI & UX
+- **Chat Input**: Redesigned toolbar with integrated Geek Mode toggle and improved button accessibility.
+- **Terminal Aesthetics**: Introduced terminal-style placeholders and icons for Geek Mode.
+- **Mobile Refinements**: Minor layout adjustments for better mobile experience.
+
+### 📝 Documentation & Research
+- **CLI Agent Best Practices**: Added a comprehensive research document on optimizing CLI agents like Claude Code.
+- **Architecture**: Updated `ARCHITECTURE.md` to reflect the new 4-agent system.
+
+### 🛠️ Maintenance
+- **Makefile**: Fixed `db-reset` command where the `--migrate` flag was incorrectly used in some contexts.
+
 ## [v0.61.0] - 2026-01-29
 
 ### 🤓 Geek Mode (Agent Code)

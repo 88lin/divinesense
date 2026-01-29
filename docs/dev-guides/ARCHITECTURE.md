@@ -105,6 +105,7 @@ divinesense/
 | `MEMO` | 灰灰 | `memo_parrot.go` | 灰灰 | 笔记搜索和检索专家 |
 | `SCHEDULE` | 金刚 | `schedule_parrot_v2.go` | 金刚 | 日程创建和管理 |
 | `AMAZING` | 惊奇 | `amazing_parrot.go` | 惊奇 | 综合助理（笔记 + 日程） |
+| `GEEK` | 极客 | `geek_parrot.go` | 极客 | Claude Code CLI 通信层（零 LLM） |
 
 ### 代理路由器
 
@@ -113,7 +114,11 @@ divinesense/
 ChatRouter 实现**三层**意图分类系统：
 
 ```
-用户输入 → ChatRouter.Route()
+用户输入 → GeekMode? ─Yes→ GeekParrot（Claude Code CLI）
+                  │
+                  No
+                  ↓
+           ChatRouter.Route()
                   ↓
            routerService? ─Yes→ 三层路由
                   │          (规则 + 历史 + LLM)
@@ -133,6 +138,12 @@ ChatRouter 实现**三层**意图分类系统：
                   ↓
            路由结果
 ```
+
+**GeekMode 优先路由**：
+- 当 `GeekMode=true` 时，**绕过所有路由**，直接创建 GeekParrot
+- GeekParrot 是纯通信层，不经过 LLM 处理
+- 零延迟，直接调用 Claude Code CLI
+- 实现：`server/router/api/v1/ai/handler.go` 中的 `handleGeekMode()`
 
 **三层路由**（当 `router.Service` 已配置时）：
 1. **规则匹配**（0ms）：常见模式的关键词匹配
@@ -284,12 +295,15 @@ RootLayout（全局导航 + 认证）
     ↓
 后端（ai_service_chat.go）
     │
-    ↓ ChatRouter.Route()
-    │   → 规则匹配（0ms）
-    │   → 历史感知（~10ms）
-    │   → LLM 降级（~400ms）
+    ↓ GeekMode?
+    │   Yes → GeekParrot（Claude Code CLI，零 LLM）
+    │   No  ↓ ChatRouter.Route()
+    │       → 规则匹配（0ms）
+    │       → 历史感知（~10ms）
+    │       → LLM 降级（~400ms）
     ↓
 代理执行
+    │   → GeekParrot（Claude Code CLI）
     │   → MemoParrot（memo_search 工具）
     │   → ScheduleParrotV2（scheduler 工具）
     │   → AmazingParrot（并发工具）

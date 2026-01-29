@@ -534,6 +534,8 @@ show_logs() {
 # ============================================================================
 
 cmd_start() {
+    local detach=${1:-false}
+
     echo ""
     log_info "启动 DivineSense 开发环境..."
     echo ""
@@ -559,10 +561,14 @@ cmd_start() {
     echo "停止服务: ./scripts/dev.sh stop"
     echo ""
 
-    # 显示实时日志
-    log_info "显示实时日志 (Ctrl+C 退出日志查看，服务继续运行)..."
-    echo ""
-    show_logs backend true
+    if [ "$detach" = "true" ]; then
+        log_info "后台运行模式 (-d)，不自动显示日志"
+    else
+        # 显示实时日志
+        log_info "显示实时日志 (Ctrl+C 退出日志查看，服务继续运行)..."
+        echo ""
+        show_logs backend true
+    fi
 }
 
 cmd_stop() {
@@ -581,6 +587,8 @@ cmd_stop() {
 }
 
 cmd_restart() {
+    local detach=${1:-false}
+
     echo ""
     log_info "重启所有服务（PostgreSQL + 后端 + 前端）..."
     echo ""
@@ -615,10 +623,14 @@ cmd_restart() {
     echo "停止服务: ./scripts/dev.sh stop"
     echo ""
 
-    # 显示实时日志
-    log_info "显示实时日志 (Ctrl+C 退出日志查看，服务继续运行)..."
-    echo ""
-    show_logs backend true
+    if [ "$detach" = "true" ]; then
+        log_info "后台运行模式 (-d)，不自动显示日志"
+    else
+        # 显示实时日志
+        log_info "显示实时日志 (Ctrl+C 退出日志查看，服务继续运行)..."
+        echo ""
+        show_logs backend true
+    fi
 }
 
 cmd_status() {
@@ -643,13 +655,21 @@ cmd_logs() {
 
 case "${1:-}" in
     start)
-        cmd_start
+        if [ "$2" = "-d" ]; then
+            cmd_start true
+        else
+            cmd_start false
+        fi
         ;;
     stop)
         cmd_stop
         ;;
     restart)
-        cmd_restart
+        if [ "$2" = "-d" ]; then
+            cmd_restart true
+        else
+            cmd_restart false
+        fi
         ;;
     status)
         cmd_status
