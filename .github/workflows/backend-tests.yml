@@ -36,7 +36,7 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.8.0
-          args: --config=.golangci.yaml --timeout=3m
+          args: --config=.golangci.yaml --timeout=3m --build-tags=noui
 
   go-tests:
     runs-on: ubuntu-latest
