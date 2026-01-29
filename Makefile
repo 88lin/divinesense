@@ -204,6 +204,11 @@ db-vector: ## 验证 pgvector 扩展
 
 test: ## 运行所有测试
 	@echo "Running tests..."
+	@DIVINESENSE_DRIVER=$(DIVINESENSE_DRIVER) DIVINESENSE_DSN=$(DIVINESENSE_DSN) go test ./... -short -timeout 2m -json 2>&1 | tee test-output.log | grep -v '"Time"' | grep -E '"Action":"(pass|fail)"' | wc -l | xargs -I {} echo "Tests completed: {}"
+
+.PHONY: test-verbose
+test-verbose: ## 运行所有测试(详细输出)
+	@echo "Running tests with verbose output..."
 	@DIVINESENSE_DRIVER=$(DIVINESENSE_DRIVER) DIVINESENSE_DSN=$(DIVINESENSE_DSN) go test ./... -v -timeout 2m
 
 test-ai: ## 运行 AI 测试

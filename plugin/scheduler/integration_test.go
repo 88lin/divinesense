@@ -15,6 +15,9 @@ import (
 
 // TestRealWorldScenario tests a realistic multi-job scenario.
 func TestRealWorldScenario(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	var (
 		quickJobCount  atomic.Int32
 		hourlyJobCount atomic.Int32
@@ -124,6 +127,9 @@ func TestRealWorldScenario(t *testing.T) {
 
 // TestCancellationDuringExecution verifies jobs can be canceled mid-execution.
 func TestCancellationDuringExecution(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	var canceled atomic.Bool
 	var started atomic.Bool
 
@@ -214,6 +220,9 @@ func TestTimezoneHandling(t *testing.T) {
 
 // TestErrorPropagation verifies error handling.
 func TestErrorPropagation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	var errorLogged atomic.Bool
 
 	logger := &testLogger{
@@ -259,6 +268,9 @@ func TestErrorPropagation(t *testing.T) {
 
 // TestPanicRecovery verifies panic recovery middleware.
 func TestPanicRecovery(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	var panicRecovered atomic.Bool
 
 	s := scheduler.New(
@@ -299,6 +311,9 @@ func TestPanicRecovery(t *testing.T) {
 
 // TestMultipleJobsWithDifferentSchedules verifies concurrent job execution.
 func TestMultipleJobsWithDifferentSchedules(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	var (
 		job1Count atomic.Int32
 		job2Count atomic.Int32
