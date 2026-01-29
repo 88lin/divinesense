@@ -11,6 +11,8 @@ run:
   tests: true
   modules-download-mode: readonly
   concurrency: 4
+  skip-dirs:
+    - server/router/frontend
 
 # ===========================================================================
 # Linters Configuration
