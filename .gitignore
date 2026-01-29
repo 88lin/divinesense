@@ -1,0 +1,42 @@
+# temp folder
+tmp
+
+# Frontend asset
+web/dist
+
+# Build artifacts
+build/
+bin/
+memos
+
+# Plan/design documents
+docs/plans/
+
+.DS_Store
+
+# Jetbrains
+.idea
+
+# Docker Compose Environment File
+.env
+
+# direnv
+.envrc
+
+# Dev script runtime files
+.pids/
+.logs/
+
+dist
+
+# VSCode settings
+.vscode
+
+# Git worktrees
+.worktrees/
+
+# Claude settings
+.claude/
+
+# Loki logs
+.loki

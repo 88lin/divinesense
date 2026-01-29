@@ -1,0 +1,153 @@
+import copy from "copy-to-clipboard";
+import { CheckIcon, CopyIcon } from "lucide-react";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
+import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
+import { extractCodeContent, extractLanguage } from "./utils";
+
+const MermaidBlock = lazy(() => import("./MermaidBlock").then((module) => ({ default: module.MermaidBlock })));
+
+interface CodeBlockProps {
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export const CodeBlock = ({ children, className, ...props }: CodeBlockProps) => {
+  const { userGeneralSetting } = useAuth();
+  const [copied, setCopied] = useState(false);
+  const [highlightedCode, setHighlightedCode] = useState<string>("");
+
+  const codeElement = children as React.ReactElement;
+  const codeClassName = codeElement?.props?.className || "";
+  const codeContent = extractCodeContent(children);
+  const language = extractLanguage(codeClassName);
+
+  // If it's a mermaid block, render with MermaidBlock component
+  if (language === "mermaid") {
+    return (
+      <pre className="relative">
+        <Suspense fallback={<div className="text-sm text-muted-foreground p-2">Loading Diagram...</div>}>
+          <MermaidBlock className={cn(className)} {...props}>
+            {children}
+          </MermaidBlock>
+        </Suspense>
+      </pre>
+    );
+  }
+
+  const theme = getThemeWithFallback(userGeneralSetting?.theme);
+  const resolvedTheme = resolveTheme(theme);
+  const isDarkTheme = resolvedTheme.includes("dark");
+
+  // Dynamically load highlight.js theme based on app theme
+  useEffect(() => {
+    const dynamicImportStyle = async () => {
+      // Remove any existing highlight.js style
+      const existingStyle = document.querySelector("style[data-hljs-theme]");
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+
+      try {
+        const cssModule = isDarkTheme
+          ? await import("highlight.js/styles/github-dark-dimmed.css?inline")
+          : await import("highlight.js/styles/github.css?inline");
+
+        // Create and inject the style
+        const style = document.createElement("style");
+        style.textContent = cssModule.default;
+        style.setAttribute("data-hljs-theme", isDarkTheme ? "dark" : "light");
+        document.head.appendChild(style);
+      } catch (error) {
+        console.warn("Failed to load highlight.js theme:", error);
+      }
+    };
+
+    dynamicImportStyle();
+  }, [resolvedTheme, isDarkTheme]);
+
+  // Highlight code using highlight.js
+  useEffect(() => {
+    let active = true;
+
+    const highlight = async () => {
+      const defaultEscaped = Object.assign(document.createElement("span"), {
+        textContent: codeContent,
+      }).innerHTML;
+
+      try {
+        const hljs = (await import("highlight.js")).default;
+        const lang = hljs.getLanguage(language);
+        if (lang && active) {
+          const result = hljs.highlight(codeContent, { language: language }).value;
+          if (active) {
+            setHighlightedCode(result);
+            return;
+          }
+        }
+      } catch (err) {
+        // Fallback to default
+      }
+
+      if (active) {
+        setHighlightedCode(defaultEscaped);
+      }
+    };
+
+    highlight();
+
+    return () => {
+      active = false;
+    };
+  }, [language, codeContent]);
+
+  const handleCopy = async () => {
+    try {
+      // Try native clipboard API first (requires HTTPS or localhost)
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(codeContent);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        // Fallback to copy-to-clipboard library for non-secure contexts
+        const success = copy(codeContent);
+        if (success) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } else {
+          console.error("Failed to copy code");
+        }
+      }
+    } catch (err) {
+      // If native API fails, try fallback
+      console.warn("Native clipboard failed, using fallback:", err);
+      const success = copy(codeContent);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        console.error("Failed to copy code:", err);
+      }
+    }
+  };
+
+  return (
+    <pre className="relative">
+      <div className="absolute right-2 leading-3 top-1.5 flex flex-row justify-end items-center gap-1 opacity-60 hover:opacity-80">
+        <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider select-none">{language}</span>
+        <button
+          onClick={handleCopy}
+          className={cn("rounded-md transition-all", "hover:bg-accent/50", copied ? "text-primary" : "text-muted-foreground")}
+          aria-label={copied ? "Copied" : "Copy code"}
+          title={copied ? "Copied!" : "Copy code"}
+        >
+          {copied ? <CheckIcon className="w-3 h-3" /> : <CopyIcon className="w-3 h-3" />}
+        </button>
+      </div>
+      <div className={className} {...props}>
+        <code className={`language-${language}`} dangerouslySetInnerHTML={{ __html: highlightedCode }} />
+      </div>
+    </pre>
+  );
+};

@@ -1,0 +1,595 @@
+syntax = "proto3";
+
+package memos.api.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "gen/api/v1";
+
+
+// AIService provides AI-powered features for memo management.
+service AIService {
+  // SemanticSearch performs semantic search on memos.
+  rpc SemanticSearch(SemanticSearchRequest) returns (SemanticSearchResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/search"
+      body: "*"
+    };
+  }
+
+  // SuggestTags suggests tags for memo content.
+  rpc SuggestTags(SuggestTagsRequest) returns (SuggestTagsResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/suggest-tags"
+      body: "*"
+    };
+  }
+
+  // Chat streams a chat response with AI agents.
+  rpc Chat(ChatRequest) returns (stream ChatResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/chat"
+      body: "*"
+    };
+  }
+
+  // GetRelatedMemos finds memos related to a specific memo.
+  rpc GetRelatedMemos(GetRelatedMemosRequest) returns (GetRelatedMemosResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/{name=memos/*}/related"
+    };
+  }
+
+  // GetParrotSelfCognition returns the metacognitive information of a parrot agent.
+  rpc GetParrotSelfCognition(GetParrotSelfCognitionRequest) returns (GetParrotSelfCognitionResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/parrots/{agent_type}/self-cognition"
+    };
+  }
+
+  // ListParrots returns all available parrot agents with their metacognitive information.
+  rpc ListParrots(ListParrotsRequest) returns (ListParrotsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/parrots"
+    };
+  }
+
+  // DetectDuplicates checks for duplicate or related memos.
+  rpc DetectDuplicates(DetectDuplicatesRequest) returns (DetectDuplicatesResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/detect-duplicates"
+      body: "*"
+    };
+  }
+
+  // MergeMemos merges source memo into target memo.
+  rpc MergeMemos(MergeMemosRequest) returns (MergeMemosResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/merge-memos"
+      body: "*"
+    };
+  }
+
+  // LinkMemos creates a bidirectional relation between two memos.
+  rpc LinkMemos(LinkMemosRequest) returns (LinkMemosResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/link-memos"
+      body: "*"
+    };
+  }
+
+  // GetKnowledgeGraph returns the knowledge graph for the current user.
+  rpc GetKnowledgeGraph(GetKnowledgeGraphRequest) returns (GetKnowledgeGraphResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/knowledge-graph"
+    };
+  }
+
+  // GetDueReviews returns memos that are due for review.
+  rpc GetDueReviews(GetDueReviewsRequest) returns (GetDueReviewsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/reviews/due"
+    };
+  }
+
+  // RecordReview records a review result and updates spaced repetition state.
+  rpc RecordReview(RecordReviewRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/reviews/{memo_uid}/record"
+      body: "*"
+    };
+  }
+
+  // GetReviewStats returns review statistics for the current user.
+  rpc GetReviewStats(GetReviewStatsRequest) returns (GetReviewStatsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/reviews/stats"
+    };
+  }
+
+  // ListAIConversations returns a list of AI conversations.
+  rpc ListAIConversations(ListAIConversationsRequest) returns (ListAIConversationsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/conversations"
+    };
+  }
+
+  // GetAIConversation returns a specific AI conversation with its messages.
+  rpc GetAIConversation(GetAIConversationRequest) returns (AIConversation) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/conversations/{id}"
+    };
+  }
+
+  // CreateAIConversation creates a new AI conversation.
+  rpc CreateAIConversation(CreateAIConversationRequest) returns (AIConversation) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/conversations"
+      body: "*"
+    };
+  }
+
+  // UpdateAIConversation updates an AI conversation.
+  rpc UpdateAIConversation(UpdateAIConversationRequest) returns (AIConversation) {
+    option (google.api.http) = {
+      patch: "/api/v1/ai/conversations/{id}"
+      body: "*"
+    };
+  }
+
+  // DeleteAIConversation deletes an AI conversation.
+  rpc DeleteAIConversation(DeleteAIConversationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/api/v1/ai/conversations/{id}"
+    };
+  }
+
+  // AddContextSeparator adds a context separator marker to a conversation.
+  rpc AddContextSeparator(AddContextSeparatorRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/conversations/{conversation_id}/separator"
+      body: "*"
+    };
+  }
+
+  // ListMessages returns messages for a conversation with incremental sync support.
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/ai/conversations/{conversation_id}/messages"
+    };
+  }
+
+  // ClearConversationMessages deletes all messages in a conversation.
+  rpc ClearConversationMessages(ClearConversationMessagesRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/api/v1/ai/conversations/{conversation_id}/messages"
+    };
+  }
+}
+
+
+// ScheduleAgentService provides schedule-specific AI agent functionality.
+service ScheduleAgentService {
+  // Chat handles non-streaming schedule agent chat requests.
+  rpc Chat(ScheduleAgentChatRequest) returns (ScheduleAgentChatResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/schedule-agent/chat"
+      body: "*"
+    };
+  }
+
+  // ChatStream handles streaming schedule agent chat requests.
+  rpc ChatStream(ScheduleAgentChatRequest) returns (stream ScheduleAgentStreamResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/schedule-agent/chat/stream"
+      body: "*"
+    };
+  }
+}
+
+// ScheduleAgentChatRequest is the request for schedule agent chat.
+message ScheduleAgentChatRequest {
+  string message = 1 [(google.api.field_behavior) = REQUIRED];  // User's message
+  string user_timezone = 2;  // User's timezone in IANA format (e.g., "Asia/Shanghai")
+}
+
+// ScheduleAgentChatResponse is the response for schedule agent chat (non-streaming).
+message ScheduleAgentChatResponse {
+  string response = 1;  // Agent's response
+}
+
+// ScheduleAgentStreamResponse is the streaming response for schedule agent chat.
+message ScheduleAgentStreamResponse {
+  string event = 1;     // JSON-encoded event with "type" and "data" fields
+  string content = 2;   // Streaming content chunk
+  bool done = 3;        // Stream end marker
+}
+
+// SemanticSearchRequest is the request for SemanticSearch.
+message SemanticSearchRequest {
+  string query = 1 [(google.api.field_behavior) = REQUIRED];
+  int32 limit = 2;  // default: 10, max: 50
+}
+
+// SemanticSearchResponse is the response for SemanticSearch.
+message SemanticSearchResponse {
+  repeated SearchResult results = 1;
+}
+
+// SearchResult represents a single search result.
+message SearchResult {
+  string name = 1;      // memos/{id}
+  string snippet = 2;   // content snippet
+  float score = 3;      // relevance score
+}
+
+// SuggestTagsRequest is the request for SuggestTags.
+message SuggestTagsRequest {
+  string content = 1 [(google.api.field_behavior) = REQUIRED];
+  int32 limit = 2;  // default: 5
+}
+
+// SuggestTagsResponse is the response for SuggestTags.
+message SuggestTagsResponse {
+  repeated string tags = 1;
+}
+
+// ScheduleQueryMode specifies the query mode for schedule filtering.
+enum ScheduleQueryMode {
+  AUTO = 0;       // Auto-select query mode based on query type (relative time → STANDARD, absolute time → STRICT)
+  STANDARD = 1;   // Standard mode: return schedules that have any part within the query range
+  STRICT = 2;     // Strict mode: return only schedules completely within the query range
+}
+
+// AgentType specifies the type of AI agent to use for the request.
+enum AgentType {
+  AGENT_TYPE_DEFAULT = 0;   // Default behavior (existing logic)
+  AGENT_TYPE_MEMO = 1;      // 🦜 Memo Parrot - Note assistant
+  AGENT_TYPE_SCHEDULE = 2;  // 🦜 Schedule Parrot - Schedule assistant
+  AGENT_TYPE_AMAZING = 3;   // 🦜 Amazing Parrot - Comprehensive assistant (Milestone 2)
+  AGENT_TYPE_CREATIVE = 4;  // 🦜 Creative Parrot - Creative assistant (Milestone 4)
+}
+
+// ChatRequest is the request for Chat.
+message ChatRequest {
+  string message = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated string history = 2;  // conversation history
+  string user_timezone = 3;     // User's timezone in IANA format (e.g., "Asia/Shanghai"). Defaults to UTC if not provided.
+  ScheduleQueryMode schedule_query_mode = 4;  // Schedule query mode (optional, defaults to AUTO)
+  AgentType agent_type = 5;     // Agent type (optional, defaults to DEFAULT)
+  int32 conversation_id = 6;    // Conversation ID to persist message to
+  bool is_temp_conversation = 7; // Whether to create a temporary conversation (true) or fixed conversation (false)
+  bool geek_mode = 10;          // Geek Mode: Enable Claude Code CLI for code-related tasks (optional, defaults to false)
+}
+
+// AIConversation represents an AI chat session.
+message AIConversation {
+  int32 id = 1;
+  string uid = 2;
+  int32 creator_id = 3;
+  string title = 4;
+  AgentType parrot_id = 5;
+  bool pinned = 6;
+  int64 created_ts = 7;
+  int64 updated_ts = 8;
+  repeated AIMessage messages = 9;
+  int32 message_count = 10;  // Total message count (excludes SEPARATOR messages)
+}
+
+// AIMessage represents a single message in an AI conversation.
+message AIMessage {
+  int32 id = 1;
+  string uid = 2;
+  int32 conversation_id = 3;
+  string type = 4; // "MESSAGE" or "SEPARATOR"
+  string role = 5; // "USER", "ASSISTANT", or "SYSTEM"
+  string content = 6;
+  string metadata = 7; // JSON string
+  int64 created_ts = 8;
+}
+
+message ListAIConversationsRequest {}
+
+message ListAIConversationsResponse {
+  repeated AIConversation conversations = 1;
+}
+
+message GetAIConversationRequest {
+  int32 id = 1;
+}
+
+message CreateAIConversationRequest {
+  string title = 1;
+  AgentType parrot_id = 2;
+}
+
+message UpdateAIConversationRequest {
+  int32 id = 1;
+  optional string title = 2;
+  optional bool pinned = 3;
+}
+
+message DeleteAIConversationRequest {
+  int32 id = 1;
+}
+
+// AddContextSeparatorRequest adds a separator marker to a conversation.
+// This marks the point where the conversation context is cleared.
+// Subsequent chat requests will only include messages after this separator.
+message AddContextSeparatorRequest {
+  int32 conversation_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ListMessagesRequest is the request for ListMessages.
+message ListMessagesRequest {
+  int32 conversation_id = 1 [(google.api.field_behavior) = REQUIRED];  // Conversation ID
+  int32 limit = 2;   // Max messages to return (default: 100, max: 100)
+  string last_message_uid = 3;  // Last message UID from previous page (for incremental sync)
+}
+
+// ListMessagesResponse is the response for ListMessages.
+message ListMessagesResponse {
+  repeated AIMessage messages = 1;      // Messages in the conversation
+  bool has_more = 2;                    // Whether more messages exist before this page
+  int32 total_count = 3;                // Total count of MSG messages (excludes SEP/SUMMARY)
+  string latest_message_uid = 4;        // UID of the latest message for sync validation
+  bool sync_required = 5;               // Whether client should re-sync (UID not found)
+}
+
+// ClearConversationMessagesRequest is the request for ClearConversationMessages.
+message ClearConversationMessagesRequest {
+  int32 conversation_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ChatResponse is the response for Chat.
+message ChatResponse {
+  string content = 1;                       // streaming content chunk
+  repeated string sources = 2;              // citation sources memos/{id}
+  bool done = 3;                            // stream end marker
+  ScheduleCreationIntent schedule_creation_intent = 4;  // AI-detected schedule creation intent (sent in final chunk)
+  ScheduleQueryResult schedule_query_result = 5;        // AI-detected schedule query result (sent in final chunk)
+
+  // Agent event signaling (for schedule agent integration)
+  string event_type = 6;                    // Event type: "thinking", "tool_use", "tool_result", "answer", "error", "schedule_updated"
+  string event_data = 7;                    // Event data (JSON or plain text depending on event type)
+}
+
+
+// ScheduleCreationIntent represents AI's analysis of user's intent to create a schedule.
+message ScheduleCreationIntent {
+  bool detected = 1;                    // Whether user wants to create a schedule
+  string schedule_description = 2;      // Natural language description of the schedule (e.g., "明天下午2点开会")
+  string reasoning = 3;                 // AI's reasoning for intent detection (optional, for debugging)
+}
+
+// ScheduleQueryResult contains the result of schedule query intent detection and the queried schedules.
+message ScheduleQueryResult {
+  bool detected = 1;                    // Whether the user's intent is to query schedules
+  repeated ScheduleSummary schedules = 2; // Queried schedules matching the user's intent
+  string time_range_description = 3;     // Human-readable time range description (e.g., "未来7天", "本周")
+  string query_type = 4;                 // Type of query (e.g., "upcoming", "range", "filter")
+}
+
+// ScheduleSummary represents a simplified schedule for query results.
+// This avoids circular dependencies with the full Schedule message in schedule_service.proto.
+message ScheduleSummary {
+  string uid = 1;                   // Schedule unique identifier in format "schedules/{uid}"
+  string title = 2;                 // Schedule title
+  int64 start_ts = 3;               // Start timestamp (Unix timestamp in seconds)
+  int64 end_ts = 4;                 // End timestamp (Unix timestamp in seconds, 0 if not set)
+  bool all_day = 5;                 // Whether this is an all-day event
+  string location = 6;              // Event location (optional)
+  string recurrence_rule = 7;       // Recurrence rule in JSON format (empty if not recurring)
+  string status = 8;                // Schedule status (e.g., "ACTIVE", "CANCELLED")
+}
+
+// GetRelatedMemosRequest is the request for GetRelatedMemos.
+message GetRelatedMemosRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];  // memos/{id}
+  int32 limit = 2;  // default: 5
+}
+
+// GetRelatedMemosResponse is the response for GetRelatedMemos.
+message GetRelatedMemosResponse {
+  repeated SearchResult memos = 1;
+}
+
+// ParrotSelfCognition represents a parrot's metacognitive understanding of itself.
+message ParrotSelfCognition {
+  string name = 1;                       // Parrot name (e.g., "schedule", "memo", "creative", "amazing")
+  string emoji = 2;                      // Visual representation (e.g., "🦜")
+  string title = 3;                      // Formal title (e.g., "金刚 - 日程助手鹦鹉")
+  repeated string personality = 4;       // Character traits
+  repeated string capabilities = 5;      // What the parrot can do
+  repeated string limitations = 6;       // What the parrot cannot do
+  string working_style = 7;              // How the parrot approaches tasks
+  repeated string favorite_tools = 8;    // Tools the parrot frequently uses
+  string self_introduction = 9;          // First-person introduction
+  string fun_fact = 10;                  // Interesting fact about the parrot
+}
+
+// GetParrotSelfCognitionRequest is the request for GetParrotSelfCognition.
+message GetParrotSelfCognitionRequest {
+  AgentType agent_type = 1 [(google.api.field_behavior) = REQUIRED];  // Agent type
+}
+
+// GetParrotSelfCognitionResponse is the response for GetParrotSelfCognition.
+message GetParrotSelfCognitionResponse {
+  ParrotSelfCognition self_cognition = 1;  // Parrot's metacognitive information
+}
+
+// ListParrotsRequest is the request for ListParrots.
+message ListParrotsRequest {}
+
+// ListParrotsResponse is the response for ListParrots.
+message ListParrotsResponse {
+  repeated ParrotInfo parrots = 1;  // All available parrots
+}
+
+// ParrotInfo represents basic information about a parrot.
+message ParrotInfo {
+  AgentType agent_type = 1;            // Agent type enum
+  string name = 2;                     // Parrot name
+  ParrotSelfCognition self_cognition = 3;  // Full metacognitive information
+}
+
+// DetectDuplicatesRequest is the request for DetectDuplicates.
+message DetectDuplicatesRequest {
+  string title = 1;                      // Memo title (optional)
+  string content = 2 [(google.api.field_behavior) = REQUIRED];  // Memo content
+  repeated string tags = 3;              // Memo tags (optional)
+  int32 top_k = 4;                       // Max results to return (default: 5)
+}
+
+// DetectDuplicatesResponse is the response for DetectDuplicates.
+message DetectDuplicatesResponse {
+  bool has_duplicate = 1;                // Whether duplicates were found (>90% similarity)
+  bool has_related = 2;                  // Whether related memos were found (70-90% similarity)
+  repeated SimilarMemo duplicates = 3;   // Duplicate memos
+  repeated SimilarMemo related = 4;      // Related memos
+  int64 latency_ms = 5;                  // Detection latency in milliseconds
+}
+
+// SimilarMemo represents a memo similar to the input.
+message SimilarMemo {
+  string id = 1;                         // Memo ID
+  string name = 2;                       // Memo resource name (memos/{uid})
+  string title = 3;                      // Memo title
+  string snippet = 4;                    // Content snippet
+  double similarity = 5;                 // Similarity score (0-1)
+  repeated string shared_tags = 6;       // Tags shared with input
+  string level = 7;                      // "duplicate" or "related"
+  SimilarityBreakdown breakdown = 8;     // Similarity breakdown
+}
+
+// SimilarityBreakdown shows how similarity was calculated.
+message SimilarityBreakdown {
+  double vector = 1;                     // Vector similarity score
+  double tag_co_occur = 2;               // Tag co-occurrence score
+  double time_prox = 3;                  // Time proximity score
+}
+
+// MergeMemosRequest is the request for MergeMemos.
+message MergeMemosRequest {
+  string source_name = 1 [(google.api.field_behavior) = REQUIRED];  // Source memo name (memos/{uid})
+  string target_name = 2 [(google.api.field_behavior) = REQUIRED];  // Target memo name (memos/{uid})
+}
+
+// MergeMemosResponse is the response for MergeMemos.
+message MergeMemosResponse {
+  string merged_name = 1;                // Merged memo name
+}
+
+// LinkMemosRequest is the request for LinkMemos.
+message LinkMemosRequest {
+  string memo_name_1 = 1 [(google.api.field_behavior) = REQUIRED];  // First memo name (memos/{uid})
+  string memo_name_2 = 2 [(google.api.field_behavior) = REQUIRED];  // Second memo name (memos/{uid})
+}
+
+// LinkMemosResponse is the response for LinkMemos.
+message LinkMemosResponse {
+  bool success = 1;                      // Whether linking was successful
+}
+
+// GetKnowledgeGraphRequest is the request for GetKnowledgeGraph.
+message GetKnowledgeGraphRequest {
+  repeated string tags = 1;              // Filter by tags (optional)
+  double min_importance = 2;             // Minimum importance score (optional, 0-1)
+  repeated int32 clusters = 3;           // Filter by cluster IDs (optional)
+}
+
+// GetKnowledgeGraphResponse is the response for GetKnowledgeGraph.
+message GetKnowledgeGraphResponse {
+  repeated GraphNode nodes = 1;          // Graph nodes
+  repeated GraphEdge edges = 2;          // Graph edges
+  GraphStats stats = 3;                  // Graph statistics
+  int64 build_ms = 4;                    // Build latency in milliseconds
+}
+
+// GraphNode represents a node in the knowledge graph.
+message GraphNode {
+  string id = 1;                         // Node ID (memo UID)
+  string label = 2;                      // Node label (memo title)
+  string type = 3;                       // Node type ("memo" or "tag")
+  repeated string tags = 4;              // Node tags
+  double importance = 5;                 // Importance score (0-1, PageRank)
+  int32 cluster = 6;                     // Community cluster ID
+  int64 created_ts = 7;                  // Creation timestamp
+}
+
+// GraphEdge represents an edge in the knowledge graph.
+message GraphEdge {
+  string source = 1;                     // Source node ID
+  string target = 2;                     // Target node ID
+  string type = 3;                       // Edge type ("link", "tag_co", "semantic")
+  double weight = 4;                     // Edge weight (0-1)
+}
+
+// GraphStats contains graph statistics.
+message GraphStats {
+  int32 node_count = 1;                  // Total node count
+  int32 edge_count = 2;                  // Total edge count
+  int32 cluster_count = 3;               // Number of communities
+  int32 link_edges = 4;                  // Explicit link edge count
+  int32 tag_edges = 5;                   // Tag co-occurrence edge count
+  int32 semantic_edges = 6;              // Semantic similarity edge count
+}
+
+// ========== Review System Messages (P3-C002) ==========
+
+// GetDueReviewsRequest is the request for GetDueReviews.
+message GetDueReviewsRequest {
+  int32 limit = 1;                       // Max items to return (default: 20)
+}
+
+// GetDueReviewsResponse is the response for GetDueReviews.
+message GetDueReviewsResponse {
+  repeated ReviewItem items = 1;
+  int32 total_due = 2;                   // Total items due for review
+}
+
+// ReviewItem represents a memo in the review queue.
+message ReviewItem {
+  string memo_uid = 1;                   // Memo UID
+  string memo_name = 2;                  // memos/{uid} format
+  string title = 3;                      // Memo title
+  string snippet = 4;                    // Content snippet
+  repeated string tags = 5;              // Memo tags
+  int64 last_review_ts = 6;              // Last review timestamp
+  int32 review_count = 7;                // Total review count
+  int64 next_review_ts = 8;              // Next scheduled review timestamp
+  double priority = 9;                   // Computed priority score
+  int64 created_ts = 10;                 // Memo creation timestamp
+}
+
+// RecordReviewRequest is the request for RecordReview.
+message RecordReviewRequest {
+  string memo_uid = 1 [(google.api.field_behavior) = REQUIRED];
+  ReviewQuality quality = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// ReviewQuality represents the user's assessment of recall difficulty.
+enum ReviewQuality {
+  REVIEW_QUALITY_UNSPECIFIED = 0;
+  REVIEW_QUALITY_AGAIN = 1;              // Complete blackout
+  REVIEW_QUALITY_HARD = 2;               // Correct with difficulty
+  REVIEW_QUALITY_GOOD = 3;               // Correct with hesitation
+  REVIEW_QUALITY_EASY = 4;               // Perfect response
+}
+
+// GetReviewStatsRequest is the request for GetReviewStats.
+message GetReviewStatsRequest {}
+
+// GetReviewStatsResponse is the response for GetReviewStats.
+message GetReviewStatsResponse {
+  int32 total_memos = 1;                 // Total memos in review system
+  int32 due_today = 2;                   // Memos due for review today
+  int32 reviewed_today = 3;              // Memos reviewed today
+  int32 new_memos = 4;                   // Memos never reviewed
+  int32 mastered_memos = 5;              // Memos with interval > 30 days
+  int32 streak_days = 6;                 // Consecutive days of review
+  int32 total_reviews = 7;               // Total review count
+  int32 average_accuracy = 8;            // Average accuracy percentage
+}

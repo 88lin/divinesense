@@ -1,0 +1,99 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+
+	"github.com/pkg/errors"
+
+	// Import the SQLite driver.
+	_ "modernc.org/sqlite"
+
+	"github.com/hrygo/divinesense/internal/profile"
+	"github.com/hrygo/divinesense/store"
+)
+
+// ============================================================================
+// SQLITE SUPPORT POLICY
+// ============================================================================
+// SQLite is supported on a BEST-EFFORT basis for development and testing only.
+//
+// Supported Features (High ROI):
+// - Basic CRUD operations
+// - Simple queries
+// - Single-user instances
+//
+// NOT Supported (Low ROI / High Complexity):
+// - Concurrent writes (SQLite limitation)
+// - Full-text search (BM25, hybrid search)
+// - Advanced AI features (reranking)
+// - Complex migrations
+//
+// When adding new features to SQLite:
+// 1. Only implement if the ROI is high (low complexity, high value)
+// 2. Prefer returning a clear error over partial/broken implementation
+// 3. Add a comment explaining what is NOT supported
+// ============================================================================
+
+type DB struct {
+	db      *sql.DB
+	profile *profile.Profile
+}
+
+// NewDB opens a database specified by its database driver name and a
+// driver-specific data source name, usually consisting of at least a
+// database name and connection information.
+func NewDB(profile *profile.Profile) (store.Driver, error) {
+	// Ensure a DSN is set before attempting to open the database.
+	if profile.DSN == "" {
+		return nil, errors.New("dsn required")
+	}
+
+	// Connect to the database with some sane settings:
+	// - No shared-cache: it's obsolete; WAL journal mode is a better solution.
+	// - No foreign key constraints: it's currently disabled by default, but it's a
+	// good practice to be explicit and prevent future surprises on SQLite upgrades.
+	// - Journal mode set to WAL: it's the recommended journal mode for most applications
+	// as it prevents locking issues.
+	//
+	// Notes:
+	// - When using the `modernc.org/sqlite` driver, each pragma must be prefixed with `_pragma=`.
+	//
+	// References:
+	// - https://pkg.go.dev/modernc.org/sqlite#Driver.Open
+	// - https://www.sqlite.org/sharedcache.html
+	// - https://www.sqlite.org/pragma.html
+	sqliteDB, err := sql.Open("sqlite", profile.DSN+"?_pragma=foreign_keys(0)&_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)")
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open db with dsn: %s", profile.DSN)
+	}
+
+	// Configure connection pool for single-user SQLite with WAL mode
+	// SQLite handles concurrency differently; these settings optimize for local usage
+	sqliteDB.SetMaxOpenConns(1)                 // SQLite: single connection is optimal with WAL
+	sqliteDB.SetMaxIdleConns(1)                 // Keep the single connection ready
+	sqliteDB.SetConnMaxLifetime(0)              // No lifetime limit (local file, no network)
+	sqliteDB.SetConnMaxIdleTime(0)              // No idle timeout (personal use, always ready)
+
+	driver := DB{db: sqliteDB, profile: profile}
+
+	return &driver, nil
+}
+
+func (d *DB) GetDB() *sql.DB {
+	return d.db
+}
+
+func (d *DB) Close() error {
+	return d.db.Close()
+}
+
+func (d *DB) IsInitialized(ctx context.Context) (bool, error) {
+	// Check if the database is initialized by checking if the memo table exists.
+	var exists bool
+	err := d.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='memo')").Scan(&exists)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to check if database is initialized")
+	}
+	return exists, nil
+}

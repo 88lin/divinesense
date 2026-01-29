@@ -1,0 +1,40 @@
+[Unit]
+Description=DivineSense AI-Powered Personal Second Brain
+Documentation=https://github.com/hrygo/divinesense
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=divinesense
+Group=divinesense
+WorkingDirectory=/opt/divinesense/data
+
+# Environment file
+EnvironmentFile=-/etc/divinesense/config
+
+# Core service
+ExecStart=/opt/divinesense/bin/divinesense
+
+# Restart policy
+Restart=always
+RestartSec=10s
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/divinesense/data /opt/divinesense/logs /var/log
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=divinesense
+
+[Install]
+WantedBy=multi-user.target

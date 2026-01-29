@@ -1,0 +1,668 @@
+package v1
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+
+	"connectrpc.com/connect"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
+	"github.com/hrygo/divinesense/proto/gen/api/v1/apiv1connect"
+)
+
+// ConnectServiceHandler wraps APIV1Service to implement Connect handler interfaces.
+// It adapts the existing gRPC service implementations to work with Connect's
+// request/response wrapper types.
+//
+// This wrapper pattern allows us to:
+// - Reuse existing gRPC service implementations
+// - Support both native gRPC and Connect protocols
+// - Maintain a single source of truth for business logic.
+type ConnectServiceHandler struct {
+	*APIV1Service
+}
+
+// NewConnectServiceHandler creates a new Connect service handler.
+func NewConnectServiceHandler(svc *APIV1Service) *ConnectServiceHandler {
+	return &ConnectServiceHandler{APIV1Service: svc}
+}
+
+// RegisterConnectHandlers registers all Connect service handlers on the given mux.
+func (s *ConnectServiceHandler) RegisterConnectHandlers(mux *http.ServeMux, opts ...connect.HandlerOption) {
+	// Register all service handlers
+	handlers := []struct {
+		path    string
+		handler http.Handler
+	}{
+		wrap(apiv1connect.NewInstanceServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewAuthServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewUserServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewMemoServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewAttachmentServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewShortcutServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewActivityServiceHandler(s, opts...)),
+		wrap(apiv1connect.NewIdentityProviderServiceHandler(s, opts...)),
+	}
+
+	if s.AIService != nil {
+		handlers = append(handlers, wrap(apiv1connect.NewAIServiceHandler(s, opts...)))
+	}
+
+	// Register Schedule service handlers
+	handlers = append(handlers, wrap(apiv1connect.NewScheduleServiceHandler(s, opts...)))
+
+	// Register ScheduleAgentService for Connect protocol
+	if s.ScheduleAgentService != nil {
+		scheduleAgentHandler := NewScheduleAgentServiceConnectHandler(s.ScheduleAgentService)
+		handlers = append(handlers, wrap(apiv1connect.NewScheduleAgentServiceHandler(scheduleAgentHandler, opts...)))
+	}
+
+	for _, h := range handlers {
+		mux.Handle(h.path, h.handler)
+	}
+}
+
+// wrap converts (path, handler) return value to a struct for cleaner iteration.
+func wrap(path string, handler http.Handler) struct {
+	path    string
+	handler http.Handler
+} {
+	return struct {
+		path    string
+		handler http.Handler
+	}{path, handler}
+}
+
+// convertGRPCError converts gRPC status errors to Connect errors.
+// This preserves the error code semantics between the two protocols.
+func convertGRPCError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if st, ok := status.FromError(err); ok {
+		return connect.NewError(grpcCodeToConnectCode(st.Code()), err)
+	}
+	return connect.NewError(connect.CodeInternal, err)
+}
+
+// grpcCodeToConnectCode converts gRPC status codes to Connect error codes.
+// gRPC and Connect use the same error code semantics, so this is a direct cast.
+// See: https://connectrpc.com/docs/protocol/#error-codes
+func grpcCodeToConnectCode(code codes.Code) connect.Code {
+	return connect.Code(code)
+}
+
+// AIService wrappers for Connect
+
+func (s *ConnectServiceHandler) SuggestTags(ctx context.Context, req *connect.Request[v1pb.SuggestTagsRequest]) (*connect.Response[v1pb.SuggestTagsResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.SuggestTags(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) SemanticSearch(ctx context.Context, req *connect.Request[v1pb.SemanticSearchRequest]) (*connect.Response[v1pb.SemanticSearchResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.SemanticSearch(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetRelatedMemos(ctx context.Context, req *connect.Request[v1pb.GetRelatedMemosRequest]) (*connect.Response[v1pb.GetRelatedMemosResponse], error) {
+	// Use AI-powered implementation when available, otherwise fallback to keyword-based
+	if s.AIService != nil && s.AIService.IsEnabled() {
+		resp, err := s.AIService.GetRelatedMemos(ctx, req.Msg)
+		if err != nil {
+			return nil, convertGRPCError(err)
+		}
+		return connect.NewResponse(resp), nil
+	}
+	// Fallback to MemoService implementation (keyword/tag-based)
+	resp, err := s.APIV1Service.GetRelatedMemos(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListMessages(ctx context.Context, req *connect.Request[v1pb.ListMessagesRequest]) (*connect.Response[v1pb.ListMessagesResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.ListMessages(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) Chat(ctx context.Context, req *connect.Request[v1pb.ChatRequest], stream *connect.ServerStream[v1pb.ChatResponse]) error {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+
+	// Log entry for debugging
+	slog.Debug("ConnectServiceHandler: Chat called",
+		"message", truncateStringForLog(req.Msg.Message, 50),
+		"agent_type", req.Msg.AgentType.String(),
+		"agent_type_value", int(req.Msg.AgentType),
+		"is_default", req.Msg.AgentType == v1pb.AgentType_AGENT_TYPE_DEFAULT,
+	)
+
+	// Delegate to AIService.Chat which has the full agent routing logic
+	return s.AIService.Chat(req.Msg, &connectStreamAdapter{
+		stream: stream,
+		ctx:    ctx,
+	})
+}
+
+// connectStreamAdapter wraps Connect ServerStream to implement AIService_ChatServer
+type connectStreamAdapter struct {
+	stream *connect.ServerStream[v1pb.ChatResponse]
+	ctx    context.Context
+}
+
+func (a *connectStreamAdapter) Send(resp *v1pb.ChatResponse) error {
+	return a.stream.Send(resp)
+}
+
+func (a *connectStreamAdapter) Context() context.Context {
+	return a.ctx
+}
+
+func (a *connectStreamAdapter) SendMsg(m any) error {
+	if resp, ok := m.(*v1pb.ChatResponse); ok {
+		return a.Send(resp)
+	}
+	return fmt.Errorf("invalid message type: %T", m)
+}
+
+func (a *connectStreamAdapter) RecvMsg(m any) error {
+	return fmt.Errorf("RecvMsg not supported for server streaming")
+}
+
+func (a *connectStreamAdapter) SetHeader(md metadata.MD) error {
+	return nil
+}
+
+func (a *connectStreamAdapter) SendHeader(md metadata.MD) error {
+	return nil
+}
+
+func (a *connectStreamAdapter) SetTrailer(md metadata.MD) {
+}
+
+// truncateStringForLog truncates a string for logging
+func truncateStringForLog(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	if maxLen <= 3 {
+		return s[:maxLen]
+	}
+	return s[:maxLen-3] + "..."
+}
+
+// ScheduleService wrappers for Connect
+
+func (s *ConnectServiceHandler) CreateSchedule(ctx context.Context, req *connect.Request[v1pb.CreateScheduleRequest]) (*connect.Response[v1pb.Schedule], error) {
+	resp, err := s.ScheduleService.CreateSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListSchedules(ctx context.Context, req *connect.Request[v1pb.ListSchedulesRequest]) (*connect.Response[v1pb.ListSchedulesResponse], error) {
+	resp, err := s.ScheduleService.ListSchedules(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetSchedule(ctx context.Context, req *connect.Request[v1pb.GetScheduleRequest]) (*connect.Response[v1pb.Schedule], error) {
+	resp, err := s.ScheduleService.GetSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateSchedule(ctx context.Context, req *connect.Request[v1pb.UpdateScheduleRequest]) (*connect.Response[v1pb.Schedule], error) {
+	resp, err := s.ScheduleService.UpdateSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteSchedule(ctx context.Context, req *connect.Request[v1pb.DeleteScheduleRequest]) (*connect.Response[emptypb.Empty], error) {
+	resp, err := s.ScheduleService.DeleteSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CheckConflict(ctx context.Context, req *connect.Request[v1pb.CheckConflictRequest]) (*connect.Response[v1pb.CheckConflictResponse], error) {
+	resp, err := s.ScheduleService.CheckConflict(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ParseAndCreateSchedule(ctx context.Context, req *connect.Request[v1pb.ParseAndCreateScheduleRequest]) (*connect.Response[v1pb.ParseAndCreateScheduleResponse], error) {
+	resp, err := s.ScheduleService.ParseAndCreateSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) PrecheckSchedule(ctx context.Context, req *connect.Request[v1pb.PrecheckScheduleRequest]) (*connect.Response[v1pb.PrecheckScheduleResponse], error) {
+	resp, err := s.ScheduleService.PrecheckSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) BatchParseSchedule(ctx context.Context, req *connect.Request[v1pb.BatchParseScheduleRequest]) (*connect.Response[v1pb.BatchParseScheduleResponse], error) {
+	resp, err := s.ScheduleService.BatchParseSchedule(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) BatchCreateSchedules(ctx context.Context, req *connect.Request[v1pb.BatchCreateSchedulesRequest]) (*connect.Response[v1pb.BatchCreateSchedulesResponse], error) {
+	resp, err := s.ScheduleService.BatchCreateSchedules(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ScheduleAgentServiceConnectHandler implements ScheduleAgentServiceHandler interface
+// by delegating to the underlying ScheduleAgentService.
+type ScheduleAgentServiceConnectHandler struct {
+	scheduleAgentService *ScheduleAgentService
+}
+
+// NewScheduleAgentServiceConnectHandler creates a new Connect handler for ScheduleAgentService.
+func NewScheduleAgentServiceConnectHandler(svc *ScheduleAgentService) *ScheduleAgentServiceConnectHandler {
+	return &ScheduleAgentServiceConnectHandler{scheduleAgentService: svc}
+}
+
+// Chat handles non-streaming schedule agent chat requests.
+func (s *ScheduleAgentServiceConnectHandler) Chat(ctx context.Context, req *connect.Request[v1pb.ScheduleAgentChatRequest]) (*connect.Response[v1pb.ScheduleAgentChatResponse], error) {
+	if s.scheduleAgentService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("schedule agent service is not available"))
+	}
+
+	resp, err := s.scheduleAgentService.Chat(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ChatStream handles streaming schedule agent chat requests.
+func (s *ScheduleAgentServiceConnectHandler) ChatStream(ctx context.Context, req *connect.Request[v1pb.ScheduleAgentChatRequest], stream *connect.ServerStream[v1pb.ScheduleAgentStreamResponse]) error {
+	if s.scheduleAgentService == nil {
+		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("schedule agent service is not available"))
+	}
+
+	// Convert Connect stream to gRPC stream interface
+	grpcStream := &scheduleAgentStreamAdapter{
+		connectStream: stream,
+		ctx:           ctx,
+	}
+
+	// Call the gRPC streaming implementation
+	return s.scheduleAgentService.ChatStream(req.Msg, grpcStream)
+}
+
+// scheduleAgentStreamAdapter adapts Connect ServerStream to gRPC ScheduleAgentService_ChatStreamServer
+type scheduleAgentStreamAdapter struct {
+	connectStream *connect.ServerStream[v1pb.ScheduleAgentStreamResponse]
+	ctx           context.Context
+}
+
+func (a *scheduleAgentStreamAdapter) Context() context.Context {
+	return a.ctx
+}
+
+func (a *scheduleAgentStreamAdapter) Send(resp *v1pb.ScheduleAgentStreamResponse) error {
+	return a.connectStream.Send(resp)
+}
+
+func (a *scheduleAgentStreamAdapter) SendMsg(m any) error {
+	if resp, ok := m.(*v1pb.ScheduleAgentStreamResponse); ok {
+		return a.connectStream.Send(resp)
+	}
+	return fmt.Errorf("invalid message type: %T", m)
+}
+
+func (a *scheduleAgentStreamAdapter) RecvMsg(m any) error {
+	// Server-side streaming doesn't receive messages from client after initial request
+	return fmt.Errorf("RecvMsg not supported for server streaming")
+}
+
+func (a *scheduleAgentStreamAdapter) SetHeader(md metadata.MD) error {
+	// Connect doesn't support gRPC metadata headers
+	return nil
+}
+
+func (a *scheduleAgentStreamAdapter) SendHeader(md metadata.MD) error {
+	// Connect doesn't support gRPC metadata headers
+	return nil
+}
+
+func (a *scheduleAgentStreamAdapter) SetTrailer(md metadata.MD) {
+	// Connect doesn't support gRPC metadata trailers
+}
+
+// GetParrotSelfCognition returns the metacognitive information of a parrot agent.
+func (s *ConnectServiceHandler) GetParrotSelfCognition(ctx context.Context, req *connect.Request[v1pb.GetParrotSelfCognitionRequest]) (*connect.Response[v1pb.GetParrotSelfCognitionResponse], error) {
+	agentType := req.Msg.GetAgentType()
+	selfCognition := getParrotSelfCognition(agentType)
+
+	return connect.NewResponse(&v1pb.GetParrotSelfCognitionResponse{
+		SelfCognition: selfCognition,
+	}), nil
+}
+
+// ListParrots returns all available parrot agents with their metacognitive information.
+func (s *ConnectServiceHandler) ListParrots(ctx context.Context, req *connect.Request[v1pb.ListParrotsRequest]) (*connect.Response[v1pb.ListParrotsResponse], error) {
+	// Return all available parrot types
+	agentTypes := []v1pb.AgentType{
+		v1pb.AgentType_AGENT_TYPE_DEFAULT,
+		v1pb.AgentType_AGENT_TYPE_MEMO,
+		v1pb.AgentType_AGENT_TYPE_SCHEDULE,
+		v1pb.AgentType_AGENT_TYPE_AMAZING,
+		v1pb.AgentType_AGENT_TYPE_CREATIVE,
+	}
+
+	parrots := make([]*v1pb.ParrotInfo, 0, len(agentTypes))
+	for _, agentType := range agentTypes {
+		parrots = append(parrots, &v1pb.ParrotInfo{
+			AgentType:     agentType,
+			Name:          getParrotNameByAgentType(agentType),
+			SelfCognition: getParrotSelfCognition(agentType),
+		})
+	}
+
+	return connect.NewResponse(&v1pb.ListParrotsResponse{
+		Parrots: parrots,
+	}), nil
+}
+
+// Helper function to get parrot self-cognition by agent type
+func getParrotSelfCognition(agentType v1pb.AgentType) *v1pb.ParrotSelfCognition {
+	switch agentType {
+	case v1pb.AgentType_AGENT_TYPE_MEMO:
+		return &v1pb.ParrotSelfCognition{
+			Name:             "memo",
+			Emoji:            "🦜",
+			Title:            "灰灰 - 笔记助手鹦鹉",
+			Personality:      []string{"专注", "善于总结", "记忆力强"},
+			Capabilities:     []string{"memo_search", "memo_summary", "memo_analysis"},
+			Limitations:      []string{"不能直接修改笔记", "不能访问外部信息"},
+			WorkingStyle:     "先理解问题，检索相关笔记，然后综合分析给出答案",
+			FavoriteTools:    []string{"semantic_search", "memo_query"},
+			SelfIntroduction: "我是灰灰，您的笔记助手。我擅长在您的笔记中搜索信息、总结内容和发现关联。",
+			FunFact:          "我是一只非洲灰鹦鹉，以记忆力和智慧著称",
+		}
+	case v1pb.AgentType_AGENT_TYPE_SCHEDULE:
+		return &v1pb.ParrotSelfCognition{
+			Name:             "schedule",
+			Emoji:            "📅",
+			Title:            "金刚 - 日程助手鹦鹉",
+			Personality:      []string{"守时", "条理清晰", "注重计划"},
+			Capabilities:     []string{"schedule_query", "schedule_create", "schedule_manage"},
+			Limitations:      []string{"不能代替您做决定", "不能访问外部日历"},
+			WorkingStyle:     "分析时间需求，查询现有日程，帮助安排和提醒",
+			FavoriteTools:    []string{"schedule_list", "schedule_create", "conflict_check"},
+			SelfIntroduction: "我是金刚，您的日程助手。我帮您管理时间、安排日程、避免冲突。",
+			FunFact:          "我是一只蓝黄金刚鹦鹉，以守时和可靠著称",
+		}
+	case v1pb.AgentType_AGENT_TYPE_AMAZING:
+		return &v1pb.ParrotSelfCognition{
+			Name:             "amazing",
+			Emoji:            "⭐",
+			Title:            "惊奇 - 综合助手鹦鹉",
+			Personality:      []string{"全能", "灵活", "善于整合"},
+			Capabilities:     []string{"memo_search", "schedule_query", "integrated_analysis"},
+			Limitations:      []string{"复杂任务可能需要专门助手"},
+			WorkingStyle:     "综合分析笔记和日程，提供全面的视角和建议",
+			FavoriteTools:    []string{"memo_search", "schedule_query", "combined_analysis"},
+			SelfIntroduction: "我是惊奇，您的综合助手。我能同时查看您的笔记和日程，给您完整的信息。",
+			FunFact:          "我是一只亚马逊鹦鹉，以多才多艺著称",
+		}
+	case v1pb.AgentType_AGENT_TYPE_CREATIVE:
+		return &v1pb.ParrotSelfCognition{
+			Name:             "creative",
+			Emoji:            "💡",
+			Title:            "灵灵 - 创意助手鹦鹉",
+			Personality:      []string{"创意", "活泼", "善于表达"},
+			Capabilities:     []string{"creative_writing", "brainstorm", "text_improvement"},
+			Limitations:      []string{"创意建议需要您的判断", "不能保证所有想法都适用"},
+			WorkingStyle:     "激发创意思维，提供多种表达方式，帮助完善文字",
+			FavoriteTools:    []string{"idea_generation", "text_polish", "style_transform"},
+			SelfIntroduction: "我是灵灵，您的创意伙伴。我帮您头脑风暴、改进文字、激发灵感。",
+			FunFact:          "我是一只虎皮鹦鹉，以活泼和创造力著称",
+		}
+	default:
+		return &v1pb.ParrotSelfCognition{
+			Name:             "default",
+			Emoji:            "🤖",
+			Title:            "默认助手",
+			Personality:      []string{"通用", "友好", "乐于助人"},
+			Capabilities:     []string{"memo_search", "memo_summary", "general_qa"},
+			Limitations:      []string{"通用能力，专业任务建议使用专门助手"},
+			WorkingStyle:     "理解问题，搜索相关信息，提供帮助",
+			FavoriteTools:    []string{"search", "analyze"},
+			SelfIntroduction: "我是您的 AI 助手，随时准备帮助您。",
+			FunFact:          "我是默认助手，什么都会一点",
+		}
+	}
+}
+
+// Helper function to get parrot name by agent type
+func getParrotNameByAgentType(agentType v1pb.AgentType) string {
+	switch agentType {
+	case v1pb.AgentType_AGENT_TYPE_MEMO:
+		return "灰灰"
+	case v1pb.AgentType_AGENT_TYPE_SCHEDULE:
+		return "金刚"
+	case v1pb.AgentType_AGENT_TYPE_AMAZING:
+		return "惊奇"
+	case v1pb.AgentType_AGENT_TYPE_CREATIVE:
+		return "灵灵"
+	default:
+		return "默认助手"
+	}
+}
+
+// AIConversation Connect wrappers
+
+func (s *ConnectServiceHandler) ListAIConversations(ctx context.Context, req *connect.Request[v1pb.ListAIConversationsRequest]) (*connect.Response[v1pb.ListAIConversationsResponse], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.ListAIConversations(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetAIConversation(ctx context.Context, req *connect.Request[v1pb.GetAIConversationRequest]) (*connect.Response[v1pb.AIConversation], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.GetAIConversation(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) CreateAIConversation(ctx context.Context, req *connect.Request[v1pb.CreateAIConversationRequest]) (*connect.Response[v1pb.AIConversation], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.CreateAIConversation(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UpdateAIConversation(ctx context.Context, req *connect.Request[v1pb.UpdateAIConversationRequest]) (*connect.Response[v1pb.AIConversation], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.UpdateAIConversation(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DeleteAIConversation(ctx context.Context, req *connect.Request[v1pb.DeleteAIConversationRequest]) (*connect.Response[emptypb.Empty], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.DeleteAIConversation(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) AddContextSeparator(ctx context.Context, req *connect.Request[v1pb.AddContextSeparatorRequest]) (*connect.Response[emptypb.Empty], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.AddContextSeparator(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ClearConversationMessages(ctx context.Context, req *connect.Request[v1pb.ClearConversationMessagesRequest]) (*connect.Response[emptypb.Empty], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.ClearConversationMessages(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) DetectDuplicates(ctx context.Context, req *connect.Request[v1pb.DetectDuplicatesRequest]) (*connect.Response[v1pb.DetectDuplicatesResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.DetectDuplicates(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) MergeMemos(ctx context.Context, req *connect.Request[v1pb.MergeMemosRequest]) (*connect.Response[v1pb.MergeMemosResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.MergeMemos(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) LinkMemos(ctx context.Context, req *connect.Request[v1pb.LinkMemosRequest]) (*connect.Response[v1pb.LinkMemosResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.LinkMemos(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetKnowledgeGraph(ctx context.Context, req *connect.Request[v1pb.GetKnowledgeGraphRequest]) (*connect.Response[v1pb.GetKnowledgeGraphResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.GetKnowledgeGraph(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetDueReviews(ctx context.Context, req *connect.Request[v1pb.GetDueReviewsRequest]) (*connect.Response[v1pb.GetDueReviewsResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.GetDueReviews(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) RecordReview(ctx context.Context, req *connect.Request[v1pb.RecordReviewRequest]) (*connect.Response[emptypb.Empty], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.RecordReview(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) GetReviewStats(ctx context.Context, req *connect.Request[v1pb.GetReviewStatsRequest]) (*connect.Response[v1pb.GetReviewStatsResponse], error) {
+	if s.AIService == nil || !s.AIService.IsEnabled() {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.GetReviewStats(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// MemoService wrappers for Connect
+
+func (s *ConnectServiceHandler) SearchWithHighlight(ctx context.Context, req *connect.Request[v1pb.SearchWithHighlightRequest]) (*connect.Response[v1pb.SearchWithHighlightResponse], error) {
+	resp, err := s.APIV1Service.SearchWithHighlight(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
