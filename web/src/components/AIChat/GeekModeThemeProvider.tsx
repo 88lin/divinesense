@@ -18,15 +18,19 @@ export function GeekModeThemeProvider() {
   useEffect(() => {
     if (typeof document === "undefined") return;
 
+    // Track whether we added the class for proper cleanup
+    let wasAdded = false;
+
     if (geekMode) {
       document.body.classList.add(GEEK_MODE_BODY_CLASS);
-    } else {
-      document.body.classList.remove(GEEK_MODE_BODY_CLASS);
+      wasAdded = true;
     }
 
-    // Cleanup on unmount
+    // Cleanup on unmount - only remove if we added it
     return () => {
-      document.body.classList.remove(GEEK_MODE_BODY_CLASS);
+      if (wasAdded) {
+        document.body.classList.remove(GEEK_MODE_BODY_CLASS);
+      }
     };
   }, [geekMode]);
 

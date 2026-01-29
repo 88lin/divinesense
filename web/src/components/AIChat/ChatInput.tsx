@@ -1,4 +1,4 @@
-import { MessageSquarePlus, Scissors, SendIcon, Trash2 } from "lucide-react";
+import { MessageSquarePlus, Scissors, SendIcon, Terminal, Trash2 } from "lucide-react";
 import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ interface ChatInputProps {
   className?: string;
   showQuickActions?: boolean;
   quickActions?: React.ReactNode;
+  geekMode?: boolean;
 }
 
 export function ChatInput({
@@ -33,6 +34,7 @@ export function ChatInput({
   className,
   showQuickActions = false,
   quickActions,
+  geekMode = false,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -81,6 +83,9 @@ export function ChatInput({
   }, [value]);
 
   const defaultPlaceholder = placeholder || t("ai.parrot.chat-default-placeholder");
+
+  // Geek mode placeholder
+  const geekPlaceholder = geekMode ? "$ " + defaultPlaceholder : defaultPlaceholder;
 
   return (
     <div
@@ -154,6 +159,8 @@ export function ChatInput({
             "flex items-end gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl border transition-all",
             "focus-within:ring-2 focus-within:ring-offset-2 shadow-sm",
             "bg-card border-border focus-within:ring-ring",
+            // Geek mode styles
+            geekMode && "geek-border geek-terminal",
           )}
         >
           <Textarea
@@ -164,9 +171,13 @@ export function ChatInput({
               handleInput(e);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={defaultPlaceholder}
+            placeholder={geekPlaceholder}
             disabled={disabled || isTyping}
-            className="flex-1 min-h-[44px] max-h-[120px] bg-transparent border-0 outline-none resize-none text-foreground placeholder:text-muted-foreground text-sm leading-relaxed font-sans"
+            className={cn(
+              "flex-1 min-h-[44px] max-h-[120px] bg-transparent border-0 outline-none resize-none text-sm leading-relaxed",
+              "text-foreground placeholder:text-muted-foreground",
+              geekMode && "geek-mono placeholder:text-green-500/50",
+            )}
             rows={1}
           />
           <Button
@@ -176,17 +187,20 @@ export function ChatInput({
               "hover:scale-105 active:scale-95",
               value.trim() && !isTyping ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
               "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
+              // Geek mode styles
+              geekMode && "geek-btn",
             )}
             onClick={onSend}
             disabled={!value.trim() || isTyping || disabled}
             aria-label="Send message"
           >
-            <SendIcon className="w-5 h-5" />
+            {geekMode && value.trim() ? (
+              <Terminal className="w-5 h-5" />
+            ) : (
+              <SendIcon className="w-5 h-5" />
+            )}
           </Button>
         </div>
-
-        {/* Hint Text - Desktop only */}
-        <p className="text-xs text-muted-foreground mt-1.5 text-center hidden md:block">{t("ai.aichat.input-hint")}</p>
       </div>
     </div>
   );

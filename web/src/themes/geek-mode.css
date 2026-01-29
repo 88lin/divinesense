@@ -359,3 +359,36 @@
 .geek-mode ::-webkit-scrollbar-thumb:hover {
   background: var(--geek-primary);
 }
+
+/* ============================================================
+   Accessibility: Reduced Motion Support
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all animations for users who prefer reduced motion */
+  .geek-mode .geek-glow::before,
+  .geek-mode .geek-glow-pulse::before,
+  .geek-mode .geek-cursor,
+  .geek-mode .geek-status-dot,
+  .geek-mode .geek-status-dot.active {
+    animation: none !important;
+  }
+
+  /* Replace animations with static states */
+  .geek-mode .geek-glow::before {
+    opacity: 0.7;
+  }
+
+  .geek-mode .geek-cursor {
+    opacity: 1;
+  }
+
+  .geek-mode .geek-status-dot {
+    opacity: 1;
+  }
+
+  /* Keep transitions but make them faster */
+  .geek-mode .geek-border,
+  .geek-mode .geek-fab {
+    transition-duration: 0.1s;
+  }
+}

@@ -55,7 +55,7 @@ export function GeekModeToggle({
       )}
       title={enabled ? t("ai.geek_mode.enabled") : t("ai.geek_mode.tooltip")}
       aria-pressed={enabled}
-      aria-label={t("ai.geek_mode.aria_label")}
+      aria-label={enabled ? t("ai.geek_mode.disable_label") : t("ai.geek_mode.enable_label")}
     >
       {/* Scanline effect overlay when enabled */}
       {enabled && (
@@ -71,17 +71,18 @@ export function GeekModeToggle({
         )}
       </span>
 
-      {/* Label - monospace in geek mode */}
-      <span
-        className={cn(
-          "relative z-10",
-          isHeader ? "hidden sm:inline" : "",
-          isMobile ? "" : "hidden md:inline",
-          enabled && "geek-mono"
-        )}
-      >
-        {t("ai.geek_mode.label")}
-      </span>
+      {/* Label - monospace in geek mode, hidden on mobile variant */}
+      {!isMobile && (
+        <span
+          className={cn(
+            "relative z-10",
+            isHeader ? "hidden sm:inline" : "hidden md:inline",
+            enabled && "geek-mono"
+          )}
+        >
+          {t("ai.geek_mode.label")}
+        </span>
+      )}
 
       {/* Status indicator - becomes a "terminal cursor" when enabled */}
       {enabled && (

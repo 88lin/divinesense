@@ -129,6 +129,7 @@ function UnifiedChatView({
         onClearChat={() => setClearDialogOpen(true)}
         disabled={isTyping}
         isTyping={isTyping}
+        geekMode={geekMode}
       />
 
       {/* Mobile Geek Mode Toggle - Floating Action Button */}

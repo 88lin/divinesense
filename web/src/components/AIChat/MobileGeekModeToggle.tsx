@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 interface MobileGeekModeToggleProps {
   enabled: boolean;
   onToggle: (enabled: boolean) => void;
-  className?: string;
 }
 
 /**
@@ -23,7 +22,6 @@ interface MobileGeekModeToggleProps {
 export function MobileGeekModeToggle({
   enabled,
   onToggle,
-  className,
 }: MobileGeekModeToggleProps) {
   const { t } = useTranslation();
 
@@ -42,11 +40,10 @@ export function MobileGeekModeToggle({
         // Geek mode styles
         enabled && "geek-fab",
         !enabled && "border-border shadow-lg",
-        className,
       )}
       title={enabled ? t("ai.geek_mode.enabled") : t("ai.geek_mode.tooltip")}
       aria-pressed={enabled}
-      aria-label={t("ai.geek_mode.aria_label")}
+      aria-label={enabled ? t("ai.geek_mode.disable_label") : t("ai.geek_mode.enable_label")}
     >
       {/* Scanline effect when enabled */}
       {enabled && (

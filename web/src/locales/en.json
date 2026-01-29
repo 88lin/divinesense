@@ -328,7 +328,9 @@
       "tooltip": "Toggle Geek Mode for code-related tasks using Claude Code CLI",
       "aria_label": "Toggle Geek Mode",
       "enabled": "Geek Mode enabled",
-      "disabled": "Geek Mode disabled"
+      "disabled": "Geek Mode disabled",
+      "enable_label": "Enable Geek Mode",
+      "disable_label": "Disable Geek Mode"
     }
   },
   "auth": {

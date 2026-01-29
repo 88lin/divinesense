@@ -328,7 +328,9 @@
       "tooltip": "切换极客模式，使用 Claude Code CLI 处理代码任务",
       "aria_label": "切换极客模式",
       "enabled": "极客模式已启用",
-      "disabled": "极客模式已关闭"
+      "disabled": "极客模式已关闭",
+      "enable_label": "启用极客模式",
+      "disable_label": "禁用极客模式"
     }
   },
   "auth": {
