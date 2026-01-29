@@ -61,17 +61,17 @@ jobs:
         run: |
           case "${{ matrix.test-group }}" in
             store)
-              go test -v -race -coverprofile=coverage.out -covermode=atomic ./store/...
+              go test -v -race -coverprofile=coverage.out -covermode=atomic -tags=noui ./store/...
               ;;
             server)
-              go test -v -race -coverprofile=coverage.out -covermode=atomic ./server/...
+              go test -v -race -coverprofile=coverage.out -covermode=atomic -tags=noui ./server/...
               ;;
             plugin)
-              go test -v -race -coverprofile=coverage.out -covermode=atomic \
+              go test -v -race -coverprofile=coverage.out -covermode=atomic -tags=noui \
                 $(go list ./plugin/... | grep -v "github.com/hrygo/divinesense/plugin/cron$")
               ;;
             other)
-              go test -v -race -coverprofile=coverage.out -covermode=atomic \
+              go test -v -race -coverprofile=coverage.out -covermode=atomic -tags=noui \
                 ./cmd/... ./internal/...
               ;;
           esac
