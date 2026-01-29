@@ -147,10 +147,10 @@ func TestBatchScheduleParser_Parse(t *testing.T) {
 	tests := []struct {
 		name         string
 		input        string
-		wantBatch    bool
 		wantTitle    string
 		wantType     RecurrenceType
 		wantCountGte int
+		wantBatch    bool
 	}{
 		{
 			name:         "weekly_monday_meeting",
@@ -272,8 +272,8 @@ func TestBatchScheduleService_ValidateRequest(t *testing.T) {
 	svc := NewBatchScheduleService(nil)
 
 	tests := []struct {
-		name    string
 		req     *BatchCreateRequest
+		name    string
 		wantErr bool
 	}{
 		{
@@ -396,9 +396,9 @@ func TestBatchScheduleParser_AlignToFirstWeekday(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		inputDay    time.Weekday // Day of week for input time
-		weekdays    []int        // Target weekdays (1=Monday, 7=Sunday)
-		expectDelta int          // Expected days to add
+		inputDay    time.Weekday
+		weekdays    []int
+		expectDelta int
 	}{
 		{"already_on_target", time.Monday, []int{1}, 0},
 		{"wed_to_monday", time.Wednesday, []int{1}, 5},                   // Wed->Mon = +5 days

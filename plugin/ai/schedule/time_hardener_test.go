@@ -220,8 +220,8 @@ func TestTimeHardener_ValidateTime(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
 		time      time.Time
+		name      string
 		wantError bool
 	}{
 		{
@@ -339,9 +339,9 @@ func TestTimeHardener_ValidateTimeRange(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
 		start     time.Time
 		end       time.Time
+		name      string
 		wantError bool
 	}{
 		{

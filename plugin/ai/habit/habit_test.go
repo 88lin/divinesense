@@ -56,7 +56,7 @@ func (m *mockMemoryService) UpdatePreferences(ctx context.Context, userID int32,
 	return nil
 }
 
-// Helper to generate mock episodes
+// Helper to generate mock episodes.
 func generateMockEpisodes(count int, hours []int, agentType string) []memory.EpisodicMemory {
 	episodes := make([]memory.EpisodicMemory, count)
 	now := time.Now()
@@ -449,7 +449,7 @@ func TestFilterByFrequency(t *testing.T) {
 	}
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkAnalyze(b *testing.B) {
 	episodes := generateMockEpisodes(500, []int{9, 10, 14, 15, 16}, "schedule")
 	mockSvc := &mockMemoryService{episodes: episodes}

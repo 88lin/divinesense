@@ -345,7 +345,7 @@ func TestScheduleIntentClassifier_KeywordFallback(t *testing.T) {
 	}
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkScheduleIntentClassifier_Classify(b *testing.B) {
 	c := NewScheduleIntentClassifier(nil)
 	inputs := []string{

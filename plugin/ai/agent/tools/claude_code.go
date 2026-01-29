@@ -26,22 +26,22 @@ const (
 // Maintains session state and resource limits.
 // Uses atomic operations for FileChanges to ensure thread safety.
 type ClaudeCodeSession struct {
-	UserID      int32
+	CreatedAt   time.Time
 	SessionName string
 	WorkDir     string
-	FileChanges atomic.Int32 // atomic for lock-free concurrent access
-	CreatedAt   time.Time
+	UserID      int32
+	FileChanges atomic.Int32
 }
 
 // ClaudeCodeTool integrates Claude Code CLI for code-related tasks.
 // Only available when Geek Mode is enabled by the user.
 // Uses sync.Map for concurrent-safe session storage.
 type ClaudeCodeTool struct {
-	enabled      bool
+	userIDGetter func(ctx context.Context) int32
+	sessions     sync.Map
 	workDir      string
 	timeout      time.Duration
-	sessions     sync.Map // map[int32]*ClaudeCodeSession - concurrent-safe
-	userIDGetter func(ctx context.Context) int32
+	enabled      bool
 }
 
 // NewClaudeCodeTool creates a new Claude Code CLI integration tool.
@@ -202,14 +202,14 @@ func (t *ClaudeCodeTool) buildCommand(session *ClaudeCodeSession, prompt string)
 func (t *ClaudeCodeTool) executeCommand(ctx context.Context, cmd *exec.Cmd) (string, error) {
 	// Create a channel to capture the result
 	type result struct {
-		output string
 		err    error
+		output string
 	}
 	resultCh := make(chan result, 1)
 
 	go func() {
 		output, err := cmd.CombinedOutput()
-		resultCh <- result{string(output), err}
+		resultCh <- result{err: err, output: string(output)}
 	}()
 
 	select {

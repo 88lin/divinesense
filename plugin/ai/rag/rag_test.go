@@ -3,8 +3,8 @@ package rag
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/hrygo/divinesense/plugin/ai/router"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRetrievalDecision(t *testing.T) {
@@ -13,31 +13,31 @@ func TestRetrievalDecision(t *testing.T) {
 	tests := []struct {
 		name     string
 		query    string
-		expected bool
 		reason   string
+		expected bool
 	}{
 		// Chitchat - no retrieval
-		{"Greeting", "你好", false, ReasonChitchat},
-		{"Thanks", "谢谢", false, ReasonChitchat},
-		{"Short", "嗯", false, ReasonChitchat},
-		{"OK", "好的", false, ReasonChitchat},
+		{"Greeting", "你好", ReasonChitchat, false},
+		{"Thanks", "谢谢", ReasonChitchat, false},
+		{"Short", "嗯", ReasonChitchat, false},
+		{"OK", "好的", ReasonChitchat, false},
 
 		// System commands - no retrieval (need longer input to avoid chitchat match)
-		{"Help command", "帮助命令", false, ReasonSystemCommand},
-		{"Exit system", "退出系统", false, ReasonSystemCommand},
+		{"Help command", "帮助命令", ReasonSystemCommand, false},
+		{"Exit system", "退出系统", ReasonSystemCommand, false},
 
 		// Retrieval triggers - should retrieve
-		{"Search memo", "搜索我的笔记", true, ReasonRetrievalTrigger},
-		{"Find notes", "查找关于 Go 的记录", true, ReasonRetrievalTrigger},
-		{"Previous", "之前写过什么", true, ReasonRetrievalTrigger},
+		{"Search memo", "搜索我的笔记", ReasonRetrievalTrigger, true},
+		{"Find notes", "查找关于 Go 的记录", ReasonRetrievalTrigger, true},
+		{"Previous", "之前写过什么", ReasonRetrievalTrigger, true},
 
 		// Schedule triggers - should retrieve
-		{"Schedule query", "明天的日程", true, ReasonScheduleQuery},
-		{"Meeting", "下周的会议安排", true, ReasonScheduleQuery},
-		{"Today", "今天有什么安排", true, ReasonScheduleQuery},
+		{"Schedule query", "明天的日程", ReasonScheduleQuery, true},
+		{"Meeting", "下周的会议安排", ReasonScheduleQuery, true},
+		{"Today", "今天有什么安排", ReasonScheduleQuery, true},
 
 		// Default - longer queries retrieve
-		{"Long query", "帮我分析一下这个问题的解决方案", true, ReasonDefault},
+		{"Long query", "帮我分析一下这个问题的解决方案", ReasonDefault, true},
 	}
 
 	for _, tt := range tests {
@@ -56,9 +56,9 @@ func TestResultEvaluator(t *testing.T) {
 
 	tests := []struct {
 		name           string
+		expectedAction SuggestedAction
 		results        []*SearchResult
 		expectedUseful bool
-		expectedAction SuggestedAction
 	}{
 		{
 			name:           "Empty results",
@@ -265,7 +265,7 @@ func TestHybridSearcher(t *testing.T) {
 	})
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkRetrievalDecision(b *testing.B) {
 	decider := NewRetrievalDecider()
 	query := "搜索我之前写的关于 Go 编程的笔记"

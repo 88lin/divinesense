@@ -426,8 +426,8 @@ func TestCalculateStreak(t *testing.T) {
 	today := time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name     string
 		dates    map[string]bool
+		name     string
 		expected int
 	}{
 		{

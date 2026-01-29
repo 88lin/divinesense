@@ -283,17 +283,17 @@ func TestErrorRecovery_SimplifyInput(t *testing.T) {
 
 func TestIsRecoverableError(t *testing.T) {
 	tests := []struct {
-		name     string
 		err      error
+		name     string
 		expected bool
 	}{
-		{"InvalidTimeFormat", ErrInvalidTimeFormat, true},
-		{"ToolNotFound", ErrToolNotFound, true},
-		{"ParseError", ErrParseError, true},
-		{"NetworkError", ErrNetworkError, false},
-		{"ServiceUnavailable", ErrServiceUnavailable, false},
-		{"ScheduleConflict", ErrScheduleConflict, false},
-		{"UnknownError", errors.New("unknown"), false},
+		{ErrInvalidTimeFormat, "InvalidTimeFormat", true},
+		{ErrToolNotFound, "ToolNotFound", true},
+		{ErrParseError, "ParseError", true},
+		{ErrNetworkError, "NetworkError", false},
+		{ErrServiceUnavailable, "ServiceUnavailable", false},
+		{ErrScheduleConflict, "ScheduleConflict", false},
+		{errors.New("unknown"), "UnknownError", false},
 	}
 
 	for _, tt := range tests {
@@ -308,15 +308,15 @@ func TestIsRecoverableError(t *testing.T) {
 
 func TestIsTransientError(t *testing.T) {
 	tests := []struct {
-		name     string
 		err      error
+		name     string
 		expected bool
 	}{
-		{"NetworkError", ErrNetworkError, true},
-		{"ServiceUnavailable", ErrServiceUnavailable, true},
-		{"InvalidTimeFormat", ErrInvalidTimeFormat, false},
-		{"ToolNotFound", ErrToolNotFound, false},
-		{"UnknownError", errors.New("unknown"), false},
+		{ErrNetworkError, "NetworkError", true},
+		{ErrServiceUnavailable, "ServiceUnavailable", true},
+		{ErrInvalidTimeFormat, "InvalidTimeFormat", false},
+		{ErrToolNotFound, "ToolNotFound", false},
+		{errors.New("unknown"), "UnknownError", false},
 	}
 
 	for _, tt := range tests {

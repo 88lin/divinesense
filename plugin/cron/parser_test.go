@@ -45,7 +45,7 @@ func TestRange(t *testing.T) {
 	}
 
 	for _, c := range ranges {
-		actual, err := getRange(c.expr, bounds{c.min, c.max, nil})
+		actual, err := getRange(c.expr, bounds{nil, c.min, c.max})
 		if len(c.err) != 0 && (err == nil || !strings.Contains(err.Error(), c.err)) {
 			t.Errorf("%s => expected %v, got %v", c.expr, c.err, err)
 		}
@@ -71,7 +71,7 @@ func TestField(t *testing.T) {
 	}
 
 	for _, c := range fields {
-		actual, _ := getField(c.expr, bounds{c.min, c.max, nil})
+		actual, _ := getField(c.expr, bounds{nil, c.min, c.max})
 		if actual != c.expected {
 			t.Errorf("%s => expected %d, got %d", c.expr, c.expected, actual)
 		}
@@ -321,7 +321,7 @@ func TestStandardSpecSchedule(t *testing.T) {
 	}{
 		{
 			expr:     "5 * * * *",
-			expected: &SpecSchedule{1 << seconds.min, 1 << 5, all(hours), all(dom), all(months), all(dow), time.Local},
+			expected: &SpecSchedule{time.Local, 1 << seconds.min, 1 << 5, all(hours), all(dom), all(months), all(dow)},
 		},
 		{
 			expr:     "@every 5m",
@@ -360,15 +360,15 @@ func TestNoDescriptorParser(t *testing.T) {
 }
 
 func every5min(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{1 << 0, 1 << 5, all(hours), all(dom), all(months), all(dow), loc}
+	return &SpecSchedule{loc, 1 << 0, 1 << 5, all(hours), all(dom), all(months), all(dow)}
 }
 
 func every5min5s(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{1 << 5, 1 << 5, all(hours), all(dom), all(months), all(dow), loc}
+	return &SpecSchedule{loc, 1 << 5, 1 << 5, all(hours), all(dom), all(months), all(dow)}
 }
 
 func midnight(loc *time.Location) *SpecSchedule {
-	return &SpecSchedule{1, 1, 1, all(dom), all(months), all(dow), loc}
+	return &SpecSchedule{loc, 1, 1, 1, all(dom), all(months), all(dow)}
 }
 
 func annual(loc *time.Location) *SpecSchedule {

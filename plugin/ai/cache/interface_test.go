@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func TestCacheServiceContract(t *testing.T) {
 		if !ok {
 			t.Fatal("expected key to exist")
 		}
-		if string(result) != string(value) {
+		if !bytes.Equal(result, value) {
 			t.Errorf("expected %s, got %s", value, result)
 		}
 	})
