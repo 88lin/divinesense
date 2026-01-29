@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.62.1] - 2026-01-30
+
+### 🛠️ Bug Fixes & Maintenance
+
+- **Lint**: Resolved all remaining linting errors in backend and frontend codebases.
+- **Lint**: Updated `golangci-lint` configuration for CI compliance.
+- **Cron Tests**: Simplified test patterns and use `time.Equal` for proper time comparison.
+- **Tests**: Fixed struct field order in test literals across multiple packages.
+
+### ⚡ Performance
+
+- **Tests**: Optimized test execution time and increased timeout from 30s to 2m.
+
+### ✨ Features
+
+- **AI Context**: Added device context support to Geek Agent for richer contextual awareness.
+
+### 📝 Documentation
+
+- **README**: Updated with research links and detailed agent information.
+
 ## [v0.62.0] - 2026-01-30
 
 ### 🤓 Geek Mode: The 4th Parrot
