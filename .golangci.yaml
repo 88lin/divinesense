@@ -37,6 +37,59 @@ linters:
     - nilerr
     - gosec
 
+  # Linter-specific settings (v2 format: under linters.settings)
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - shadow
+        - fieldalignment
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    gosec:
+      excludes:
+        - G104
+        - G307
+        - G301
+        - G204
+        - G115
+        - G107
+        - G304
+        - G306
+        - G109
+        - G201
+        - G202
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - hugeParam
+        - rangeValCopy
+        - unnamedResult
+        - ifElseChain
+        - commentedOutCode
+        - unnecessaryDefer
+        - appendCombine
+        - paramTypeCombine
+        - importShadow
+        - octalLiteral
+        - builtinShadow
+        - emptyStringTest
+
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+
+    misspell:
+      locale: US
+
   # Exclusion rules (v2 format: under linters.exclusions)
   exclusions:
     # Exclude generated files
@@ -184,56 +237,6 @@ formatters:
       - dist
       - vendor
       - proto/gen
-
-# ===========================================================================
-# Linters Settings
-# ===========================================================================
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - shadow
-
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-  gosec:
-    excludes:
-      - G104
-      - G307
-      - G301
-      - G204
-      - G115
-      - G107
-      - G304
-      - G306
-      - G109
-      - G201
-      - G202
-
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
-    disabled-checks:
-      - hugeParam
-      - rangeValCopy
-      - unnamedResult
-      - ifElseChain
-      - commentedOutCode
-      - unnecessaryDefer
-      - appendCombine
-      - paramTypeCombine
-
-  prealloc:
-    simple: true
-    range-loops: true
-    for-loops: false
-
-  misspell:
-    locale: US
 
 # ===========================================================================
 # Output Configuration
