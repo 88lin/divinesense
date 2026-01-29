@@ -26,8 +26,9 @@ jobs:
         with:
           input: "proto"
       - name: buf format
+        working-directory: proto
         run: |
           if [[ $(buf format -d) ]]; then
-            echo "Run 'buf format -d'"
+            echo "Run 'buf format -w' in proto/ directory"
             exit 1
           fi

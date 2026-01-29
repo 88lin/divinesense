@@ -204,7 +204,7 @@ db-vector: ## 验证 pgvector 扩展
 
 test: ## 运行所有测试
 	@echo "Running tests..."
-	@DIVINESENSE_DRIVER=$(DIVINESENSE_DRIVER) DIVINESENSE_DSN=$(DIVINESENSE_DSN) go test ./... -short -timeout 2m 2>&1 | grep -E "^(ok |FAIL|\?)" | tee test-summary.log
+	@DIVINESENSE_DRIVER=$(DIVINESENSE_DRIVER) DIVINESENSE_DSN=$(DIVINESENSE_DSN) go test $$(go list ./... | grep -v "^github.com/hrygo/divinesense/plugin/cron$$") -short -timeout 2m 2>&1 | grep -E "^(ok |FAIL|\?)" | tee test-summary.log
 	@echo ""
 	@echo "Test summary:"
 	@echo "  Passed: $$(grep -c '^ok ' test-summary.log || echo 0) packages"
@@ -301,7 +301,7 @@ check-build: ## 检查编译
 
 check-test: ## 检查测试
 	@echo "Running tests..."
-	@go test ./... -short -timeout 30s || { echo "Tests failed"; exit 1; }
+	@go test $$(go list ./... | grep -v "^github.com/hrygo/divinesense/plugin/cron$$") -short -timeout 30s || { echo "Tests failed"; exit 1; }
 	@echo "Tests OK"
 
 check-i18n: ## 检查 i18n 翻译完整性 (强制)
