@@ -21,16 +21,12 @@ service ScheduleService {
 
   // ListSchedules lists schedules with filters.
   rpc ListSchedules(ListSchedulesRequest) returns (ListSchedulesResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/schedules"
-    };
+    option (google.api.http) = {get: "/api/v1/schedules"};
   }
 
   // GetSchedule gets a schedule by name.
   rpc GetSchedule(GetScheduleRequest) returns (Schedule) {
-    option (google.api.http) = {
-      get: "/api/v1/{name=schedules/*}"
-    };
+    option (google.api.http) = {get: "/api/v1/{name=schedules/*}"};
   }
 
   // UpdateSchedule updates a schedule.
@@ -43,9 +39,7 @@ service ScheduleService {
 
   // DeleteSchedule deletes a schedule.
   rpc DeleteSchedule(DeleteScheduleRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/api/v1/{name=schedules/*}"
-    };
+    option (google.api.http) = {delete: "/api/v1/{name=schedules/*}"};
   }
 
   // CheckConflict checks for schedule conflicts.
@@ -96,24 +90,24 @@ message Schedule {
   string title = 2 [(google.api.field_behavior) = REQUIRED];
   string description = 3;
   string location = 4;
-  int64 start_ts = 5 [(google.api.field_behavior) = REQUIRED];  // Unix timestamp in seconds
+  int64 start_ts = 5 [(google.api.field_behavior) = REQUIRED]; // Unix timestamp in seconds
   int64 end_ts = 6;
   bool all_day = 7;
   string timezone = 8;
-  string recurrence_rule = 9;  // JSON string
+  string recurrence_rule = 9; // JSON string
   int64 recurrence_end_ts = 10;
   repeated Reminder reminders = 11;
-  string creator = 12;  // Format: users/{id}
+  string creator = 12; // Format: users/{id}
   int64 created_ts = 13;
   int64 updated_ts = 14;
-  string state = 15;  // NORMAL, ARCHIVED
+  string state = 15; // NORMAL, ARCHIVED
 }
 
 // Reminder represents a schedule reminder.
 message Reminder {
-  string type = 1;   // "before" or "at"
+  string type = 1; // "before" or "at"
   int32 value = 2;
-  string unit = 3;   // "minutes", "hours", "days"
+  string unit = 3; // "minutes", "hours", "days"
 }
 
 // CreateScheduleRequest is the request for CreateSchedule.
@@ -162,7 +156,7 @@ message DeleteScheduleRequest {
 message CheckConflictRequest {
   int64 start_ts = 1 [(google.api.field_behavior) = REQUIRED];
   int64 end_ts = 2;
-  repeated string exclude_names = 3;  // Schedules to exclude from conflict check
+  repeated string exclude_names = 3; // Schedules to exclude from conflict check
 }
 
 // CheckConflictResponse is the response for CheckConflict.
@@ -193,7 +187,7 @@ message PrecheckScheduleRequest {
   string title = 1;
   int64 start_ts = 2 [(google.api.field_behavior) = REQUIRED];
   int64 end_ts = 3;
-  int32 duration = 4;  // Duration in minutes
+  int32 duration = 4; // Duration in minutes
   string location = 5;
 }
 
@@ -207,20 +201,20 @@ message PrecheckScheduleResponse {
 
 // PrecheckError represents a validation error.
 message PrecheckError {
-  string code = 1;     // Error code like "TIME_CONFLICT"
-  string message = 2;  // Human-readable message
-  string field = 3;    // Field that caused the error
+  string code = 1; // Error code like "TIME_CONFLICT"
+  string message = 2; // Human-readable message
+  string field = 3; // Field that caused the error
 }
 
 // PrecheckWarning represents a validation warning.
 message PrecheckWarning {
-  string code = 1;     // Warning code like "OUTSIDE_WORK_HOURS"
-  string message = 2;  // Human-readable message
+  string code = 1; // Warning code like "OUTSIDE_WORK_HOURS"
+  string message = 2; // Human-readable message
 }
 
 // PrecheckSuggestion represents a suggestion for schedule correction.
 message PrecheckSuggestion {
-  string type = 1;          // "alternative_time"
+  string type = 1; // "alternative_time"
   AlternativeSlot slot = 2; // Alternative time slot
 }
 
@@ -228,7 +222,7 @@ message PrecheckSuggestion {
 message AlternativeSlot {
   int64 start_ts = 1;
   int64 end_ts = 2;
-  string label = 3;  // "同日稍后", "明天同一时间"
+  string label = 3; // "同日稍后", "明天同一时间"
 }
 
 // BatchParseScheduleRequest is the request for BatchParseSchedule.
@@ -259,11 +253,11 @@ message BatchParseScheduleResponse {
 message BatchScheduleInfo {
   string title = 1;
   int64 start_ts = 2;
-  int32 duration = 3;  // Duration in minutes
+  int32 duration = 3; // Duration in minutes
   string location = 4;
-  string recurrence_rule = 5;  // JSON string of recurrence rule
-  int64 end_date_ts = 6;  // When to stop generating
-  int32 count = 7;  // Max number of instances
+  string recurrence_rule = 5; // JSON string of recurrence rule
+  int64 end_date_ts = 6; // When to stop generating
+  int32 count = 7; // Max number of instances
 }
 
 // BatchCreateSchedulesRequest is the request for BatchCreateSchedules.
