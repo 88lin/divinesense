@@ -320,9 +320,11 @@ issues:
 # Output Configuration
 # ===========================================================================
 output:
-  # Output format
+  # Output format (v2.x uses map format)
   formats:
-    - format: colored-line-number
+    text:
+      path: stdout
+      format: colored-line-number
   # Print issues lines
   print-issued-lines: true
   # Print linter name
