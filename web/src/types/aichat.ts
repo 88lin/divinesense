@@ -130,6 +130,8 @@ export interface AIChatState {
   capabilityStatus?: CapabilityStatus;
   // 极客模式 (新增 - Geek Mode for Claude Code CLI)
   geekMode: boolean;
+  // 沉浸模式 (新增 - 全屏沉浸体验)
+  immersiveMode: boolean;
 }
 
 /**
@@ -174,6 +176,9 @@ export interface AIChatContextValue {
 
   // Geek Mode action (新增 - 极客模式)
   toggleGeekMode: (enabled: boolean) => void;
+
+  // Immersive Mode action (新增 - 沉浸模式)
+  toggleImmersiveMode: (enabled: boolean) => void;
 
   // Persistence
   saveToStorage: () => void;

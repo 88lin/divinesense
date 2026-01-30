@@ -313,7 +313,7 @@ export const PartnerGreeting = memo(function PartnerGreeting({
       </div>
 
       {/* 示例提问 - 点击直接发送 */}
-      <div className="grid grid-cols-2 gap-3 w-full mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mb-8">
         {suggestedPrompts.map((item) => (
           <button
             key={item.promptKey}

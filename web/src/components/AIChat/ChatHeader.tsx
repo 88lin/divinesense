@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Maximize2, Minimize2, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { CapabilityStatus, CapabilityType } from "@/types/capability";
@@ -11,6 +11,8 @@ interface ChatHeaderProps {
   capabilityStatus?: CapabilityStatus;
   geekMode?: boolean;
   onGeekModeToggle?: (enabled: boolean) => void;
+  immersiveMode?: boolean;
+  onImmersiveModeToggle?: (enabled: boolean) => void;
 }
 
 /**
@@ -55,6 +57,8 @@ export function ChatHeader({
   capabilityStatus = "idle",
   geekMode = false,
   onGeekModeToggle,
+  immersiveMode = false,
+  onImmersiveModeToggle,
 }: ChatHeaderProps) {
   const { t } = useTranslation();
   const assistantName = t("ai.assistant-name");
@@ -96,9 +100,23 @@ export function ChatHeader({
         </div>
       </div>
 
-      {/* Right Section - Geek Mode Toggle + Thinking indicator */}
+      {/* Right Section - Immersive Mode Toggle + Geek Mode Toggle + Thinking indicator */}
       <div className="flex items-center gap-2">
-        <GeekModeToggle enabled={geekMode} onToggle={onGeekModeToggle ?? (() => {})} variant="header" />
+        {/* Immersive Mode Toggle - Desktop only */}
+        {onImmersiveModeToggle && (
+          <button
+            onClick={() => onImmersiveModeToggle(!immersiveMode)}
+            className={cn(
+              "hidden lg:flex items-center justify-center w-8 h-8 rounded-lg transition-all",
+              "text-muted-foreground hover:text-foreground hover:bg-muted",
+              immersiveMode && "text-primary bg-primary/10",
+            )}
+            title={immersiveMode ? t("ai.exit-immersive") : t("ai.enter-immersive")}
+          >
+            {immersiveMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        )}
+        <GeekModeToggle enabled={geekMode} onToggle={onGeekModeToggle ?? (() => { })} variant="header" />
         {isThinking && (
           <div className="flex items-center gap-1.5 text-sm">
             <Sparkles className={cn("w-4 h-4 animate-pulse", geekMode ? "text-green-600 dark:text-green-400" : "text-primary")} />
@@ -108,3 +126,4 @@ export function ChatHeader({
     </header>
   );
 }
+

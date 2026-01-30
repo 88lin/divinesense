@@ -300,7 +300,9 @@
       "disable_label": "Exit Geek",
       "exit_label": "Exit",
       "thinking": "Claude Code thinking..."
-    }
+    },
+    "enter-immersive": "Enter Immersive Mode",
+    "exit-immersive": "Exit Immersive Mode"
   },
   "auth": {
     "create-your-account": "Create your account",

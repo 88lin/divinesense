@@ -25,6 +25,7 @@ const AIChatLayoutContent = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { state } = useAIChat();
   const geekMode = state.geekMode || false;
+  const immersiveMode = state.immersiveMode || false;
 
   return (
     <section className="@container w-full h-screen flex flex-col lg:h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
@@ -83,8 +84,8 @@ const AIChatLayoutContent = () => {
         </div>
       </div>
 
-      {/* Desktop Sidebar */}
-      {lg && (
+      {/* Desktop Sidebar - Hidden in immersive mode */}
+      {lg && !immersiveMode && (
         <div
           className={cn(
             "fixed top-0 left-16 shrink-0 h-svh border-r backdrop-blur-sm w-72 overflow-hidden pt-2 transition-colors",
@@ -99,10 +100,10 @@ const AIChatLayoutContent = () => {
       {/* Main Content */}
       <div
         className={cn(
-          "flex-1 min-h-0 overflow-hidden transition-colors",
+          "flex-1 min-h-0 overflow-hidden transition-all duration-300",
           !geekMode && "bg-white dark:bg-zinc-900",
           geekMode && "bg-green-50/30 dark:bg-green-950/10",
-          lg ? "pl-72" : "",
+          lg && !immersiveMode ? "pl-72" : "",
         )}
       >
         <Outlet />

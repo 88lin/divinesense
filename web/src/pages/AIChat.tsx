@@ -44,6 +44,8 @@ interface UnifiedChatViewProps {
   uiTools: ReturnType<typeof useAITools>;
   geekMode: boolean;
   onGeekModeToggle: (enabled: boolean) => void;
+  immersiveMode: boolean;
+  onImmersiveModeToggle: (enabled: boolean) => void;
 }
 
 function UnifiedChatView({
@@ -67,6 +69,8 @@ function UnifiedChatView({
   uiTools,
   geekMode,
   onGeekModeToggle,
+  immersiveMode,
+  onImmersiveModeToggle,
 }: UnifiedChatViewProps) {
   const { t } = useTranslation();
   const md = useMediaQuery("md");
@@ -93,6 +97,8 @@ function UnifiedChatView({
           isThinking={isThinking}
           geekMode={geekMode}
           onGeekModeToggle={onGeekModeToggle}
+          immersiveMode={immersiveMode}
+          onImmersiveModeToggle={onImmersiveModeToggle}
         />
       )}
 
@@ -224,11 +230,13 @@ const AIChat = () => {
     setCurrentCapability,
     setCapabilityStatus,
     toggleGeekMode,
+    toggleImmersiveMode,
   } = aiChat;
 
   const currentCapability = state.currentCapability || CapabilityType.AUTO;
   const capabilityStatus = state.capabilityStatus || "idle";
   const geekMode = state.geekMode || false;
+  const immersiveMode = state.immersiveMode || false;
 
   // Get messages from current conversation
   const items = currentConversation?.messages || [];
@@ -593,6 +601,8 @@ const AIChat = () => {
       uiTools={uiTools}
       geekMode={geekMode}
       onGeekModeToggle={toggleGeekMode}
+      immersiveMode={immersiveMode}
+      onImmersiveModeToggle={toggleImmersiveMode}
     />
   );
 };

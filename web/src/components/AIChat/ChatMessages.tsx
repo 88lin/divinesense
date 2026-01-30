@@ -115,7 +115,7 @@ const ChatMessages = memo(function ChatMessages({
       {children}
 
       {items.length > 0 && (
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto space-y-4">
           {items.map((item, index) => {
             // Context separator - optimized visual design
             if ("type" in item && item.type === "context-separator") {
@@ -321,9 +321,9 @@ const MessageBubble = memo(function MessageBubble({
                         ? "bg-white/10 border-white/20 text-white/80 hover:bg-white/30"
                         : "bg-card/50 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm",
                       copied &&
-                        (role === "user"
-                          ? "bg-white/40 border-white/40"
-                          : "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600"),
+                      (role === "user"
+                        ? "bg-white/40 border-white/40"
+                        : "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600"),
                     )}
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

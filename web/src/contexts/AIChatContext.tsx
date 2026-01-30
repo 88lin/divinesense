@@ -22,6 +22,9 @@ const MESSAGE_CACHE_LIMIT = 100; // Maximum MSG messages to cache per conversati
 // LocalStorage key for Geek Mode preference
 const GEEK_MODE_STORAGE_KEY = "divinesense.geek_mode";
 
+// LocalStorage key for Immersive Mode preference
+const IMMERSIVE_MODE_STORAGE_KEY = "divinesense.immersive_mode";
+
 const generateId = () => `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 // Helper function to get default conversation title based on parrot type.
@@ -63,6 +66,7 @@ const DEFAULT_STATE: AIChatState = {
   currentCapability: CapabilityType.AUTO,
   capabilityStatus: "idle",
   geekMode: false,
+  immersiveMode: false,
 };
 
 const AIChatContext = createContext<AIChatContextValue | null>(null);
@@ -115,11 +119,13 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
   const [state, setState] = useState<AIChatState>(() => {
     // Load geek mode preference from localStorage
     let savedGeekMode = false;
+    let savedImmersiveMode = false;
     if (typeof window !== "undefined") {
       try {
         savedGeekMode = localStorage.getItem(GEEK_MODE_STORAGE_KEY) === "true";
+        savedImmersiveMode = localStorage.getItem(IMMERSIVE_MODE_STORAGE_KEY) === "true";
       } catch {
-        console.warn("Failed to load geek mode preference");
+        console.warn("Failed to load preferences");
       }
     }
 
@@ -127,6 +133,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
       ...DEFAULT_STATE,
       ...initialState,
       geekMode: savedGeekMode,
+      immersiveMode: savedImmersiveMode,
     };
   });
 
@@ -787,9 +794,9 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
                   messages: [...olderMessages, ...c.messages],
                   messageCache: c.messageCache
                     ? {
-                        ...c.messageCache,
-                        hasMore: response.hasMore,
-                      }
+                      ...c.messageCache,
+                      hasMore: response.hasMore,
+                    }
                     : undefined,
                 };
               }),
@@ -862,6 +869,21 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
         localStorage.setItem(GEEK_MODE_STORAGE_KEY, String(enabled));
       } catch (e) {
         console.error("Failed to save geek mode preference:", e);
+      }
+    }
+  }, []);
+
+  // ============================================================
+  // IMMERSIVE MODE ACTIONS (新增 - 沉浸模式)
+  // ============================================================
+  const toggleImmersiveMode = useCallback((enabled: boolean) => {
+    setState((prev) => ({ ...prev, immersiveMode: enabled }));
+    // Persist to localStorage
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(IMMERSIVE_MODE_STORAGE_KEY, String(enabled));
+      } catch (e) {
+        console.error("Failed to save immersive mode preference:", e);
       }
     }
   }, []);
@@ -962,6 +984,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     setCurrentCapability,
     setCapabilityStatus,
     toggleGeekMode,
+    toggleImmersiveMode,
     saveToStorage,
     loadFromStorage,
     clearStorage,
