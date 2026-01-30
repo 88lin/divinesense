@@ -551,9 +551,10 @@
         "quick-summary": "今日總結",
         "quick-summary-desc": "筆記 + 日程"
       },
-      "chat-default-placeholder": "詢問你的筆記或日程...",
+      "chat-default-placeholder": "💡 今天又有什麼靈感？有什麼需要我為您安排？",
       "chat-placeholder": "與 {{name}} 對話...",
-      "geek-chat-placeholder": "輸入你想讓 Claude Code 完成的任務…",
+      "geek-chat-placeholder": "🤖 終端已就緒，等待您的指令…",
+      "evolution-chat-placeholder": "🧬 進化永無止境，您有什麼想法？",
       "geek_mode": {
         "label": "極客",
         "tooltip": "切換極客模式，使用 Claude Code CLI 處理代碼任務",
@@ -563,7 +564,7 @@
         "enable_label": "啟用極客模式",
         "disable_label": "退出極客",
         "exit_label": "退出",
-        "thinking": "Claude Code 思考中..."
+        "thinking": "處理中..."
       }
     }
   },

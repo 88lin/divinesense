@@ -374,6 +374,88 @@
 }
 
 /* ============================================================
+   Geek Mode Matrix Digital Rain Effect - 黑客帝国数字雨
+   ============================================================ */
+.geek-mode .geek-matrix-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Matrix rain columns - 雨滴列效果 (性能优化版) */
+.geek-mode .geek-matrix-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* 简化为单层渐变，减少渲染负担 */
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 20px,
+    var(--geek-glow) 20px,
+    var(--geek-glow) 22px,
+    transparent 22px,
+    transparent 50px
+  );
+  opacity: 0.08;
+  animation: geek-rain-fall 30s linear infinite;
+  pointer-events: none;
+  will-change: background-position;
+}
+
+/* Intense matrix rain for hero sections (性能优化版) */
+.geek-mode .geek-matrix-intense {
+  position: relative;
+  overflow: hidden;
+}
+
+.geek-mode .geek-matrix-intense::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 15px,
+    var(--geek-primary) 15px,
+    var(--geek-primary) 18px,
+    transparent 18px,
+    transparent 40px
+  );
+  opacity: 0.12;
+  animation: geek-rain-fall 20s linear infinite;
+  pointer-events: none;
+  will-change: background-position;
+}
+
+/* Matrix grid overlay - 网格叠加 (轻量版) */
+.geek-mode .geek-matrix-grid {
+  position: relative;
+}
+
+.geek-mode .geek-matrix-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--geek-primary-dim) 1px, transparent 1px), linear-gradient(90deg, var(--geek-primary-dim) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Matrix Animations (简化版)
+   ============================================================ */
+@keyframes geek-rain-fall {
+  0% {
+    background-position: 0 -100px;
+  }
+  100% {
+    background-position: 0 calc(100% + 100px);
+  }
+}
+
+/* ============================================================
    Accessibility: Reduced Motion Support
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
@@ -382,7 +464,11 @@
   .geek-mode .geek-glow-pulse::before,
   .geek-mode .geek-cursor,
   .geek-mode .geek-status-dot,
-  .geek-mode .geek-status-dot.active {
+  .geek-mode .geek-status-dot.active,
+  .geek-mode .geek-matrix-bg::before,
+  .geek-mode .geek-matrix-bg::after,
+  .geek-mode .geek-matrix-intense::before,
+  .geek-mode .geek-matrix-burst::before {
     animation: none !important;
   }
 
@@ -397,6 +483,12 @@
 
   .geek-mode .geek-status-dot {
     opacity: 1;
+  }
+
+  /* Static matrix background for reduced motion */
+  .geek-mode .geek-matrix-bg::before,
+  .geek-mode .geek-matrix-bg::after {
+    opacity: 0.1;
   }
 
   /* Keep transitions but make them faster */

@@ -169,12 +169,12 @@ export function useChat() {
         }),
       });
 
-      if (import.meta.env.DEV) {
-        console.debug("[AI Chat] Starting stream", {
-          messageLength: params.message.length,
-          agentType: params.agentType,
-          historyCount: params.history?.length ?? 0,
-        });
+      // WORKAROUND: Manually set evolutionMode if create() didn't include it
+      // Root cause: @bufbuild/protobuf create() omits default bool values (false)
+      // in JSON serialization, but backend expects explicit false for mode routing.
+      if (params.evolutionMode && request.evolutionMode === undefined) {
+        // biome-ignore lint/suspicious/noExplicitAny: Protobuf workaround for default bool values
+        (request as any).evolutionMode = true;
       }
 
       // Set up timeout for the entire stream operation

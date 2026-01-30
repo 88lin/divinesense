@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { AnimatedAvatar } from "@/components/AIChat/AnimatedAvatar";
 import MessageActions from "@/components/AIChat/MessageActions";
 import TypingCursor from "@/components/AIChat/TypingCursor";
 import { CodeBlock } from "@/components/MemoContent/CodeBlock";
@@ -29,9 +30,13 @@ interface ChatMessagesProps {
   uiTools?: GenerativeUIContainerProps["tools"];
   onUIAction?: GenerativeUIContainerProps["onAction"];
   onUIDismiss?: GenerativeUIContainerProps["onDismiss"];
+  /** Phase 2: 流式渲染支持 */
+  isStreaming?: boolean;
+  streamingContent?: string;
 }
 
-const SCROLL_THRESHOLD = 50;
+const SCROLL_THRESHOLD = 150;
+const SCROLL_THROTTLE_MS = 50;
 
 const ChatMessages = memo(function ChatMessages({
   items,
@@ -46,61 +51,127 @@ const ChatMessages = memo(function ChatMessages({
   uiTools,
   onUIAction,
   onUIDismiss,
+  isStreaming = false,
+  streamingContent = "",
 }: ChatMessagesProps) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const rafIdRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const lastScrollTimeRef = useRef(0);
+  const isUserScrollingRef = useRef(false);
+  // Phase 1: 追踪流式内容长度，优化滚动触发
+  const lastContentLengthRef = useRef(0);
+
+  const scrollToBottomLocked = useCallback(() => {
+    if (rafIdRef.current) return;
+
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+
+      if (scrollRef.current && !isUserScrollingRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+
+        if (distanceToBottom < SCROLL_THRESHOLD) {
+          scrollRef.current.scrollTop = scrollHeight;
+        }
+      }
+    });
+  }, []);
 
   const handleScroll = useCallback(() => {
-    if (scrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-      setIsUserScrolling(distanceToBottom > SCROLL_THRESHOLD);
+    if (!scrollRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+    const shouldBeScrolling = distanceToBottom > SCROLL_THRESHOLD;
+
+    if (isUserScrollingRef.current !== shouldBeScrolling) {
+      isUserScrollingRef.current = shouldBeScrolling;
     }
   }, []);
 
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      // Use requestAnimationFrame to ensure DOM is updated
-      requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      });
-    }
-  }, []);
+  const handleScrollThrottled = useCallback(() => {
+    const now = Date.now();
+    if (now - lastScrollTimeRef.current < SCROLL_THROTTLE_MS) return;
+    lastScrollTimeRef.current = now;
+    handleScroll();
+  }, [handleScroll]);
 
-  // Use a ResizeObserver for more robust scrolling that handles folding/unfolding/content changes
+  // Phase 1: 优化的 MutationObserver - 仅监听子节点变化，忽略内容更新
   useEffect(() => {
     if (!scrollRef.current) return;
 
-    const observer = new ResizeObserver(() => {
-      if (!isUserScrolling) {
-        scrollToBottom();
+    const observer = new MutationObserver((mutations) => {
+      // 仅在新增节点时触发滚动，忽略文本内容变化
+      const hasNewNodes = mutations.some((m) => m.type === "childList" && m.addedNodes.length > 0);
+
+      if (hasNewNodes && !isUserScrollingRef.current) {
+        scrollToBottomLocked();
       }
     });
 
-    // Only observe the content child (not the container itself) to avoid
-    // jittering when the container is resized (e.g. by expanding input box)
     const contentElement = scrollRef.current.firstElementChild;
     if (contentElement) {
-      observer.observe(contentElement);
+      observer.observe(contentElement, {
+        childList: true, // 仅监听子节点变化
+        subtree: true, // 监听所有后代
+      });
     }
 
     return () => observer.disconnect();
-  }, [isUserScrolling, scrollToBottom]);
+  }, [scrollToBottomLocked]);
 
-  // Reset user scrolling state when typing starts
+  // Phase 1: 优化的消息数量变化监听
+  const prevItemsLengthRef = useRef(items.length);
   useEffect(() => {
-    if (isTyping && scrollRef.current) {
+    const itemsLength = items.length;
+    const hasNewMessage = itemsLength > prevItemsLengthRef.current;
+    prevItemsLengthRef.current = itemsLength;
+
+    if (hasNewMessage && !isUserScrollingRef.current) {
+      scrollToBottomLocked();
+    }
+  }, [items.length, scrollToBottomLocked]);
+
+  // Phase 2: 流式内容变化监听 - 仅在内容显著增加时滚动
+  useEffect(() => {
+    if (!isStreaming) return;
+
+    const contentLength = streamingContent.length;
+    const contentIncrease = contentLength - lastContentLengthRef.current;
+    lastContentLengthRef.current = contentLength;
+
+    // 每增加约 50 字符滚动一次，减少频繁操作
+    if (contentIncrease > 50 && !isUserScrollingRef.current) {
+      scrollToBottomLocked();
+    }
+  }, [streamingContent, isStreaming, scrollToBottomLocked]);
+
+  useEffect(() => {
+    if (isTyping && !isUserScrollingRef.current) {
+      scrollToBottomLocked();
+    }
+  }, [isTyping, scrollToBottomLocked]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
       const distanceToBottom = scrollHeight - scrollTop - clientHeight;
-      if (distanceToBottom <= SCROLL_THRESHOLD) {
-        setIsUserScrolling(false);
+      if (distanceToBottom <= SCROLL_THRESHOLD && isUserScrollingRef.current) {
+        isUserScrollingRef.current = false;
       }
     }
-  }, [isTyping]);
+  }, [items]);
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, []);
 
   const theme = currentParrotId ? PARROT_THEMES[currentParrotId] || PARROT_THEMES.AMAZING : PARROT_THEMES.AMAZING;
   const currentIcon = currentParrotId ? PARROT_ICONS[currentParrotId] || PARROT_ICONS.AMAZING : PARROT_ICONS.AMAZING;
@@ -108,7 +179,7 @@ const ChatMessages = memo(function ChatMessages({
   return (
     <div
       ref={scrollRef}
-      onScroll={handleScroll}
+      onScroll={handleScrollThrottled}
       className={cn("flex-1 overflow-y-auto px-3 md:px-6 py-4 overscroll-contain", className)}
       style={{ overflowAnchor: "auto", scrollbarGutter: "stable" }}
     >
@@ -146,6 +217,7 @@ const ChatMessages = memo(function ChatMessages({
                 icon={msg.role === "user" ? undefined : currentIcon}
                 isLastAssistant={msg.role === "assistant" && isLastMessage}
                 isNew={isNew}
+                isTyping={isTyping}
                 onCopy={() => onCopyMessage?.(msg.content)}
                 onRegenerate={onRegenerate}
                 onDelete={() => onDeleteMessage?.(index)}
@@ -218,6 +290,7 @@ interface MessageBubbleProps {
   icon?: string;
   isLastAssistant?: boolean;
   isNew?: boolean;
+  isTyping?: boolean;
   onCopy?: () => void;
   onRegenerate?: () => void;
   onDelete?: () => void;
@@ -232,6 +305,7 @@ const MessageBubble = memo(function MessageBubble({
   icon,
   isLastAssistant = false,
   isNew = false,
+  isTyping = false,
   onCopy,
   onRegenerate,
   onDelete,
@@ -277,15 +351,15 @@ const MessageBubble = memo(function MessageBubble({
       )}
     >
       {/* Avatar */}
-      <div className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-        {role === "user" ? (
-          <img src="/user-avatar.webp" alt="User" className="w-full h-full object-cover" />
-        ) : icon?.startsWith("/") ? (
-          <img src={icon} alt="" className="w-8 h-8 md:w-9 md:h-9 object-contain" />
-        ) : (
+      {role === "user" ? (
+        <AnimatedAvatar src="/user-avatar.webp" alt="User" size="md" />
+      ) : icon?.startsWith("/") ? (
+        <AnimatedAvatar src={icon} alt="" size="md" isThinking={isTyping && isLastAssistant} isTyping={isTyping && isLastAssistant} />
+      ) : (
+        <div className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm bg-muted">
           <span className="text-lg md:text-xl">{icon || "🤖"}</span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Message content area */}
       <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -298,13 +372,13 @@ const MessageBubble = memo(function MessageBubble({
 
         <div className={cn("flex items-start gap-2", role === "user" ? "flex-row-reverse" : "flex-row")}>
           {error ? (
-            <div className="max-w-[85%] md:max-w-[80%] p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 shadow-sm">
+            <div className="min-w-[120px] max-w-[85%] md:max-w-[80%] p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 shadow-sm">
               <p className="text-sm text-red-700 dark:text-red-300">{content}</p>
             </div>
           ) : (
             <div
               className={cn(
-                "relative rounded-2xl shadow-sm transition-colors group/bubble min-w-0 max-w-[85%] md:max-w-[80%]",
+                "relative rounded-2xl shadow-sm transition-colors group/bubble min-w-[120px] max-w-[85%] md:max-w-[80%]",
                 role === "user" ? theme.bubbleUser : cn(theme.bubbleBg, theme.bubbleBorder, theme.text),
                 shouldShowFold && isFolded ? "overflow-hidden" : "max-h-none",
               )}

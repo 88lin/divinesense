@@ -76,18 +76,21 @@
   mask-composite: exclude;
   opacity: 0.8;
   animation: evo-rotate 4s linear infinite;
+  pointer-events: none;
 }
 
 .evolution-mode .evo-glow-pulse::before {
   animation:
     evo-rotate 4s linear infinite,
     evo-pulse 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
 /* ============================================================
    Evolution Mode Border Styles
    ============================================================ */
-.evolution-mode .evo-border {
+.evolution-mode .evo-border,
+.evolution-mode .evolution-border {
   border: 1px solid var(--evo-primary-dim);
   box-shadow:
     0 0 0 1px var(--evo-glow),
@@ -96,10 +99,39 @@
 }
 
 .evolution-mode .evo-border:hover,
-.evolution-mode .evo-border:focus-within {
+.evolution-mode .evolution-border:hover,
+.evolution-mode .evo-border:focus-within,
+.evolution-mode .evolution-border:focus-within {
   box-shadow:
     0 0 0 1px var(--evo-primary),
     0 0 35px -5px var(--evo-glow);
+}
+
+/* Gradient border effect */
+.evolution-mode .evolution-gradient {
+  position: relative;
+  background: linear-gradient(135deg, var(--evo-bg-dim), var(--evo-bg));
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.evolution-mode .evolution-gradient::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--evo-primary), var(--evo-blue), var(--evo-primary));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 /* ============================================================
@@ -107,6 +139,13 @@
    ============================================================ */
 .evolution-mode .evo-text {
   color: var(--evo-primary);
+}
+
+/* Mono font for code/terminal feel */
+.evolution-mode .evo-mono,
+.evolution-mode .evolution-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
 }
 
 .evolution-mode .evo-text-gradient {
@@ -127,7 +166,8 @@
 /* ============================================================
    Evolution Mode Button Styles
    ============================================================ */
-.evolution-mode button.evo-btn {
+.evolution-mode button.evo-btn,
+.evolution-mode button.evolution-btn {
   position: relative;
   background: transparent;
   border: 1px solid var(--evo-primary-dim);
@@ -136,7 +176,8 @@
   transition: all 0.3s ease;
 }
 
-.evolution-mode button.evo-btn::before {
+.evolution-mode button.evo-btn::before,
+.evolution-mode button.evolution-btn::before {
   content: "";
   position: absolute;
   top: 0;
@@ -147,11 +188,13 @@
   transition: left 0.6s ease;
 }
 
-.evolution-mode button.evo-btn:hover::before {
+.evolution-mode button.evo-btn:hover::before,
+.evolution-mode button.evolution-btn:hover::before {
   left: 100%;
 }
 
-.evolution-mode button.evo-btn:hover {
+.evolution-mode button.evo-btn:hover,
+.evolution-mode button.evolution-btn:hover {
   background: linear-gradient(135deg, var(--evo-glow), var(--evo-blue) / 0.2);
   box-shadow:
     0 0 15px var(--evo-glow),
@@ -185,7 +228,159 @@
 }
 
 /* ============================================================
-   Evolution Mode Organic Flow Background
+   Evolution Mode Vine/Bio Background - 有机藤蔓背景
+   ============================================================ */
+.evolution-mode .evo-bio-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.evolution-mode .evo-bio-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* 简化为单层渐变，减少渲染负担 */
+  background: radial-gradient(ellipse 60% 40% at 30% 70%, var(--evo-glow) 0%, transparent 70%);
+  opacity: 0.1;
+  animation: evo-bio-grow 20s ease-in-out infinite alternate;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* 删除 ::after 伪元素，减少一层渲染 */
+
+/* ============================================================
+   Evolution Mode Cell Division - 细胞分裂效果
+   ============================================================ */
+.evolution-mode .evo-cell-division {
+  position: relative;
+}
+
+.evolution-mode .evo-cell-division::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--evo-glow);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: evo-cell-divide 4s ease-in-out infinite;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+/* ============================================================
+   Evolution Mode Breathing/Pulsing Background - 呼吸背景
+   ============================================================ */
+.evolution-mode .evo-breathing {
+  position: relative;
+}
+
+.evolution-mode .evo-breathing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, var(--evo-glow) 0%, transparent 60%);
+  opacity: 0.2;
+  animation: evo-breathe 5s ease-in-out infinite;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+/* ============================================================
+   Evolution Mode Vine Border - 藤蔓边框效果
+   ============================================================ */
+.evolution-mode .evo-vine-border {
+  position: relative;
+}
+
+.evolution-mode .evo-vine-border::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--evo-primary), var(--evo-blue), var(--evo-primary));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  animation: evo-rotate 8s linear infinite;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+/* ============================================================
+   Evolution Mode Organic Floating Elements - 有机漂浮元素
+   ============================================================ */
+.evolution-mode .evo-float {
+  animation: evo-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* ============================================================
+   Evolution Mode Animations (简化版)
+   ============================================================ */
+@keyframes evo-bio-grow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.08;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.12;
+  }
+}
+
+/* 删除 evo-particles-float，不再使用 */
+
+@keyframes evo-cell-divide {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes evo-breathe {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(1.02);
+  }
+}
+
+/* 删除 evo-vine-grow，不再使用 */
+
+@keyframes evo-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* ============================================================
+   Evolution Mode Organic Flow Background (性能优化版)
    ============================================================ */
 .evolution-mode .evo-flow-bg {
   position: relative;
@@ -196,12 +391,12 @@
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 30%, var(--evo-glow) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, var(--evo-blue) / 0.4 0%, transparent 50%);
-  opacity: 0.3;
-  animation: evo-flow-pulse 8s ease-in-out infinite;
+  /* 简化为单层渐变 */
+  background: radial-gradient(ellipse at 30% 50%, var(--evo-glow) 0%, transparent 60%);
+  opacity: 0.15;
+  animation: evo-flow-pulse 10s ease-in-out infinite;
   pointer-events: none;
+  will-change: opacity, transform;
 }
 
 /* ============================================================
@@ -265,6 +460,7 @@
   border-top-color: var(--evo-primary);
   border-right-color: var(--evo-blue);
   animation: evo-rotate 2s linear infinite;
+  pointer-events: none;
 }
 
 /* ============================================================
@@ -303,26 +499,16 @@
 @keyframes evo-flow-pulse {
   0%,
   100% {
-    opacity: 0.2;
+    opacity: 0.1;
     transform: scale(1);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(1.05);
+    opacity: 0.18;
+    transform: scale(1.03);
   }
 }
 
-@keyframes evo-mutation {
-  0% {
-    filter: hue-rotate(0deg);
-  }
-  50% {
-    filter: hue-rotate(30deg);
-  }
-  100% {
-    filter: hue-rotate(0deg);
-  }
-}
+/* 删除 evo-mutation，filter 动画性能较差 */
 
 /* ============================================================
    Evolution Mode Input Focus

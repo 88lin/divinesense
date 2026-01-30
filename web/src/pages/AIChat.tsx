@@ -15,7 +15,8 @@ import { useChat } from "@/hooks/useAIQueries";
 import { useAITools } from "@/hooks/useAITools";
 import { useCapabilityRouter } from "@/hooks/useCapabilityRouter";
 import useMediaQuery from "@/hooks/useMediaQuery";
-import type { ChatItem } from "@/types/aichat";
+import { cn } from "@/lib/utils";
+import type { AIMode, ChatItem } from "@/types/aichat";
 import { CapabilityStatus, CapabilityType, capabilityToParrotAgent } from "@/types/capability";
 import type { MemoQueryResultData, ScheduleQueryResultData } from "@/types/parrot";
 import { ParrotAgentType } from "@/types/parrot";
@@ -42,12 +43,11 @@ interface UnifiedChatViewProps {
   recentMemoCount?: number;
   upcomingScheduleCount?: number;
   uiTools: ReturnType<typeof useAITools>;
-  geekMode: boolean;
-  onGeekModeToggle: (enabled: boolean) => void;
-  evolutionMode: boolean;
-  onEvolutionModeToggle: (enabled: boolean) => void;
+  currentMode: AIMode;
+  onModeChange: (mode: AIMode) => void;
   immersiveMode: boolean;
   onImmersiveModeToggle: (enabled: boolean) => void;
+  isAdmin?: boolean;
 }
 
 function UnifiedChatView({
@@ -69,12 +69,11 @@ function UnifiedChatView({
   recentMemoCount,
   upcomingScheduleCount,
   uiTools,
-  geekMode,
-  onGeekModeToggle,
-  evolutionMode,
-  onEvolutionModeToggle,
+  currentMode,
+  onModeChange,
   immersiveMode,
   onImmersiveModeToggle,
+  isAdmin = true,
 }: UnifiedChatViewProps) {
   const { t } = useTranslation();
   const md = useMediaQuery("md");
@@ -91,20 +90,31 @@ function UnifiedChatView({
     // TODO: Implement message deletion
   };
 
+  // Get mode-specific container classes
+  const getModeContainerClass = (mode: AIMode) => {
+    switch (mode) {
+      case "geek":
+        return "geek-matrix-grid";
+      case "evolution":
+        return "evo-flow-bg";
+      default:
+        return "";
+    }
+  };
+
   return (
-    <div className="w-full h-full flex flex-col relative bg-background">
+    <div className={cn("w-full h-full flex flex-col relative bg-background", getModeContainerClass(currentMode))}>
       {/* Desktop Header */}
       {md && (
         <ChatHeader
           currentCapability={currentCapability}
           capabilityStatus={capabilityStatus}
           isThinking={isThinking}
-          geekMode={geekMode}
-          onGeekModeToggle={onGeekModeToggle}
-          evolutionMode={evolutionMode}
-          onEvolutionModeToggle={onEvolutionModeToggle}
+          currentMode={currentMode}
+          onModeChange={onModeChange}
           immersiveMode={immersiveMode}
           onImmersiveModeToggle={onImmersiveModeToggle}
+          isAdmin={isAdmin}
         />
       )}
 
@@ -126,7 +136,12 @@ function UnifiedChatView({
       >
         {/* Welcome message - 统一入口，示例提问直接发送 */}
         {items.length === 0 && (
-          <PartnerGreeting recentMemoCount={recentMemoCount} upcomingScheduleCount={upcomingScheduleCount} onSendMessage={onSend} />
+          <PartnerGreeting
+            recentMemoCount={recentMemoCount}
+            upcomingScheduleCount={upcomingScheduleCount}
+            onSendMessage={onSend}
+            currentMode={currentMode}
+          />
         )}
       </ChatMessages>
 
@@ -138,10 +153,10 @@ function UnifiedChatView({
         onNewChat={onNewChat}
         onClearContext={onClearContext}
         onClearChat={() => setClearDialogOpen(true)}
-        onGeekModeToggle={onGeekModeToggle}
+        onModeChange={onModeChange}
         disabled={isTyping}
         isTyping={isTyping}
-        geekMode={geekMode}
+        currentMode={currentMode}
       />
 
       {/* Clear Chat Confirmation Dialog */}
@@ -235,15 +250,13 @@ const AIChat = () => {
     state,
     setCurrentCapability,
     setCapabilityStatus,
-    toggleGeekMode,
-    toggleEvolutionMode,
+    setMode,
     toggleImmersiveMode,
   } = aiChat;
 
   const currentCapability = state.currentCapability || CapabilityType.AUTO;
   const capabilityStatus = state.capabilityStatus || "idle";
-  const geekMode = state.geekMode || false;
-  const evolutionMode = state.evolutionMode || false;
+  const currentMode = state.currentMode || "normal";
   const immersiveMode = state.immersiveMode || false;
 
   // Get messages from current conversation
@@ -280,100 +293,100 @@ const AIChat = () => {
 
       const explicitMessage = userMessage;
 
+      // Prepare stream params
+      const streamParams = {
+        message: explicitMessage,
+        agentType: parrotId,
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        conversationId: _conversationIdNum,
+        geekMode: currentMode === "geek",
+        evolutionMode: currentMode === "evolution",
+      };
+
       try {
-        await chatHook.stream(
-          {
-            message: explicitMessage,
-            agentType: parrotId,
-            userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            conversationId: _conversationIdNum,
-            geekMode: geekMode,
-            evolutionMode: evolutionMode,
+        await chatHook.stream(streamParams, {
+          onThinking: (msg) => {
+            if (lastAssistantMessageIdRef.current) {
+              // Handle i18n keys from backend (e.g., "ai.geek_mode.thinking")
+              const content = msg.startsWith("ai.") ? t(msg) : msg;
+              updateMessage(conversationId, lastAssistantMessageIdRef.current, {
+                content,
+              });
+            }
           },
-          {
-            onThinking: (msg) => {
-              if (lastAssistantMessageIdRef.current) {
-                // Handle i18n keys from backend (e.g., "ai.geek_mode.thinking")
-                const content = msg.startsWith("ai.") ? t(msg) : msg;
-                updateMessage(conversationId, lastAssistantMessageIdRef.current, {
-                  content,
-                });
-              }
-            },
-            onToolUse: (toolName) => {
-              setCapabilityStatus("processing");
-              if (lastAssistantMessageIdRef.current) {
-                updateMessage(conversationId, lastAssistantMessageIdRef.current, {
-                  content: toolName,
-                });
-              }
-            },
-            onToolResult: (result) => {
-              console.log("[Parrot Tool Result]", result);
-            },
-            onMemoQueryResult: (result) => {
-              if (_messageId === messageIdRef.current) {
-                setMemoQueryResults((prev) => [...prev, result]);
-                addReferencedMemos(conversationId, result.memos);
-              }
-            },
-            onScheduleQueryResult: (result) => {
-              if (_messageId === messageIdRef.current) {
-                const transformedResult: ScheduleQueryResultData = {
-                  schedules: result.schedules.map((s) => ({
-                    uid: s.uid,
-                    title: s.title,
-                    startTimestamp: Number(s.startTs),
-                    endTimestamp: Number(s.endTs),
-                    allDay: s.allDay,
-                    location: s.location || undefined,
-                    status: s.status,
-                  })),
-                  query: "",
-                  count: result.schedules.length,
-                  timeRangeDescription: result.timeRangeDescription,
-                  queryType: result.queryType,
-                };
-                setScheduleQueryResults((prev) => [...prev, transformedResult]);
-              }
-            },
-            onUIMemoPreview: (data) => {
-              if (_messageId === messageIdRef.current) {
-                uiTools.processEvent({
-                  type: "ui_memo_preview",
-                  data: JSON.stringify(data),
-                  uiType: "ui_memo_preview",
-                  uiData: data,
-                });
-              }
-            },
-            onContent: (content) => {
-              if (lastAssistantMessageIdRef.current) {
-                streamingContentRef.current += content;
-                updateMessage(conversationId, lastAssistantMessageIdRef.current, {
-                  content: streamingContentRef.current,
-                });
-              }
-            },
-            onDone: () => {
-              setIsTyping(false);
-              setIsThinking(false);
-              setCapabilityStatus("idle");
-            },
-            onError: (error) => {
-              setIsTyping(false);
-              setIsThinking(false);
-              setCapabilityStatus("idle");
-              console.error("[Parrot Error]", error);
-              if (lastAssistantMessageIdRef.current) {
-                updateMessage(conversationId, lastAssistantMessageIdRef.current, {
-                  content: streamingContentRef.current || t("ai.error-generic") || "Sorry, something went wrong. Please try again.",
-                  error: true,
-                });
-              }
-            },
+          onToolUse: (toolName) => {
+            setCapabilityStatus("processing");
+            if (lastAssistantMessageIdRef.current) {
+              updateMessage(conversationId, lastAssistantMessageIdRef.current, {
+                content: toolName,
+              });
+            }
           },
-        );
+          onToolResult: (_result) => {
+            // Tool result received, no action needed
+          },
+          onMemoQueryResult: (result) => {
+            if (_messageId === messageIdRef.current) {
+              setMemoQueryResults((prev) => [...prev, result]);
+              addReferencedMemos(conversationId, result.memos);
+            }
+          },
+          onScheduleQueryResult: (result) => {
+            if (_messageId === messageIdRef.current) {
+              const transformedResult: ScheduleQueryResultData = {
+                schedules: result.schedules.map((s) => ({
+                  uid: s.uid,
+                  title: s.title,
+                  startTimestamp: Number(s.startTs),
+                  endTimestamp: Number(s.endTs),
+                  allDay: s.allDay,
+                  location: s.location || undefined,
+                  status: s.status,
+                })),
+                query: "",
+                count: result.schedules.length,
+                timeRangeDescription: result.timeRangeDescription,
+                queryType: result.queryType,
+              };
+              setScheduleQueryResults((prev) => [...prev, transformedResult]);
+            }
+          },
+          onUIMemoPreview: (data) => {
+            if (_messageId === messageIdRef.current) {
+              uiTools.processEvent({
+                type: "ui_memo_preview",
+                data: JSON.stringify(data),
+                uiType: "ui_memo_preview",
+                uiData: data,
+              });
+            }
+          },
+          onContent: (content) => {
+            if (lastAssistantMessageIdRef.current) {
+              streamingContentRef.current += content;
+              updateMessage(conversationId, lastAssistantMessageIdRef.current, {
+                content: streamingContentRef.current,
+              });
+            }
+          },
+          onDone: () => {
+            setIsTyping(false);
+            setIsThinking(false);
+            setCapabilityStatus("idle");
+          },
+          onError: (error) => {
+            setIsTyping(false);
+            setIsThinking(false);
+            setCapabilityStatus("idle");
+            console.error("[Parrot Error]", error);
+            if (lastAssistantMessageIdRef.current) {
+              updateMessage(conversationId, lastAssistantMessageIdRef.current, {
+                content: streamingContentRef.current || t("ai.error-generic") || "Sorry, something went wrong. Please try again.",
+                error: true,
+              });
+            }
+          },
+        });
       } catch (error) {
         setIsTyping(false);
         setIsThinking(false);
@@ -400,12 +413,6 @@ const AIChat = () => {
       // 如果识别出不同的能力，切换能力
       if (targetCapability !== currentCapability && targetCapability !== CapabilityType.AUTO) {
         setCurrentCapability(targetCapability);
-        console.debug("[AI Chat] Auto-switching capability", {
-          from: currentCapability,
-          to: targetCapability,
-          confidence: intentResult.confidence,
-          reasoning: intentResult.reasoning,
-        });
       }
 
       // 确定使用哪个 Agent
@@ -608,12 +615,11 @@ const AIChat = () => {
       currentCapability={currentCapability}
       capabilityStatus={capabilityStatus}
       uiTools={uiTools}
-      geekMode={geekMode}
-      onGeekModeToggle={toggleGeekMode}
-      evolutionMode={evolutionMode}
-      onEvolutionModeToggle={toggleEvolutionMode}
+      currentMode={currentMode}
+      onModeChange={setMode}
       immersiveMode={immersiveMode}
       onImmersiveModeToggle={toggleImmersiveMode}
+      isAdmin={true}
     />
   );
 };

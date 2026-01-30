@@ -113,12 +113,8 @@ const createTimeoutFetch = (baseFetch: typeof fetch, timeoutMs: number): typeof 
   };
 };
 
-// The timeout interceptor is now minimal since timeout is handled in the fetch wrapper
-const timeoutInterceptor: Interceptor = (next) => async (req) => {
-  // Request-level timeout tracking is handled by the fetch wrapper
-  // This interceptor can be used for request-level logging if needed
-  return next(req);
-};
+// The timeout interceptor is minimal since timeout is handled in the fetch wrapper
+const timeoutInterceptor: Interceptor = (next) => async (req) => next(req);
 
 // ============================================================================
 // Authentication Interceptor
@@ -170,10 +166,13 @@ const authInterceptor: Interceptor = (next) => async (req) => {
 // Create timeout-enabled fetch for streaming requests
 const timeoutFetch = createTimeoutFetch(fetchWithCredentials, DEFAULT_STREAM_TIMEOUT_MS);
 
+// Wrap timeout fetch for streaming requests
+const streamingFetch: typeof fetch = timeoutFetch;
+
 const transport = createConnectTransport({
   baseUrl: window.location.origin,
   useBinaryFormat: false,
-  fetch: timeoutFetch,
+  fetch: streamingFetch,
   interceptors: [timeoutInterceptor, authInterceptor],
 });
 

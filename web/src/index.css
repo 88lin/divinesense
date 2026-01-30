@@ -3,6 +3,7 @@
 @import "./themes/default.css";
 @import "./themes/geek-mode.css";
 @import "./themes/evolution-mode.css";
+@import "./components/AIChat/AnimatedAvatar.css";
 
 /* Use class-based dark mode instead of media-based */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -411,5 +412,92 @@
 
   .leaflet-popup-tip {
     background-color: var(--background) !important;
+  }
+}
+
+/* ============================================================
+   神识之眼 Logo 动效 - Divine Eye Logo Animations
+   ============================================================ */
+
+/* Navigation Drawer Logo 动效 - 根据 body 模式类应用 */
+body img[src="/logo.webp"] {
+  animation: logo-breathe-gentle 3s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* 极客模式 - 故障效果 */
+.geek-mode img[src="/logo.webp"] {
+  animation: logo-glitch 1.5s steps(4) infinite;
+}
+
+/* 进化模式 - 有机脉动 */
+.evolution-mode img[src="/logo.webp"] {
+  animation: logo-evolution 2.5s ease-in-out infinite;
+}
+
+/* Keyframes */
+@keyframes logo-breathe-gentle {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes logo-glitch {
+  0% {
+    opacity: 0.85;
+    transform: translateX(0) scale(1);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(-3px) scale(1.05);
+  }
+  40% {
+    opacity: 0.9;
+    transform: translateX(3px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-2px) scale(1.08);
+  }
+  80% {
+    opacity: 0.95;
+    transform: translateX(2px) scale(0.98);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes logo-evolution {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.15) rotate(5deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(0deg);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.15) rotate(-5deg);
+  }
+}
+
+/* 减少动效支持 */
+@media (prefers-reduced-motion: reduce) {
+  body img[src="/logo.webp"] {
+    animation: none !important;
   }
 }
