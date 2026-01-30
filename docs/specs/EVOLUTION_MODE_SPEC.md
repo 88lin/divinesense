@@ -440,20 +440,7 @@ func (h *ParrotHandler) handleEvolutionMode(ctx context.Context, req *ChatReques
 **总计**: 约 8-11 天
 
 ---
-
-## 9. 开放问题
-
-> 需用户确认的设计决策
-
-1. **进化模式的 UI 入口**: 是独立页面还是极客模式内的 Tab？
-2. ~~**自动 PR 集成**: 是否需要 GitHub/GitLab API 集成，还是仅本地 Git？~~ ✅ 已确认：强制 GitHub PR
-3. **进化会话隔离**: 进化任务是否需要独立的会话管理 (不与用户聊天历史混淆)？
-4. **回滚策略**: 自动回滚 (测试失败时) 还是仅手动回滚？
-5. **通知机制**: 进化完成后是否需要 Webhook/邮件通知管理员？
-
----
-
-## 10. 参考资料
+## 9. 参考资料
 
 - [CLAUDE.md 元认知系统章节](file:///Users/huangzhonghui/divinesense/CLAUDE.md#元认知系统)
 - [GeekParrot 实现](file:///Users/huangzhonghui/divinesense/plugin/ai/agent/geek_parrot.go)

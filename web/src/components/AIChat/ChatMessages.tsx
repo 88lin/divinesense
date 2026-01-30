@@ -321,9 +321,9 @@ const MessageBubble = memo(function MessageBubble({
                         ? "bg-white/10 border-white/20 text-white/80 hover:bg-white/30"
                         : "bg-card/50 border-border text-muted-foreground hover:text-foreground backdrop-blur-sm",
                       copied &&
-                      (role === "user"
-                        ? "bg-white/40 border-white/40"
-                        : "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600"),
+                        (role === "user"
+                          ? "bg-white/40 border-white/40"
+                          : "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-600"),
                     )}
                   >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

@@ -62,7 +62,20 @@
 
 详见 `docs/dev-guides/FRONTEND.md` 中的 Tailwind v4 陷阱说明。
 
-### 5. Git 约定
+### 5. Git 约定 (严格执行)
+
+**所有开发与进化模式均需遵守以下流程：**
+
+1.  **强制分支开发**：禁止直接在 `main` 分支修改。
+    *   新功能：`feat/功能名称`
+    *   修复：`fix/问题描述`
+    *   进化：`evolution/task-id`
+2.  **强制 Pull Request (PR)**：所有变更必须通过 PR 合并。
+    *   **禁止** `git push origin main`
+    *   **禁止** 本地直接 `git merge` 到 main
+3.  **提交前检查**：必须在本地通过 Lint 和 Test。
+    *   运行 `make check-all` (包含 fmt, vet, test, i18n-check)
+    *   只有检查通过的代码才允许 commit
 
 遵循约定式提交：
 

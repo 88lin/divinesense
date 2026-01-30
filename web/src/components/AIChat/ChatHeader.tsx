@@ -116,7 +116,7 @@ export function ChatHeader({
             {immersiveMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         )}
-        <GeekModeToggle enabled={geekMode} onToggle={onGeekModeToggle ?? (() => { })} variant="header" />
+        <GeekModeToggle enabled={geekMode} onToggle={onGeekModeToggle ?? (() => {})} variant="header" />
         {isThinking && (
           <div className="flex items-center gap-1.5 text-sm">
             <Sparkles className={cn("w-4 h-4 animate-pulse", geekMode ? "text-green-600 dark:text-green-400" : "text-primary")} />
@@ -126,4 +126,3 @@ export function ChatHeader({
     </header>
   );
 }
-

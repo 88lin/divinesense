@@ -794,9 +794,9 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
                   messages: [...olderMessages, ...c.messages],
                   messageCache: c.messageCache
                     ? {
-                      ...c.messageCache,
-                      hasMore: response.hasMore,
-                    }
+                        ...c.messageCache,
+                        hasMore: response.hasMore,
+                      }
                     : undefined,
                 };
               }),
