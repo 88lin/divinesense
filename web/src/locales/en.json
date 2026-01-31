@@ -273,7 +273,6 @@
     "retry": "Retry",
     "send-shortcut": "Send",
     "start-chat": "Start Chat",
-    "thinking": "Thinking...",
     "welcome-description": "I can help you search, summarize, and discuss your memos, as well as manage your schedules",
     "welcome-intro": "Hi, I'm {{name}}",
     "welcome-title": "Welcome to AI Assistant",
@@ -342,7 +341,12 @@
       "thinking": "System self-evolution in progress..."
     },
     "enter-immersive": "Enter Immersive Mode",
-    "exit-immersive": "Exit Immersive Mode"
+    "exit-immersive": "Exit Immersive Mode",
+    "states": {
+      "thinking": "Thinking...",
+      "processing": "Processing...",
+      "error": "Something went wrong"
+    }
   },
   "auth": {
     "create-your-account": "Create your account",

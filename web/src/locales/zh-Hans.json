@@ -268,7 +268,6 @@
     "retry": "重试",
     "send-shortcut": "发送",
     "start-chat": "开始对话",
-    "thinking": "思考中...",
     "welcome-description": "我可以帮您搜索、总结、讨论备忘内容，以及管理您的日程",
     "welcome-intro": "嗨，我是 {{name}}",
     "welcome-title": "欢迎使用智能助理",
@@ -337,7 +336,12 @@
       "thinking": "系统自我进化中..."
     },
     "enter-immersive": "进入沉浸模式",
-    "exit-immersive": "退出沉浸模式"
+    "exit-immersive": "退出沉浸模式",
+    "states": {
+      "thinking": "思考中...",
+      "processing": "处理中...",
+      "error": "出错了"
+    }
   },
   "auth": {
     "create-your-account": "创建您的账户",

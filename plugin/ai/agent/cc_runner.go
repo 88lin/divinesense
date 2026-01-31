@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -25,6 +27,23 @@ const (
 	// 非 JSON 输出的最大日志长度。
 	maxNonJSONOutputLength = 100
 )
+
+// UUID v5 namespace for DivineSense session mapping.
+// Using a custom namespace ensures deterministic UUID generation from ConversationID.
+// DivineSense 专用的 UUID v5 命名空间，用于会话映射。
+var divineSenseNamespace = uuid.MustParse("6ba7b811-9dad-11d1-80b4-00c04fd430c8") // TODO: register proper namespace
+
+// ConversationIDToSessionID converts a database ConversationID to a deterministic UUID v5.
+// This ensures the same ConversationID always maps to the same SessionID,
+// enabling reliable session resume across backend restarts.
+// 将数据库 ConversationID 转换为确定性的 UUID v5。
+// 确保相同的 ConversationID 始终映射到相同的 SessionID，实现跨重启的可靠会话恢复。
+func ConversationIDToSessionID(conversationID int64) string {
+	// UUID v5 uses SHA-1 hash of namespace + name
+	// Use conversation ID as string bytes for deterministic mapping
+	name := fmt.Sprintf("divinesense:conversation:%d", conversationID)
+	return uuid.NewSHA1(divineSenseNamespace, []byte(name)).String()
+}
 
 // buildSystemPrompt provides minimal, high-signal context for Claude Code CLI.
 // buildSystemPrompt 为 Claude Code CLI 提供最小化、高信噪比的上下文。
@@ -125,10 +144,13 @@ type AssistantMessage struct {
 // ContentBlock represents a content block in stream-json format.
 // ContentBlock 表示 stream-json 格式中的内容块。
 type ContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text,omitempty"`
-	Name string `json:"name,omitempty"`
-	ID   string `json:"id,omitempty"`
+	Type    string         `json:"type"`
+	Text    string         `json:"text,omitempty"`
+	Name    string         `json:"name,omitempty"`
+	ID      string         `json:"id,omitempty"`
+	Input   map[string]any `json:"input,omitempty"`
+	Content string         `json:"content,omitempty"`
+	IsError bool           `json:"is_error,omitempty"`
 }
 
 // CCRunner is the unified Claude Code CLI integration layer.
@@ -142,17 +164,23 @@ type CCRunner struct {
 	timeout time.Duration
 	logger  *slog.Logger
 	mu      sync.Mutex
+	manager *CCSessionManager
 }
 
 // CCRunnerConfig defines mode-specific configuration for CCRunner execution.
 // CCRunnerConfig 定义 CCRunner 执行的模式特定配置。
 type CCRunnerConfig struct {
-	Mode          string // "geek" | "evolution"
-	WorkDir       string // Working directory for CLI
-	SessionID     string // Session identifier for persistence
-	UserID        int32  // User ID for logging/context
-	SystemPrompt  string // Mode-specific system prompt
-	DeviceContext string // Device/browser context JSON
+	Mode           string // "geek" | "evolution"
+	WorkDir        string // Working directory for CLI
+	ConversationID int64  // Database conversation ID for deterministic UUID v5 mapping
+	SessionID      string // Session identifier (derived from ConversationID if empty)
+	UserID         int32  // User ID for logging/context
+	SystemPrompt   string // Mode-specific system prompt
+	DeviceContext  string // Device/browser context JSON
+
+	// Security / Permission Control
+	// 安全/权限控制
+	PermissionMode string // "default", "bypassPermissions", etc.
 
 	// Evolution Mode specific
 	// 进化模式专用
@@ -176,6 +204,7 @@ func NewCCRunner(timeout time.Duration, logger *slog.Logger) (*CCRunner, error) 
 		cliPath: cliPath,
 		timeout: timeout,
 		logger:  logger,
+		manager: NewCCSessionManager(logger, 30*time.Minute), // Default 30m idle timeout
 	}, nil
 }
 
@@ -184,6 +213,18 @@ func NewCCRunner(timeout time.Duration, logger *slog.Logger) (*CCRunner, error) 
 func (r *CCRunner) Execute(ctx context.Context, cfg *CCRunnerConfig, prompt string, callback EventCallback) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	// Derive SessionID from ConversationID using UUID v5 for deterministic mapping.
+	// This ensures the same conversation always maps to the same session,
+	// enabling reliable resume across backend restarts (per spec 2.2).
+	// 使用 UUID v5 从 ConversationID 派生 SessionID，实现确定性映射。
+	// 确保同一对话始终映射到同一会话，实现跨重启的可靠恢复（规格 2.2）。
+	if cfg.SessionID == "" && cfg.ConversationID > 0 {
+		cfg.SessionID = ConversationIDToSessionID(cfg.ConversationID)
+		r.logger.Debug("CCRunner: derived SessionID from ConversationID",
+			"conversation_id", cfg.ConversationID,
+			"session_id", cfg.SessionID)
+	}
 
 	// Validate configuration
 	// 验证配置
@@ -241,6 +282,38 @@ func (r *CCRunner) Execute(ctx context.Context, cfg *CCRunnerConfig, prompt stri
 	return nil
 }
 
+// StartAsyncSession starts a persistent session and returns the session object.
+func (r *CCRunner) StartAsyncSession(ctx context.Context, cfg *CCRunnerConfig) (*Session, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Derive SessionID from ConversationID using UUID v5 for deterministic mapping.
+	// 使用 UUID v5 从 ConversationID 派生 SessionID，实现确定性映射。
+	if cfg.SessionID == "" && cfg.ConversationID > 0 {
+		cfg.SessionID = ConversationIDToSessionID(cfg.ConversationID)
+		r.logger.Debug("CCRunner: derived SessionID from ConversationID",
+			"conversation_id", cfg.ConversationID,
+			"session_id", cfg.SessionID)
+	}
+
+	if err := r.validateConfig(cfg); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
+	}
+
+	// Ensure working directory exists
+	if err := os.MkdirAll(cfg.WorkDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create work directory: %w", err)
+	}
+
+	// Create session via manager
+	return r.manager.GetOrCreateSession(ctx, cfg.SessionID, *cfg)
+}
+
+// GetSessionManager returns the improved session manager.
+func (r *CCRunner) GetSessionManager() *CCSessionManager {
+	return r.manager
+}
+
 // validateConfig validates the CCRunnerConfig.
 // validateConfig 验证 CCRunnerConfig。
 func (r *CCRunner) validateConfig(cfg *CCRunnerConfig) error {
@@ -292,8 +365,13 @@ func (r *CCRunner) executeWithSession(
 			"--append-system-prompt", systemPrompt,
 			"--session-id", cfg.SessionID,
 			"--output-format", "stream-json",
-			prompt,
 		}
+
+		if cfg.PermissionMode != "" {
+			args = append(args, "--permission-mode", cfg.PermissionMode)
+		}
+
+		args = append(args, prompt)
 	} else {
 		args = []string{
 			"--print",
@@ -301,8 +379,13 @@ func (r *CCRunner) executeWithSession(
 			"--append-system-prompt", systemPrompt,
 			"--resume", cfg.SessionID,
 			"--output-format", "stream-json",
-			prompt,
 		}
+
+		if cfg.PermissionMode != "" {
+			args = append(args, "--permission-mode", cfg.PermissionMode)
+		}
+
+		args = append(args, prompt)
 	}
 
 	cmd := exec.CommandContext(ctx, r.cliPath, args...)
