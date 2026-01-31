@@ -17,9 +17,9 @@ jobs:
         shell: bash
         run: |
           BRANCH="${{ github.head_ref }}"
-          # 规范: <type>/<issue-id>-<description>
+          # 规范: <type>/[<issue-id>-]<description>
           # 允许类型: feat, fix, refactor, evolution, docs, chore, test, perf, style, hotfix
-          REGEX="^(feat|fix|refactor|evolution|docs|chore|test|perf|style|hotfix)/[0-9]+-.*$"
+          REGEX="^(feat|fix|refactor|evolution|docs|chore|test|perf|style|hotfix)/([0-9]+-)?.*$"
           
           if [[ "$BRANCH" =~ $REGEX ]]; then
             echo "result=success" >> $GITHUB_OUTPUT
