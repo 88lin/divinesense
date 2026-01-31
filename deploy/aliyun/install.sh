@@ -605,33 +605,43 @@ generate_binary_config() {
         server_ip="your-server-ip"
     fi
     
-    # 1. 下载模板文件
-    local template_url="${REPO_URL%.git}/raw/${BRANCH}/deploy/aliyun/config.binary.example"
-    # 处理 github.com -> raw.githubusercontent.com 转换 (如果 REPO_URL 是常规 github 链接)
+    # 1. 下载统一模板文件 (.env.prod.example)
+    # Binary 模式也复用 Docker 的生产环境配置模版，减少维护成本
+    local template_url="${REPO_URL%.git}/raw/${BRANCH}/deploy/aliyun/.env.prod.example"
     if [[ "$REPO_URL" == *"github.com"* ]]; then
         template_url="${REPO_URL/github.com/raw.githubusercontent.com}"
-        template_url="${template_url%.git}/${BRANCH}/deploy/aliyun/config.binary.example"
+        template_url="${template_url%.git}/${BRANCH}/deploy/aliyun/.env.prod.example"
     fi
 
     log_info "下载配置模板: $template_url"
     if ! curl -fsSL --connect-timeout $CURL_CONNECT_TIMEOUT --max-time $CURL_MAX_TIME "$template_url" -o "$config_file"; then
          log_error "下载配置模板失败"
-         log_info "尝试生成默认配置..."
-         # 回退逻辑: 写入最小化配置 (或者直接退出，取决于策略。为了健壮性，这里可以写入一个极简版，但为了 SSOT，也许失败更好？)
-         # 这里选择退出，因为没有模板就无法保证配置的正确性
          exit 1
     fi
 
-    # 2. 替换变量
-    # 替换 IP
+    # 2. 基础变量替换
     sed -i "s|DIVINESENSE_INSTANCE_URL=.*|DIVINESENSE_INSTANCE_URL=http://${server_ip}:5230|g" "$config_file"
     
-    # 替换数据库密码 (DSN 中)
-    sed -i "s|postgres://divinesense:your_secure_password|postgres://divinesense:${db_password}|g" "$config_file"
-    
-    # 确保安装目录正确 (如果模板中默认值不对)
-    sed -i "s|DIVINESENSE_DATA=.*|DIVINESENSE_DATA=${INSTALL_DIR}/data|g" "$config_file"
+    # Geek Mode WorkDir 默认值修正 (Docker 默认是 /opt/divinesense/data 映射，Binary 也是，所以其实不用改，但为了保险)
     sed -i "s|DIVINESENSE_CLAUDE_CODE_WORKDIR=.*|DIVINESENSE_CLAUDE_CODE_WORKDIR=${INSTALL_DIR}/data|g" "$config_file"
+
+    # 3. 追加二进制模式专用配置
+    # 注意: .env.prod.example 主要为 Docker Compose 设计，缺少 Binary 运行所需的 DSN 等配置
+    
+    cat >> "$config_file" << EOF
+
+# =============================================================================
+# 二进制模式专用配置 (自动追加)
+# =============================================================================
+DIVINESENSE_MODE=prod
+DIVINESENSE_DATA=${INSTALL_DIR}/data
+# 数据库连接 (二进制模式直接连接 Docker 映射的端口)
+DIVINESENSE_DRIVER=postgres
+DIVINESENSE_DSN=postgres://divinesense:${db_password}@localhost:25432/divinesense?sslmode=disable
+
+# 指定 claude 命令路径 (运行 \`which claude\` 获取)
+# DIVINESENSE_CLAUDE_CODE_PATH=/usr/local/bin/claude
+EOF
 
     chmod 640 "$config_file"
 
