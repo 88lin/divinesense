@@ -70,6 +70,12 @@ func (c *LRUCache) Set(key string, value []byte, ttl time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Defensive check: if capacity is invalid, silently reject the write
+	// This prevents infinite loop if cache was created without proper initialization
+	if c.capacity <= 0 {
+		return
+	}
+
 	// Update existing entry
 	if e, ok := c.cache[key]; ok {
 		e.value = value

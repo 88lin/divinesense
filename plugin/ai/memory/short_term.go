@@ -118,6 +118,7 @@ func (s *ShortTermMemory) SessionCount() int {
 
 // cleanupLoop periodically removes stale sessions (inactive for > 1 hour).
 // Stops when the context is cancelled.
+// Uses batch processing to avoid holding the lock for too long.
 func (s *ShortTermMemory) cleanupLoop() {
 	defer s.wg.Done()
 	ticker := time.NewTicker(10 * time.Minute)
@@ -128,14 +129,55 @@ func (s *ShortTermMemory) cleanupLoop() {
 		case <-s.ctx.Done():
 			return
 		case <-ticker.C:
-			s.mu.Lock()
-			now := time.Now()
-			for sessionID, session := range s.sessions {
-				if now.Sub(session.lastAccess) > time.Hour {
-					delete(s.sessions, sessionID)
-				}
-			}
-			s.mu.Unlock()
+			s.cleanupStaleSessions()
 		}
 	}
+}
+
+// cleanupStaleSessions removes stale sessions in batches to avoid long lock hold time.
+func (s *ShortTermMemory) cleanupStaleSessions() {
+	now := time.Now()
+	maxBatch := 100
+	totalCleaned := 0
+
+	// Collect and clean in multiple batches if needed
+	for {
+		toDelete := s.findStaleSessionIDs(now, maxBatch)
+		if len(toDelete) == 0 {
+			break
+		}
+
+		// Delete batch
+		s.mu.Lock()
+		for _, key := range toDelete {
+			delete(s.sessions, key)
+		}
+		s.mu.Unlock()
+
+		totalCleaned += len(toDelete)
+
+		// Safety limit: don't clean more than 1000 per tick
+		if totalCleaned >= 1000 {
+			break
+		}
+	}
+}
+
+// findStaleSessionIDs collects IDs of stale sessions without holding the write lock.
+func (s *ShortTermMemory) findStaleSessionIDs(now time.Time, limit int) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := make([]string, 0, limit)
+	cutoff := now.Add(-time.Hour)
+
+	for sessionID, session := range s.sessions {
+		if session.lastAccess.Before(cutoff) {
+			result = append(result, sessionID)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return result
 }

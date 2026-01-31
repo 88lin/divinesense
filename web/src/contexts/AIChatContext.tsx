@@ -165,18 +165,31 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
         // Handle "chat.new" - backend now returns just "chat.new"
         // Numbering is handled by frontend based on conversation position
         if (titleKey === "chat.new") {
-          return t("chat.new");
+          const translated = t("chat.new");
+          return translated || "New Chat"; // Fallback if translation is empty
         }
 
         // Handle legacy "chat.new.N" format for backward compatibility
         const newChatMatch = titleKey.match(/^chat\.new\.(\d+)$/);
         if (newChatMatch) {
-          return t("chat.new");
+          const translated = t("chat.new");
+          return translated || "New Chat";
         }
 
-        // Handle other "chat.*.title" format (e.g., "chat.default.title")
+        // Handle other "chat.*.title" format (e.g., "chat.memo.title")
         if (titleKey.endsWith(".title")) {
-          return t(titleKey, titleKey); // Fallback to original key if translation missing
+          const translated = t(titleKey);
+          // If translation exists and is not empty, use it
+          if (translated && translated !== titleKey) {
+            return translated;
+          }
+          // Otherwise use hardcoded fallbacks for known keys
+          const fallbacks: Record<string, string> = {
+            "chat.memo.title": "Memo Chat",
+            "chat.schedule.title": "Schedule Chat",
+            "chat.amazing.title": "Amazing Chat",
+          };
+          return fallbacks[titleKey] || titleKey;
         }
       } catch (err) {
         // Fallback to original key if parsing or translation fails

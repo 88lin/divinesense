@@ -2,13 +2,10 @@ package ai
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
-
-	"github.com/lib/pq"
 
 	"github.com/hrygo/divinesense/store"
 	"github.com/lithammer/shortuuid/v4"
@@ -151,19 +148,13 @@ func (b *EventBus) Publish(ctx context.Context, event *ChatEvent) (map[int]inter
 
 			// Check if timeout occurred (listener ran too long)
 			if listenerCtx.Err() == context.DeadlineExceeded {
-				slog.Default().Warn("Event listener timeout",
+				slog.Default().Warn("Event listener timeout, discarding partial result",
 					"event_type", event.Type,
 					"listener_index", index,
 					"timeout", b.timeout,
-					"had_result", result != nil,
 				)
 				errOnce.Do(func() { firstErr = fmt.Errorf("listener timeout") })
-				// Still store result if available (listener completed just after timeout)
-				if result != nil {
-					resultsMu.Lock()
-					results[index] = result
-					resultsMu.Unlock()
-				}
+				// Do NOT store partial results - timeout means operation did not complete
 				return
 			}
 
@@ -225,6 +216,10 @@ func (s *ConversationService) Subscribe(bus *EventBus) {
 
 // handleConversationStart ensures a conversation exists for the chat.
 // Returns the conversation ID.
+//
+// Note: Fixed conversation mechanism was removed as it was never used.
+// The frontend always creates conversations via CreateAIConversation API first,
+// then passes the conversation ID to Chat API.
 func (s *ConversationService) handleConversationStart(ctx context.Context, event *ChatEvent) (interface{}, error) {
 	if event.ConversationID != 0 {
 		// Conversation already specified, just update timestamp
@@ -242,21 +237,13 @@ func (s *ConversationService) handleConversationStart(ctx context.Context, event
 		return event.ConversationID, nil
 	}
 
-	// Create new conversation (temporary or fixed)
-	var id int32
-	var err error
-
-	if event.IsTempConversation {
-		id, err = s.createTemporaryConversation(ctx, event)
-	} else {
-		id, err = s.findOrCreateFixedConversation(ctx, event)
-	}
+	// Create new conversation
+	id, err := s.createConversation(ctx, event)
 
 	if err != nil {
 		slog.Default().Error("Failed to create conversation",
 			"user_id", event.UserID,
 			"agent_type", event.AgentType,
-			"is_temp", event.IsTempConversation,
 			"error", err,
 		)
 		return nil, err
@@ -325,9 +312,9 @@ func (s *ConversationService) handleSeparator(ctx context.Context, event *ChatEv
 	return nil, err
 }
 
-// createTemporaryConversation creates a new temporary conversation.
-func (s *ConversationService) createTemporaryConversation(ctx context.Context, event *ChatEvent) (int32, error) {
-	title := s.generateTemporaryTitle()
+// createConversation creates a new conversation.
+func (s *ConversationService) createConversation(ctx context.Context, event *ChatEvent) (int32, error) {
+	title := s.generateTitle()
 	conversation, err := s.store.CreateAIConversation(ctx, &store.AIConversation{
 		UID:       shortuuid.New(),
 		CreatorID: event.UserID,
@@ -338,74 +325,15 @@ func (s *ConversationService) createTemporaryConversation(ctx context.Context, e
 		RowStatus: store.Normal,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("create temporary conversation: %w", err)
+		return 0, fmt.Errorf("create conversation: %w", err)
 	}
 	return conversation.ID, nil
 }
 
-// findOrCreateFixedConversation finds or creates a fixed conversation.
-// Handles race conditions by catching duplicate key errors.
-func (s *ConversationService) findOrCreateFixedConversation(ctx context.Context, event *ChatEvent) (int32, error) {
-	fixedID := CalculateFixedConversationID(event.UserID, event.AgentType)
-
-	// Try to find existing first (fast path)
-	conversations, err := s.store.ListAIConversations(ctx, &store.FindAIConversation{
-		ID:        &fixedID,
-		CreatorID: &event.UserID,
-	})
-	if err == nil && len(conversations) > 0 {
-		// Update timestamp
-		_, err = s.store.UpdateAIConversation(ctx, &store.UpdateAIConversation{
-			ID:        fixedID,
-			UpdatedTs: &event.Timestamp,
-		})
-		if err != nil {
-			slog.Default().Warn("Failed to update fixed conversation timestamp",
-				"conversation_id", fixedID,
-				"error", err,
-			)
-		}
-		return fixedID, nil
-	}
-
-	// Try to create new with fixed ID
-	_, err = s.store.CreateAIConversation(ctx, &store.AIConversation{
-		ID:        fixedID,
-		UID:       shortuuid.New(),
-		CreatorID: event.UserID,
-		Title:     GetFixedConversationTitle(event.AgentType),
-		ParrotID:  event.AgentType.String(),
-		CreatedTs: event.Timestamp,
-		UpdatedTs: event.Timestamp,
-		RowStatus: store.Normal,
-	})
-
-	// Handle race condition: if another request created it first, fetch it
-	if err != nil {
-		// Check if it's a duplicate key / unique constraint violation using proper type checking
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			// Race condition - another goroutine created it first
-			// Fetch the existing conversation
-			conversations, err := s.store.ListAIConversations(ctx, &store.FindAIConversation{
-				ID:        &fixedID,
-				CreatorID: &event.UserID,
-			})
-			if err == nil && len(conversations) > 0 {
-				return fixedID, nil
-			}
-			return 0, fmt.Errorf("race condition recovery failed: %w", err)
-		}
-		return 0, fmt.Errorf("create fixed conversation: %w", err)
-	}
-
-	return fixedID, nil
-}
-
-// generateTemporaryTitle generates a title for a temporary conversation.
+// generateTitle generates a title for a new conversation.
 // Returns a title key that the frontend should localize and handle numbering.
 // The numbering is handled by the frontend to avoid expensive database queries.
-func (s *ConversationService) generateTemporaryTitle() string {
+func (s *ConversationService) generateTitle() string {
 	// Return a simple title key; the frontend will handle display numbering
 	// based on the actual list of conversations it receives.
 	return "chat.new"
@@ -417,48 +345,4 @@ type ConversationStore interface {
 	ListAIConversations(ctx context.Context, find *store.FindAIConversation) ([]*store.AIConversation, error)
 	UpdateAIConversation(ctx context.Context, update *store.UpdateAIConversation) (*store.AIConversation, error)
 	CreateAIMessage(ctx context.Context, create *store.AIMessage) (*store.AIMessage, error)
-}
-
-// CalculateFixedConversationID calculates the fixed conversation ID for a user and agent type.
-// Formula: (UserID << 8) | AgentTypeOffset ensures uniqueness by using bit shifting.
-// The lower 8 bits are reserved for agent type offset (max 255 agent types).
-// Safe for userID up to 8,388,607 (int32 max / 256).
-func CalculateFixedConversationID(userID int32, agentType AgentType) int32 {
-	// Boundary check: userID << 8 must not overflow int32
-	// Max safe userID = 2^31-1 / 256 = 8388607
-	const maxSafeUserID = 8388607
-	if userID > maxSafeUserID {
-		slog.Default().Warn("User ID exceeds safe range for fixed conversation ID",
-			"user_id", userID,
-			"max_safe", maxSafeUserID,
-		)
-		// Use modulo to prevent overflow while maintaining some uniqueness
-		userID %= maxSafeUserID
-	}
-
-	offsets := map[AgentType]int32{
-		AgentTypeMemo:     2,
-		AgentTypeSchedule: 3,
-		AgentTypeAmazing:  4,
-	}
-	offset := offsets[agentType]
-	if offset == 0 {
-		offset = 4 // Default to AMAZING offset
-	}
-	return (userID << 8) | offset
-}
-
-// GetFixedConversationTitle returns the default title for a fixed conversation.
-// Returns a title key that the frontend should localize.
-func GetFixedConversationTitle(agentType AgentType) string {
-	// Title keys for frontend localization
-	titles := map[AgentType]string{
-		AgentTypeMemo:     "chat.memo.title",
-		AgentTypeSchedule: "chat.schedule.title",
-		AgentTypeAmazing:  "chat.amazing.title",
-	}
-	if title, ok := titles[agentType]; ok {
-		return title
-	}
-	return "chat.amazing.title"
 }

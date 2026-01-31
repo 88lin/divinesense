@@ -99,6 +99,12 @@ func (j *SessionCleanupJob) RunOnce(ctx context.Context) (int64, error) {
 func (j *SessionCleanupJob) run(ctx context.Context) {
 	ticker := time.NewTicker(j.config.CleanupInterval)
 	defer ticker.Stop()
+	defer func() {
+		// Ensure running state is cleared when goroutine exits
+		j.mu.Lock()
+		j.running = false
+		j.mu.Unlock()
+	}()
 
 	// Run immediately on start
 	if deleted, err := j.cleanup(ctx); err != nil {
@@ -110,8 +116,10 @@ func (j *SessionCleanupJob) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			// Context cancelled - goroutine exiting, running state cleared by defer
 			return
 		case <-j.stopChan:
+			// Explicitly stopped
 			return
 		case <-ticker.C:
 			if deleted, err := j.cleanup(ctx); err != nil {
