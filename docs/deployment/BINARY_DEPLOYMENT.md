@@ -121,7 +121,8 @@ npx @z_ai/coding-helper
 编辑 `/etc/divinesense/config`：
 
 ```bash
-# 启用 Geek Mode
+# 启用 Geek Mode 功能模块
+# 开启后，前端聊天界面会出现 Geek Mode 切换开关
 DIVINESENSE_CLAUDE_CODE_ENABLED=true
 DIVINESENSE_CLAUDE_CODE_WORKDIR=/opt/divinesense/data
 ```
@@ -155,11 +156,9 @@ sudo systemctl restart divinesense
 
 ### 验证
 
-在聊天界面发送代码相关消息，例如：
-
-- "帮我修复这段代码的 bug"
-- "重构这个函数，让它更高效"
-- "为这个 API 编写单元测试"
+1. 进入 DivineSense 聊天界面
+2. 点击输入框上方的模式切换开关，进入 Geek Mode
+3. 发送代码相关指令（如"帮我修复这段代码的 bug"），此时系统将调用 Claude Code CLI 处理请求
 
 ---
 
