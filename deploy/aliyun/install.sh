@@ -416,6 +416,7 @@ generate_docker_env_file() {
     log_step "生成配置文件..."
 
     local env_file="$INSTALL_DIR/.env.prod"
+    local template_file="$INSTALL_DIR/deploy/aliyun/.env.prod.example"
     local db_password=$(generate_password)
     local server_ip=$(get_server_ip)
 
@@ -424,61 +425,36 @@ generate_docker_env_file() {
         server_ip="your-server-ip"
     fi
 
-    cat > "$env_file" << EOF
-# DivineSense 生产环境配置
-# 生成时间: $(date)
+    # 1. 复制模板文件
+    if [ -f "$template_file" ]; then
+        cp "$template_file" "$env_file"
+    else
+        log_warn "模板文件未找到: $template_file"
+        log_info "尝试下载模板..."
+        curl -fsSL "${REPO_URL%.git}/raw/${BRANCH}/deploy/aliyun/.env.prod.example" -o "$env_file" || {
+             log_error "下载配置文件模板失败"
+             exit 1
+        }
+    fi
 
-# =============================================================================
-# 服务配置
-# =============================================================================
+    # 2. 替换关键变量 (使用兼容的 sed 写法)
+    # 替换 IP
+    sed -i "s|DIVINESENSE_INSTANCE_URL=.*|DIVINESENSE_INSTANCE_URL=http://${server_ip}:5230|g" "$env_file"
+    
+    # 替换数据库密码 (注意转义)
+    # 为了安全和避免 sed 分隔符冲突，这里简化处理，假设密码没有特殊字符，或者使用 | 分隔
+    sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${db_password}|g" "$env_file"
 
-DIVINESENSE_PORT=5230
-TZ=Asia/Shanghai
-DIVINESENSE_INSTANCE_URL=http://${server_ip}:5230
+    # 3. 补充 Docker 特有配置 (如果模板中没有包含)
+    # 模板中已经包含了大部分公共配置
+    
+    log_success "配置文件已生成: $env_file"
 
-# =============================================================================
-# PostgreSQL 配置
-# =============================================================================
-
-POSTGRES_DB=divinesense
-POSTGRES_USER=divinesense
-POSTGRES_PASSWORD=${db_password}
-
-# 数据库外部访问 (可选，需要 pgAdmin/DataGrip 时开启)
-# POSTGRES_PORT_MAPPING=127.0.0.1:25432:5432
-
-# =============================================================================
-# AI 功能配置
-# =============================================================================
-
-DIVINESENSE_AI_ENABLED=true
-
-# SiliconFlow API (向量/重排/意图分类)
-# 获取地址: https://cloud.siliconflow.cn/account/ak
-DIVINESENSE_AI_SILICONFLOW_API_KEY=sk-your-siliconflow-key
-
-# DeepSeek API (对话 LLM)
-# 获取地址: https://platform.deepseek.com/api_keys
-DIVINESENSE_AI_DEEPSEEK_API_KEY=sk-your-deepseek-key
-
-# =============================================================================
-# Geek Mode - Claude Code CLI 集成 (Docker 模式需额外配置)
-# =============================================================================
-# 是否启用 Geek Mode (Claude 3.7 Agent)
-DIVINESENSE_CLAUDE_CODE_ENABLED=false
-
-# Claude Code CLI 绝对路径 (宿主机路径或容器内路径)
-# Docker 模式下通常不需要设置 PATH，除非挂载了外部二进制
-# DIVINESENSE_CLAUDE_CODE_PATH=/usr/bin/claude
-
-# =============================================================================
-# Docker 镜像配置
-# =============================================================================
-
-USER_IMAGE=ghcr.io/hrygo/divinesense:latest
-POSTGRES_IMAGE=pgvector/pgvector:pg16
-EOF
-
+    # 保存密码到单独文件 (不输出到日志)
+    echo "$db_password" > "$INSTALL_DIR/.db_password"
+    chmod 600 "$INSTALL_DIR/.db_password"
+    log_info "数据库密码已保存到: $INSTALL_DIR/.db_password"
+}
     log_success "配置文件已生成: $env_file"
 
     # 保存密码到单独文件 (不输出到日志)
@@ -628,50 +604,34 @@ generate_binary_config() {
     if [ -z "$server_ip" ]; then
         server_ip="your-server-ip"
     fi
+    
+    # 1. 下载模板文件
+    local template_url="${REPO_URL%.git}/raw/${BRANCH}/deploy/aliyun/config.binary.example"
+    # 处理 github.com -> raw.githubusercontent.com 转换 (如果 REPO_URL 是常规 github 链接)
+    if [[ "$REPO_URL" == *"github.com"* ]]; then
+        template_url="${REPO_URL/github.com/raw.githubusercontent.com}"
+        template_url="${template_url%.git}/${BRANCH}/deploy/aliyun/config.binary.example"
+    fi
 
-    cat > "$config_file" << EOF
-# DivineSense 二进制部署配置
-# 生成时间: $(date)
+    log_info "下载配置模板: $template_url"
+    if ! curl -fsSL --connect-timeout $CURL_CONNECT_TIMEOUT --max-time $CURL_MAX_TIME "$template_url" -o "$config_file"; then
+         log_error "下载配置模板失败"
+         log_info "尝试生成默认配置..."
+         # 回退逻辑: 写入最小化配置 (或者直接退出，取决于策略。为了健壮性，这里可以写入一个极简版，但为了 SSOT，也许失败更好？)
+         # 这里选择退出，因为没有模板就无法保证配置的正确性
+         exit 1
+    fi
 
-# =============================================================================
-# 服务配置
-# =============================================================================
-DIVINESENSE_PORT=5230
-DIVINESENSE_MODE=prod
-DIVINESENSE_INSTANCE_URL=http://${server_ip}:5230
-DIVINESENSE_DATA=${INSTALL_DIR}/data
-TZ=Asia/Shanghai
-
-# =============================================================================
-# 数据库配置
-# =============================================================================
-# Docker PostgreSQL (推荐)
-DIVINESENSE_DRIVER=postgres
-DIVINESENSE_DSN=postgres://divinesense:${db_password}@localhost:25432/divinesense?sslmode=disable
-
-# SQLite (无 AI 功能)
-# DIVINESENSE_DRIVER=sqlite
-# DIVINESENSE_DSN=${INSTALL_DIR}/data/divinesense.db
-
-# =============================================================================
-# AI 功能配置
-# =============================================================================
-DIVINESENSE_AI_ENABLED=true
-DIVINESENSE_AI_SILICONFLOW_API_KEY=
-DIVINESENSE_AI_DEEPSEEK_API_KEY=
-
-# =============================================================================
-# Geek Mode - Claude Code CLI 集成
-# =============================================================================
-# 二进制模式原生支持 Geek Mode
-DIVINESENSE_CLAUDE_CODE_ENABLED=false
-DIVINESENSE_CLAUDE_CODE_WORKDIR=${INSTALL_DIR}/data
-# 指定 claude 命令路径 (运行 `which claude` 获取)
-# DIVINESENSE_CLAUDE_CODE_PATH=/usr/local/bin/claude
-
-# 密码如果包含特殊字符需要 URL 编码
-# 例如: p@ss:w/rd → p%40ss%3Aw%2Frd
-EOF
+    # 2. 替换变量
+    # 替换 IP
+    sed -i "s|DIVINESENSE_INSTANCE_URL=.*|DIVINESENSE_INSTANCE_URL=http://${server_ip}:5230|g" "$config_file"
+    
+    # 替换数据库密码 (DSN 中)
+    sed -i "s|postgres://divinesense:your_secure_password|postgres://divinesense:${db_password}|g" "$config_file"
+    
+    # 确保安装目录正确 (如果模板中默认值不对)
+    sed -i "s|DIVINESENSE_DATA=.*|DIVINESENSE_DATA=${INSTALL_DIR}/data|g" "$config_file"
+    sed -i "s|DIVINESENSE_CLAUDE_CODE_WORKDIR=.*|DIVINESENSE_CLAUDE_CODE_WORKDIR=${INSTALL_DIR}/data|g" "$config_file"
 
     chmod 640 "$config_file"
 

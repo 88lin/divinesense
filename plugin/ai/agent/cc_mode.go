@@ -35,13 +35,17 @@ type CCMode interface {
 // GeekMode implements CCMode for the Geek Mode (user sandbox).
 // GeekMode 为极客模式（用户沙箱）实现 CCMode。
 type GeekMode struct {
-	sourceDir string // Project root directory (for reference only)
+	baseWorkDir string // Base directory for user sandboxes
 }
 
 // NewGeekMode creates a new GeekMode instance.
 // NewGeekMode 创建一个新的 GeekMode 实例。
-func NewGeekMode(sourceDir string) *GeekMode {
-	return &GeekMode{sourceDir: sourceDir}
+func NewGeekMode(baseWorkDir string) *GeekMode {
+	// If no base dir provided, try environment variable
+	if baseWorkDir == "" {
+		baseWorkDir = os.Getenv("DIVINESENSE_CLAUDE_CODE_WORKDIR")
+	}
+	return &GeekMode{baseWorkDir: baseWorkDir}
 }
 
 // Name returns the mode identifier.
@@ -64,11 +68,16 @@ When you create a file, announce the filename so the user knows it was created.
 
 // GetWorkDir returns the user-specific sandbox directory.
 func (m *GeekMode) GetWorkDir(userID int32) string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "/tmp"
+	base := m.baseWorkDir
+	if base == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			base = "/tmp"
+		} else {
+			base = filepath.Join(homeDir, ".divinesense", "claude")
+		}
 	}
-	return filepath.Join(homeDir, ".divinesense", "claude", fmt.Sprintf("user_%d", userID))
+	return filepath.Join(base, fmt.Sprintf("user_%d", userID))
 }
 
 // CheckPermission validates that the user can use Geek Mode.

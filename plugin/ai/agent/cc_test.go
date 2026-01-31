@@ -128,7 +128,7 @@ func TestBuildSystemPrompt(t *testing.T) {
 
 // TestGeekModeName tests GeekMode name.
 func TestGeekModeName(t *testing.T) {
-	mode := NewGeekMode("/src")
+	mode := NewGeekMode("")
 	if got := mode.Name(); got != "geek" {
 		t.Errorf("GeekMode.Name() = %v, want %v", got, "geek")
 	}
@@ -136,23 +136,31 @@ func TestGeekModeName(t *testing.T) {
 
 // TestGeekModeGetWorkDir tests GeekMode work directory.
 func TestGeekModeGetWorkDir(t *testing.T) {
-	mode := NewGeekMode("/src")
+	t.Run("default behavior", func(t *testing.T) {
+		mode := NewGeekMode("")
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			t.Skipf("cannot get home directory: %v", err)
+		}
+		expectedDir := filepath.Join(homeDir, ".divinesense", "claude", "user_123")
+		if got := mode.GetWorkDir(123); got != expectedDir {
+			t.Errorf("GeekMode.GetWorkDir() (default) = %v, want %v", got, expectedDir)
+		}
+	})
 
-	// Mock home directory for testing
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Skipf("cannot get home directory: %v", err)
-	}
-
-	expectedDir := filepath.Join(homeDir, ".divinesense", "claude", "user_123")
-	if got := mode.GetWorkDir(123); got != expectedDir {
-		t.Errorf("GeekMode.GetWorkDir() = %v, want %v", got, expectedDir)
-	}
+	t.Run("custom base dir", func(t *testing.T) {
+		customDir := "/custom/path"
+		mode := NewGeekMode(customDir)
+		expectedDir := filepath.Join(customDir, "user_123")
+		if got := mode.GetWorkDir(123); got != expectedDir {
+			t.Errorf("GeekMode.GetWorkDir() (custom) = %v, want %v", got, expectedDir)
+		}
+	})
 }
 
 // TestGeekModeCheckPermission tests GeekMode permission check.
 func TestGeekModeCheckPermission(t *testing.T) {
-	mode := NewGeekMode("/src")
+	mode := NewGeekMode("")
 
 	tests := []struct {
 		name    string
@@ -183,7 +191,7 @@ func TestGeekModeCheckPermission(t *testing.T) {
 
 // TestGeekModeBuildSystemPrompt tests GeekMode system prompt includes File Output.
 func TestGeekModeBuildSystemPrompt(t *testing.T) {
-	mode := NewGeekMode("/src")
+	mode := NewGeekMode("")
 	cfg := &CCRunnerConfig{
 		WorkDir:   "/workspace",
 		SessionID: "session-123",

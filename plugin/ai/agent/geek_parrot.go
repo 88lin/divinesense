@@ -34,7 +34,9 @@ func NewGeekParrot(sourceDir string, userID int32, sessionID string) (*GeekParro
 	}
 
 	// Create GeekMode
-	mode := NewGeekMode(sourceDir)
+	// Geek Mode uses its own sandbox directory, so we pass empty string to let it
+	// use DIVINESENSE_CLAUDE_CODE_WORKDIR or default path.
+	mode := NewGeekMode("")
 
 	// Generate session ID if not provided
 	if sessionID == "" {
