@@ -256,8 +256,10 @@ docker logs divinesense-postgres
 确保：
 1. 使用 PostgreSQL（SQLite 不支持 AI）
 2. API Key 已配置且有效
-3. `DIVINESENSE_AI_ENABLED=true`
+3. `DIVINESE_AI_ENABLED=true`
 4. pgvector 扩展已安装
+
+> 💡 **SQLite AI 支持研究**：详见 [#9](https://github.com/hrygo/divinesense/issues/9) - 探索开发环境 AI 功能可能性
 
 ```bash
 # 验证 pgvector

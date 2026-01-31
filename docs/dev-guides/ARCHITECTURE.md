@@ -4,7 +4,7 @@
 
 DivineSense (神识) 是一款隐私优先、轻量级的笔记服务，通过 AI 驱动的「鹦鹉」代理增强用户体验。
 - **核心架构**：Go 后端 (Echo/Connect RPC) + React 前端 (Vite/Tailwind)
-- **数据存储**：PostgreSQL（生产环境，完整 AI 支持），SQLite（仅开发环境，**不支持 AI 功能**）
+- **数据存储**：PostgreSQL（生产环境，完整 AI 支持），SQLite（仅开发环境，**无 AI**）详见 [#9](https://github.com/hrygo/divinesense/issues/9)
 - **核心特性**：多代理 AI 系统、语义搜索、日程助理、自托管无遥测
 - **端口**：后端 28081，前端 25173，PostgreSQL 25432（开发环境）
 
@@ -14,7 +14,7 @@ DivineSense (神识) 是一款隐私优先、轻量级的笔记服务，通过 A
 |:-----|:--------|
 | 后端 | Go 1.25, Echo, Connect RPC, pgvector |
 | 前端 | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI, TanStack Query |
-| 数据库 | PostgreSQL 16+（生产环境带 AI），SQLite（仅开发环境，**无 AI**） |
+| 数据库 | PostgreSQL 16+（生产），SQLite（开发，**无 AI**）[#9](https://github.com/hrygo/divinesense/issues/9) |
 | AI | DeepSeek V3（LLM），SiliconFlow（Embedding、Reranker） |
 
 ---

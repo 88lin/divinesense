@@ -178,7 +178,7 @@ curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyu
 | :---------- | :----------------------------------------------------- |
 | **后端**    | Go 1.25+, Echo 框架, Connect RPC                       |
 | **前端**    | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI |
-| **数据库**  | PostgreSQL 16+ (pgvector 扩展)                         |
+| **数据库**  | PostgreSQL 16+ (pgvector) [生产] / SQLite [开发，无 AI] |
 | **AI 模型** | DeepSeek V3, Qwen2.5-7B, bge-m3, bge-reranker-v2-m3    |
 
 ### 混合 RAG 检索
@@ -244,6 +244,12 @@ make check-all # 运行所有检查（构建、测试、i18n）
 | `episodic_memory` | 长期用户记忆和偏好       |
 | `user_preference` | 用户沟通设置             |
 | `agent_metrics`   | 代理性能追踪（A/B 测试） |
+
+**数据库说明**：
+- **PostgreSQL**：生产环境，完整 AI 支持（向量搜索、会话记忆、长期记忆）
+- **SQLite**：开发环境，仅基础功能（**不支持 AI 功能**）
+
+> 💡 **SQLite AI 支持计划**：详见 [#9](https://github.com/hrygo/divinesense/issues/9) - 探索 SQLite 向量搜索可行性
 
 ---
 

@@ -71,6 +71,7 @@ go vet ./...    # 静态分析
 
 - **PostgreSQL**：生产环境，完整 AI 支持 (pgvector)
 - **SQLite**：开发环境，**不支持 AI 功能**
+- **未来支持**：详见 [#9](https://github.com/hrygo/divinesense/issues/9)
 
 ---
 
