@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.71.0] - 2026-01-31
+
+### 🚀 Deployment Architecture & SSOT
+- **SSOT Configuration**: Unified deployment configurations into a "Single Source of Truth". Binary and Docker modes now share the same production template (`deploy/aliyun/.env.prod.example`), reducing maintenance overhead.
+- **Smart Installer**: Refactored `install.sh` to dynamically fetch configuration templates from GitHub, supporting version-aware downloads without hardcoded scripts.
+- **Geek Mode Config**: Introduced `DIVINESENSE_CLAUDE_CODE_WORKDIR` env var to allow fully configurable sandbox/workspace directories for Geek Mode agents.
+
+### 📚 Documentation
+- **Deployment Guide**: Comprehensive update to `deploy/aliyun/README.md`, adding clear "Binary Mode" vs "Docker Mode" operation manuals and explicit file structure maps.
+- **Geek Mode Onboarding**: Added detailed step-by-step guides for enabling Geek Mode in Binary deployments.
+- **Binary Deployment**: Updated `BINARY_DEPLOYMENT.md` to reflect the new configuration strategies.
+
+### 🧠 Session Management (Preview)
+- **Session Redesign**: Laid the groundwork for the new "Hot/Cool Zone" session management strategy to handle large context (Gen UI outputs) more efficiently.
+- **Research**: Added `docs/research/20260131-session-management-redesign.md` detailing the new architecture.
+
+### 🛠️ Maintenance
+- **GitHub Templates**: Added new Pull Request template and verified Issue templates.
+
 ## [v0.62.2] - 2026-01-30
 
 ### 🛠️ Maintenance
