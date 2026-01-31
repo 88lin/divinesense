@@ -343,7 +343,7 @@ func TestSchedulerAgentV2_SelfDescription(t *testing.T) {
 	assert.NotNil(t, desc)
 	assert.Equal(t, "schedule", desc.Name)
 	assert.Equal(t, "🦜", desc.Emoji)
-	assert.Equal(t, "金刚 (King Kong) - 日程助手鹦鹉", desc.Title)
+	assert.Equal(t, "时巧 (Tick) - 日程助手鹦鹉", desc.Title)
 	assert.Contains(t, desc.Capabilities, "创建日程事件")
 	assert.Contains(t, desc.Capabilities, "查询时间安排")
 }

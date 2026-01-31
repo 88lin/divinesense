@@ -339,8 +339,8 @@ func GenerateCacheKey(agentName string, userID int32, userInput string) string {
 // 如果任何类型未正确实现接口，编译将失败。
 var (
 	_ ParrotAgent = (*MemoParrot)(nil)       // 灰灰 (Memo)
-	_ ParrotAgent = (*AmazingParrot)(nil)    // 惊奇 (Amazing)
-	_ ParrotAgent = (*ScheduleParrotV2)(nil) // 金刚 (Schedule V2)
+	_ ParrotAgent = (*AmazingParrot)(nil)    // 折衷 (Amazing)
+	_ ParrotAgent = (*ScheduleParrotV2)(nil) // 时巧 (Schedule V2)
 	_ ParrotAgent = (*GeekParrot)(nil)       // 极客 (Geek Mode)
 	_ ParrotAgent = (*EvolutionParrot)(nil)  // 进化 (Evolution Mode)
 )

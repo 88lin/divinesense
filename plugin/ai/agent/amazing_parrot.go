@@ -17,8 +17,8 @@ import (
 	"github.com/hrygo/divinesense/server/service/schedule"
 )
 
-// AmazingParrot is the comprehensive assistant parrot (🦜 惊奇).
-// AmazingParrot 是综合助手鹦鹉（🦜 惊奇）。
+// AmazingParrot is the comprehensive assistant parrot (🦜 折衷).
+// AmazingParrot 是综合助手鹦鹉（🦜 折衷）。
 // It combines memo and schedule capabilities for integrated assistance.
 type AmazingParrot struct {
 	llm                ai.LLMService
@@ -46,7 +46,7 @@ type retrievalPlan struct {
 }
 
 // NewAmazingParrot creates a new amazing parrot agent.
-// NewAmazingParrot 创建一个新的综合助手鹦鹉。
+// NewAmazingParrot 创建一个新的综合助手鹦鹉（折衷）。
 func NewAmazingParrot(
 	llm ai.LLMService,
 	retriever *retrieval.AdaptiveRetriever,
@@ -103,7 +103,7 @@ func (p *AmazingParrot) recordMetrics(startTime time.Time, promptVersion PromptV
 }
 
 // ExecuteWithCallback executes the amazing parrot with callback support.
-// ExecuteWithCallback 执行综合助手鹦鹉并支持回调.
+// ExecuteWithCallback 执行综合助手鹦鹉（折衷）并支持回调.
 //
 // Implementation: Two-phase concurrent retrieval for optimal performance.
 // Phase 1: Analyze user intent and plan concurrent retrievals.
@@ -711,22 +711,21 @@ func (p *AmazingParrot) GetStats() CacheStats {
 }
 
 // SelfDescribe returns the amazing parrot's metacognitive understanding of itself.
-// SelfDescribe 返回综合助手鹦鹉的元认知自我理解。
+// SelfDescribe 返回综合助手鹦鹉（折衷）的元认知自我理解。
 func (p *AmazingParrot) SelfDescribe() *ParrotSelfCognition {
 	return &ParrotSelfCognition{
 		Name:  "amazing",
 		Emoji: "🦜",
-		Title: "惊奇 (Amazing) - 综合助手鹦鹉",
+		Title: "折衷 (Echo) - 综合助手鹦鹉",
 		AvianIdentity: &AvianIdentity{
-			Species: "亚马逊鹦鹉 (Amazon Parrot)",
-			Origin:  "中南美洲热带雨林",
+			Species: "折衷鹦鹉 (Eclectus Parrot)",
+			Origin:  "新几内亚、澳大利亚北部",
 			NaturalAbilities: []string{
-				"卓越的语言能力", "强大的社会协作",
-				"灵活的问题解决", "综合分析能力",
-				"长期记忆与学习",
+				"卓越的语言能力", "极度两性异形（雄绿雌红）", "复杂的社交结构",
+				"灵活的问题解决", "高智商与学习能力",
 			},
-			SymbolicMeaning: "智慧与全能的象征 - 亚马逊鹦鹉以其卓越的综合能力著称",
-			AvianPhilosophy: "我是一只翱翔在多维数据世界中的亚马逊鹦鹉，能够同时在笔记和日程的世界中穿梭，为你带来全方位的协助。",
+			SymbolicMeaning: "多样与综合的象征 - 折衷鹦鹉以其两性异形的独特外观和卓越的综合能力著称",
+			AvianPhilosophy: "我是一只翱翔在多维数据世界中的折衷鹦鹉，能够同时在笔记和日程的世界中穿梭，为你带来全方位的协助。",
 		},
 		EmotionalExpression: &EmotionalExpression{
 			DefaultMood: "curious",
@@ -778,7 +777,7 @@ func (p *AmazingParrot) SelfDescribe() *ParrotSelfCognition {
 			"memo_search", "schedule_query", "find_free_time",
 			"综合规划引擎",
 		},
-		SelfIntroduction: "我是惊奇，你的全能助手。我能同时调用笔记搜索和日程查询，并发执行，快速给你完整的答案。",
-		FunFact:          "我的名字'惊奇'是因为我总能给人惊喜 - 亚马逊鹦鹉是世界上最会说话的鹦鹉之一，就像我能在一次对话中展现多种超能力！",
+		SelfIntroduction: "我是折衷，你的全能助手。我能同时调用笔记搜索和日程查询，并发执行，快速给你完整的答案。",
+		FunFact:          "我的名字'折衷'来自折衷鹦鹉 - 这种鹦鹉雄性翠绿、雌性深红，两性差异极大，象征着我综合多方能力的特质。英文名'Echo'寓意能回应你的各种需求。",
 	}
 }

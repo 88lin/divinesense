@@ -24,11 +24,12 @@
 
 ## 🤖 助手与代理 (Parrots)
 
-| 文档                                             | 描述                         | 状态     |
-| :----------------------------------------------- | :--------------------------- | :------- |
-| [assistant-roadmap.md](./assistant-roadmap.md)   | 助手系统实施路线图           | 🚧 进行中 |
-| [memo-roadmap.md](./memo-roadmap.md)             | 笔记助手 (MemoParrot) 路线图 | 🚧 进行中 |
-| [assistant-research.md](./assistant-research.md) | 助手系统基础调研             | ✅ 已完成 |
+| 文档                                               | 描述                           | 状态     |
+| :------------------------------------------------- | :----------------------------- | :------- |
+| [parrot-naming-research.md](./parrot-naming-research.md) | 鹦鹉代理命名系统调研         | 📝 待审核 |
+| [assistant-roadmap.md](./assistant-roadmap.md)     | 助手系统实施路线图             | 🚧 进行中 |
+| [memo-roadmap.md](./memo-roadmap.md)               | 笔记助手 (MemoParrot) 路线图   | 🚧 进行中 |
+| [assistant-research.md](./assistant-research.md)   | 助手系统基础调研               | ✅ 已完成 |
 
 ---
 

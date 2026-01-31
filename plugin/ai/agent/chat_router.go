@@ -19,10 +19,10 @@ const (
 	// RouteTypeMemo routes to MemoParrot (灰灰) for memo search and retrieval.
 	RouteTypeMemo ChatRouteType = "memo"
 
-	// RouteTypeSchedule routes to ScheduleParrot (金刚) for schedule management.
+	// RouteTypeSchedule routes to ScheduleParrot (时巧) for schedule management.
 	RouteTypeSchedule ChatRouteType = "schedule"
 
-	// RouteTypeAmazing routes to AmazingParrot (惊奇) for comprehensive assistance.
+	// RouteTypeAmazing routes to AmazingParrot (折衷) for comprehensive assistance.
 	RouteTypeAmazing ChatRouteType = "amazing"
 )
 
