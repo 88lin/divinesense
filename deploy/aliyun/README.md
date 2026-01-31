@@ -103,9 +103,18 @@ DivineSense 需要 2 个 API Key（国内推荐）：
    ```bash
    npm install -g @anthropic-ai/claude-code
    ```
-2. **自动配置**:
+2. **自动配置认证**:
    ```bash
    npx @z_ai/coding-helper
+   ```
+3. **启用功能**:
+   修改配置 `/etc/divinesense/config`:
+   ```bash
+   DIVINESENSE_CLAUDE_CODE_ENABLED=true
+   ```
+4. **重启服务**:
+   ```bash
+   systemctl restart divinesense
    ```
 
 #### 🅱️ Docker 部署
@@ -116,18 +125,15 @@ DivineSense 需要 2 个 API Key（国内推荐）：
    #这是在容器内安装，无需担心污染宿主机
    docker exec -u 0 -it divinesense npm install -g @anthropic-ai/claude-code
    ```
-2. **自动配置**:
+2. **自动配置认证**:
    ```bash
    docker exec -it divinesense npx @z_ai/coding-helper
    ```
-
 3. **启用功能**:
    修改 `/opt/divinesense/.env.prod` 文件：
    ```bash
-   # 启用功能
    DIVINESENSE_CLAUDE_CODE_ENABLED=true
    ```
-
 4. **重启服务**:
    ```bash
    cd /opt/divinesense && ./deploy.sh restart
@@ -137,6 +143,7 @@ DivineSense 需要 2 个 API Key（国内推荐）：
 
 ## 运维命令
 
+### Docker 模式
 ```bash
 cd /opt/divinesense
 
@@ -148,6 +155,18 @@ cd /opt/divinesense
 ./deploy.sh upgrade    # 升级版本
 ```
 
+### 二进制模式
+```bash
+systemctl status divinesense    # 查看状态
+journalctl -u divinesense -f    # 查看日志
+systemctl restart divinesense   # 重启服务
+systemctl stop divinesense      # 停止服务
+
+# 备份与升级 (使用辅助脚本)
+/opt/divinesense/deploy-binary.sh backup
+/opt/divinesense/deploy-binary.sh upgrade
+```
+
 ---
 
 ## 备份
@@ -155,43 +174,46 @@ cd /opt/divinesense
 **自动备份：** 每天凌晨 2 点（安装时已配置）
 
 **手动备份：**
-```bash
-cd /opt/divinesense && ./deploy.sh backup
-```
+- Docker: `cd /opt/divinesense && ./deploy.sh backup`
+- Binary: `/opt/divinesense/deploy-binary.sh backup`
 
 **恢复备份：**
-```bash
-cd /opt/divinesense && ./deploy.sh restore backups/divinesense-backup-xxx.gz
-```
+- Docker: `./deploy.sh restore backups/backup-file.gz`
+- Binary: `./deploy-binary.sh restore backups/backup-file.gz`
 
 ---
 
 ## 常见问题
 
-| 问题           | 解决方案                            |
-| -------------- | ----------------------------------- |
-| 镜像拉取慢     | 一键安装脚本已自动配置国内镜像源    |
-| 服务无法启动   | `./deploy.sh logs` 查看日志         |
-| 忘记数据库密码 | `cat /opt/divinesense/.db_password` |
-| 防火墙问题     | 确保开放 5230 端口                  |
-
----
-
-## 安全建议
-
-1. **修改密码** - 安装后修改数据库密码
-2. **备份** - 已配置每日自动备份，建议定期下载到本地
-3. **防火墙** - 只开放必要端口 (22, 80, 443, 5230)
-4. **HTTPS** - 生产环境建议配置反向代理 + SSL
+| 问题           | 解决方案                         |
+| -------------- | -------------------------------- |
+| 镜像拉取慢     | 一键安装脚本已自动配置国内镜像源 |
+| 服务无法启动   | 查看日志 (logs命令)              |
+| 忘记数据库密码 | 查看 `.db_password` 文件         |
+| 防火墙问题     | 确保开放 5230 端口               |
 
 ---
 
 ## 文件位置
 
+### Docker 模式
 ```
 /opt/divinesense/
 ├── .env.prod          # 环境配置
 ├── .db_password       # 数据库密码
 ├── deploy.sh          # 运维脚本
 └── backups/           # 备份目录
+```
+
+### 二进制模式
+```
+/opt/divinesense/      # 安装目录
+├── bin/               # 二进制文件
+├── data/              # 数据目录
+├── logs/              # 日志目录
+└── deploy-binary.sh   # 运维脚本
+
+/etc/divinesense/
+├── config             # 配置文件
+└── .db_password       # 数据库密码
 ```
