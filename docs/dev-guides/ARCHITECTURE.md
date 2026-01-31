@@ -108,8 +108,8 @@ divinesense/
 |  AgentType  | 鹦鹉名称 | 文件                    | 中文名 | 描述                             |
 | :---------: | :------- | :---------------------- | :----- | :------------------------------- |
 |   `MEMO`    | 灰灰     | `memo_parrot.go`        | 灰灰   | 笔记搜索和检索专家               |
-| `SCHEDULE`  | 金刚     | `schedule_parrot_v2.go` | 金刚   | 日程创建和管理                   |
-|  `AMAZING`  | 惊奇     | `amazing_parrot.go`     | 惊奇   | 综合助理（笔记 + 日程）          |
+| `SCHEDULE`  | 时巧     | `schedule_parrot_v2.go` | 时巧   | 日程创建和管理                   |
+|  `AMAZING`  | 折衷     | `amazing_parrot.go`     | 折衷   | 综合助理（笔记 + 日程）          |
 |   `GEEK`    | 极客     | `geek_parrot.go`        | 极客   | Claude Code CLI 通信层（零 LLM） |
 | `EVOLUTION` | 进化     | `evolution_parrot.go`   | 进化   | 自我进化能力（源代码修改）       |
 

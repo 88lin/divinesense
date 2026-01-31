@@ -45,8 +45,8 @@
 | 代理  | 名称     | 类型  | 定位             | 工作目录     | 产出                    |
 | :---: | :------- | :---: | :--------------- | :----------- | :---------------------- |
 |   🦜   | **灰灰** | 常规  | 知识检索         | —            | 搜索结果                |
-|   🦜   | **金刚** | 常规  | 日程管理         | —            | 日程创建/查询           |
-|   🦜   | **惊奇** | 常规  | 综合助理         | —            | 笔记+日程组合           |
+|   🦜   | **时巧** | 常规  | 日程管理         | —            | 日程创建/查询           |
+|   🦜   | **折衷** | 常规  | 综合助理         | —            | 笔记+日程组合           |
 |   🦜   | **极客** | 特殊  | 通用任务助手     | 用户沙箱     | 代码产物（用户下载）    |
 |   🧬   | **进化** | 特殊  | 系统自我进化引擎 | 源代码根目录 | **GitHub PR**（需审查） |
 
@@ -210,8 +210,8 @@ ChatRouter (意图分类)
     ├── EvolutionParrot (进化) - 源代码修改 + PR 创建
     ├── GeekParrot (极客) - Claude Code CLI 通信层（零 LLM）
     ├── MemoParrot (灰灰) - memo_search 工具
-    ├── ScheduleParrotV2 (金刚) - schedule_add/query/update/find_free_time
-    └── AmazingParrot (惊奇) - 并发多工具编排
+    ├── ScheduleParrotV2 (时巧) - schedule_add/query/update/find_free_time
+    └── AmazingParrot (折衷) - 并发多工具编排
 ```
 
 ---

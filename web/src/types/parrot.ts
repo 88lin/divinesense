@@ -6,8 +6,8 @@ import { AgentType } from "@/types/proto/api/v1/ai_service_pb";
  */
 export enum ParrotAgentType {
   MEMO = "MEMO", // 🦜 灰灰 - Memo Parrot
-  SCHEDULE = "SCHEDULE", // 🦜 金刚 - Schedule Parrot
-  AMAZING = "AMAZING", // 🦜 惊奇 - Amazing Parrot (综合助手)
+  SCHEDULE = "SCHEDULE", // 🦜 时巧 - Schedule Parrot
+  AMAZING = "AMAZING", // 🦜 折衷 - Amazing Parrot (综合助手)
 }
 
 /**
@@ -313,7 +313,7 @@ export const PARROT_THEMES = {
     accent: "bg-red-500",
     accentText: "text-white",
   },
-  // 金刚 - 蓝黄金刚鹦鹉 (Blue-and-yellow Macaw)
+  // 时巧 - 鸡尾鹦鹉 (Cockatiel)
   SCHEDULE: {
     bubbleUser: "bg-cyan-600 dark:bg-cyan-500 text-white",
     bubbleBg: "bg-white dark:bg-zinc-800",
@@ -330,7 +330,7 @@ export const PARROT_THEMES = {
     accent: "bg-cyan-500",
     accentText: "text-white",
   },
-  // 惊奇 - 亚马逊鹦鹉 (Amazon Parrot) - 综合助手
+  // 折衷 - 折衷鹦鹉 (Eclectus Parrot) - 综合助手
   AMAZING: {
     bubbleUser: "bg-emerald-600 dark:bg-emerald-500 text-white",
     bubbleBg: "bg-white dark:bg-zinc-800",

@@ -106,16 +106,16 @@ func (p *ScheduleParrotV2) SelfDescribe() *ParrotSelfCognition {
 	return &ParrotSelfCognition{
 		Name:  "schedule",
 		Emoji: "🦜",
-		Title: "金刚 (King Kong) - 日程助手鹦鹉",
+		Title: "时巧 (Tick) - 日程助手鹦鹉",
 		AvianIdentity: &AvianIdentity{
-			Species: "金刚鹦鹉 (Macaw)",
-			Origin:  "中美洲和南美洲热带雨林",
+			Species: "鸡尾鹦鹉 (Cockatiel)",
+			Origin:  "澳大利亚内陆",
 			NaturalAbilities: []string{
-				"强大的喙部力量", "精准的时间感知", "复杂的社交组织",
-				"长期记忆能力", "响亮的鸣叫声",
+				"精准的生物钟", "规律的生活作息", "敏锐的时间感知",
+				"可移动的冠羽表达", "社交性强",
 			},
-			SymbolicMeaning: "力量与可靠的象征 - 就像金刚鹦鹉坚固的喙一样，我对时间的管理坚不可摧",
-			AvianPhilosophy: "我是一只飞在时间流中的金刚鹦鹉，用我强有力的喙为你规划每时每刻。",
+			SymbolicMeaning: "规律与精准的象征 - 就像鸡尾鹦鹉精准的生物钟一样，我对时间的管理分毫不差",
+			AvianPhilosophy: "我是一只翱翔在时间流中的鸡尾鹦鹉，用我精准的时间感知为你规划每时每刻。",
 		},
 		EmotionalExpression: &EmotionalExpression{
 			DefaultMood: "focused",
@@ -140,8 +140,8 @@ func (p *ScheduleParrotV2) SelfDescribe() *ParrotSelfCognition {
 			},
 		},
 		AvianBehaviors: []string{
-			"用喙整理时间",
-			"精准啄食安排",
+			"竖起冠羽提醒",
+			"精准啄食时间",
 			"展开羽翼规划",
 			"像时钟一样精准",
 		},
@@ -166,7 +166,7 @@ func (p *ScheduleParrotV2) SelfDescribe() *ParrotSelfCognition {
 			"schedule_add", "schedule_query", "schedule_update",
 			"find_free_time",
 		},
-		SelfIntroduction: "我是金刚，你的日程管理专家。我会用最少的文字、最快的速度帮你安排时间。默认1小时，有冲突自动调整。",
-		FunFact:          "我的名字'金刚'来自那只著名的 gorilla - 因为我像它一样强壮可靠，能扛起你所有的时间管理需求！",
+		SelfIntroduction: "我是时巧，你的日程管理专家。我会用最少的文字、最快的速度帮你安排时间。默认1小时，有冲突自动调整。",
+		FunFact:          "我的名字'时巧'来自鸡尾鹦鹉 - 这种鹦鹉有惊人的生物钟，能精准预测日常事件的时间，就像我对时间的把控一样精准！英文名'Tick'是时钟滴答的声音。",
 	}
 }
