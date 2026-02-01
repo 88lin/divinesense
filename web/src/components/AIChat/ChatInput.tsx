@@ -1,5 +1,5 @@
-import { MessageSquarePlus, Scissors, SendIcon, Terminal, Trash2 } from "lucide-react";
-import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { MessageSquarePlus, Scissors, SendIcon, Square, Terminal, Trash2 } from "lucide-react";
+import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  onStop?: () => void;
   onNewChat?: () => void;
   onClearContext?: () => void;
   onClearChat?: () => void;
@@ -27,6 +28,7 @@ export function ChatInput({
   value,
   onChange,
   onSend,
+  onStop,
   onNewChat,
   onClearContext,
   onClearChat,
@@ -43,28 +45,51 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // Handle mobile keyboard visibility
+  // Detect macOS for correct shortcut display - memoized
+  const sendShortcut = useMemo(() => {
+    const isMac = typeof window !== "undefined" && /Mac|iPod|iPhone|iPad/.test(window.navigator.platform);
+    return isMac ? "⌘+Enter" : "Ctrl+Enter";
+  }, []);
+
+  // Handle mobile keyboard visibility with debouncing
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let lastHeight = 0;
 
     const handleResize = () => {
       const viewport = window.visualViewport;
       if (!viewport) return;
 
-      const windowHeight = window.innerHeight;
-      const keyboardVisible = viewport.height < windowHeight * 0.85;
-      const newKeyboardHeight = keyboardVisible ? windowHeight - viewport.height : 0;
+      // Debounce: only update if height significantly changed
+      const currentHeight = viewport.height;
+      if (Math.abs(currentHeight - lastHeight) < 10) {
+        return; // Skip small changes
+      }
+      lastHeight = currentHeight;
 
-      setKeyboardHeight(newKeyboardHeight);
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const windowHeight = window.innerHeight;
+        const keyboardVisible = currentHeight < windowHeight * 0.85;
+        const newKeyboardHeight = keyboardVisible ? windowHeight - currentHeight : 0;
+
+        setKeyboardHeight(newKeyboardHeight);
+      }, 100);
     };
 
     window.visualViewport.addEventListener("resize", handleResize);
-    return () => window.visualViewport?.removeEventListener("resize", handleResize);
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      window.visualViewport?.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      // Ctrl+Enter or Cmd+Enter to send
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         onSend();
       }
@@ -88,17 +113,20 @@ export function ChatInput({
     }
   }, [value]);
 
-  // Use mode-specific placeholder
-  const placeholderText =
-    currentMode === "geek"
-      ? t("ai.parrot.geek-chat-placeholder")
-      : currentMode === "evolution"
-        ? t("ai.parrot.evolution-chat-placeholder")
-        : placeholder || t("ai.parrot.chat-default-placeholder");
+  // Use mode-specific placeholder - memoized
+  const placeholderText = useMemo(() => {
+    if (currentMode === "geek") {
+      return t("ai.parrot.geek-chat-placeholder");
+    }
+    if (currentMode === "evolution") {
+      return t("ai.parrot.evolution-chat-placeholder");
+    }
+    return placeholder || t("ai.parrot.chat-default-placeholder");
+  }, [currentMode, placeholder, t]);
 
-  // Mode-specific styles helper
-  const getModeStyles = (mode: AIMode) => {
-    switch (mode) {
+  // Mode-specific styles - memoized to avoid recreating on every render
+  const modeStyles = useMemo(() => {
+    switch (currentMode) {
       case "geek":
         return {
           border: "geek-border geek-terminal",
@@ -118,9 +146,7 @@ export function ChatInput({
           button: "",
         };
     }
-  };
-
-  const modeStyles = getModeStyles(currentMode);
+  }, [currentMode]);
 
   return (
     <div
@@ -134,6 +160,7 @@ export function ChatInput({
         {/* Toolbar - 工具栏 */}
         {(onNewChat || onClearContext || onClearChat || onModeChange) && (
           <div className="flex items-center gap-1 mb-2">
+            {/* Left side buttons */}
             {onNewChat && (
               <Button
                 variant="ghost"
@@ -184,10 +211,24 @@ export function ChatInput({
             )}
             {/* Spacer to push mode cycle button to the right */}
             <div className="flex-1" />
+            {/* Shortcut hint */}
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> {t("ai.input-hint-newline", { key: "Enter" })} ·
+              <kbd className="px-1 py-0.5 bg-muted rounded ml-1">{sendShortcut}</kbd> {t("ai.input-hint-send", { key: sendShortcut })}
+            </span>
             {/* Mode Cycle Button - mobile only, shows mode selector */}
             {onModeChange && currentMode !== "normal" && (
               <div className="hidden md:block">{/* Could add compact mode indicator here for mobile */}</div>
             )}
+          </div>
+        )}
+        {/* Shortcut hint for when no toolbar buttons - always visible on sm+ screens */}
+        {!onNewChat && !onClearContext && !onClearChat && !onModeChange && (
+          <div className="flex items-center justify-end mb-2">
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              <kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> 换行 ·
+              <kbd className="px-1 py-0.5 bg-muted rounded ml-1">{sendShortcut}</kbd> 发送
+            </span>
           </div>
         )}
 
@@ -209,7 +250,7 @@ export function ChatInput({
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholderText}
-            disabled={disabled || isTyping}
+            disabled={disabled}
             className={cn(
               "flex-1 min-h-[44px] max-h-[120px] bg-transparent border-0 outline-none resize-none text-sm leading-relaxed",
               "text-foreground placeholder:text-muted-foreground",
@@ -222,15 +263,28 @@ export function ChatInput({
             className={cn(
               "shrink-0 h-11 min-w-[44px] rounded-xl transition-all",
               "hover:scale-105 active:scale-95",
-              value.trim() && !isTyping ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              isTyping
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : value.trim()
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground",
               "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
               modeStyles.button,
             )}
-            onClick={() => onSend()}
-            disabled={!value.trim() || isTyping || disabled}
-            aria-label={t("ai.send-shortcut")}
+            onClick={() => {
+              if (isTyping && onStop) {
+                onStop();
+              } else {
+                onSend();
+              }
+            }}
+            // Stop button should always be clickable; Send button requires input
+            disabled={disabled || (!isTyping && !value.trim())}
+            aria-label={isTyping ? "Stop generating" : `${sendShortcut} Send`}
           >
-            {currentMode === "geek" && value.trim() ? (
+            {isTyping ? (
+              <Square className="w-5 h-5 fill-current" />
+            ) : currentMode === "geek" && value.trim() ? (
               <Terminal className="w-5 h-5" />
             ) : currentMode === "evolution" && value.trim() ? (
               <Terminal className="w-5 h-5 text-purple-500" />

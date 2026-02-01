@@ -22,6 +22,16 @@ type ParrotAgent interface {
 	SelfDescribe() *ParrotSelfCognition
 }
 
+// SessionStatsProvider is an optional interface for agents that can provide session statistics.
+// SessionStatsProvider 是可选接口，用于可以提供会话统计数据的代理。
+// Only GeekParrot and EvolutionParrot (which use CCRunner) implement this interface.
+// 只有 GeekParrot 和 EvolutionParrot（使用 CCRunner）实现此接口。
+type SessionStatsProvider interface {
+	// GetSessionStats returns the session statistics from the last execution.
+	// GetSessionStats 返回上次执行的会话统计数据。
+	GetSessionStats() *SessionStats
+}
+
 // ParrotSelfCognition represents a parrot's metacognitive understanding of itself.
 // ParrotSelfCognition 表示鹦鹉对自己的元认知理解。
 type ParrotSelfCognition struct {
@@ -71,11 +81,12 @@ type EventCallback func(eventType string, eventData interface{}) error
 
 // 常用事件类型.
 const (
-	EventTypeThinking   = "thinking"    // Agent is thinking
-	EventTypeToolUse    = "tool_use"    // Agent is using a tool
-	EventTypeToolResult = "tool_result" // Tool execution result
-	EventTypeAnswer     = "answer"      // Final answer from agent
-	EventTypeError      = "error"       // Error occurred
+	EventTypeThinking    = "thinking"     // Agent is thinking
+	EventTypeToolUse     = "tool_use"     // Agent is using a tool
+	EventTypeToolResult  = "tool_result"  // Tool execution result
+	EventTypeAnswer      = "answer"       // Final answer from agent
+	EventTypeError       = "error"        // Error occurred
+	EventTypeDangerBlock = "danger_block" // Dangerous operation was blocked
 
 	// Memo-specific events.
 	EventTypeMemoQueryResult = "memo_query_result" // Memo search results

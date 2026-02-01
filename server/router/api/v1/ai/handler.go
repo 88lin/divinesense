@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -294,38 +296,94 @@ func (h *ParrotHandler) executeAgent(
 	stream ChatStream,
 	logger *observability.RequestContext,
 ) error {
-	// Track events for logging using sync.Map for concurrent safety
-	eventCount := &sync.Map{} // map[string]int
+	// Track events for logging (protected by countMu)
+	eventCounts := make(map[string]int)
+	var countMu sync.Mutex
+
 	var totalChunks int
 	var streamMu sync.Mutex
 
+	// Track session start time for summary
+	sessionStartTime := time.Now()
+	var sessionTotalDuration int64
+
+	// Track tool calls for session summary
+	var toolsUsed []string
+	var toolMu sync.Mutex
+
+	// Track last event time for heartbeats
+	lastEventTime := atomic.Int64{}
+	lastEventTime.Store(time.Now().UnixNano())
+
 	// Create stream adapter
 	streamAdapter := agentpkg.NewParrotStreamAdapter(func(eventType string, eventData any) error {
-		// Track events using sync.Map for concurrent safety
-		actual, _ := eventCount.LoadOrStore(eventType, int(0))
-		currentCount := actual.(int) + 1
-		eventCount.Store(eventType, currentCount)
+		// Update last event time
+		lastEventTime.Store(time.Now().UnixNano())
+
+		// Atomically increment event count
+		countMu.Lock()
+		currentCount := eventCounts[eventType] + 1
+		eventCounts[eventType] = currentCount
+		countMu.Unlock()
 
 		if eventType == "answer" || eventType == "content" {
 			totalChunks++
 		}
 
 		// Log important events
-		logger.Debug("Agent event",
-			slog.String(observability.LogFieldEventType, eventType),
-			slog.Int("event_count", currentCount),
-		)
+		if eventType == "tool_use" || eventType == "tool_result" {
+			logger.Info("Agent event", // Use Info level for visibility
+				slog.String(observability.LogFieldEventType, eventType),
+				slog.String("event_data", TruncateString(fmt.Sprintf("%v", eventData), 100)),
+				slog.Int("occurrence", currentCount),
+			)
+		} else {
+			logger.Debug("Agent event",
+				slog.String(observability.LogFieldEventType, eventType),
+				slog.Int("occurrence", currentCount),
+			)
+		}
 
 		// Convert event data to string for streaming
 		var dataStr string
-		switch v := eventData.(type) {
-		case string:
-			dataStr = v
-		case error:
-			dataStr = v.Error()
-		default:
-			// Use fmt.Sprintf for other types
-			dataStr = fmt.Sprintf("%v", v)
+		var eventMeta *v1pb.EventMetadata
+
+		// Check if eventData is EventWithMeta (from CCRunner)
+		if eventWithMeta, ok := eventData.(*agentpkg.EventWithMeta); ok {
+			dataStr = eventWithMeta.EventData
+			if eventWithMeta.Meta != nil {
+				eventMeta = &v1pb.EventMetadata{
+					DurationMs:      eventWithMeta.Meta.DurationMs,
+					TotalDurationMs: eventWithMeta.Meta.TotalDurationMs,
+					ToolName:        eventWithMeta.Meta.ToolName,
+					ToolId:          eventWithMeta.Meta.ToolID,
+					Status:          eventWithMeta.Meta.Status,
+					ErrorMsg:        eventWithMeta.Meta.ErrorMsg,
+					InputTokens:     eventWithMeta.Meta.InputTokens,
+					OutputTokens:    eventWithMeta.Meta.OutputTokens,
+					InputSummary:    eventWithMeta.Meta.InputSummary,
+					OutputSummary:   eventWithMeta.Meta.OutputSummary,
+					FilePath:        eventWithMeta.Meta.FilePath,
+					LineCount:       eventWithMeta.Meta.LineCount,
+				}
+
+				// Track tools for session summary
+				if eventType == "tool_use" && eventWithMeta.Meta.ToolName != "" {
+					toolMu.Lock()
+					toolsUsed = append(toolsUsed, eventWithMeta.Meta.ToolName)
+					toolMu.Unlock()
+				}
+			}
+		} else {
+			// Handle legacy event types (string, error)
+			switch v := eventData.(type) {
+			case string:
+				dataStr = v
+			case error:
+				dataStr = v.Error()
+			default:
+				dataStr = fmt.Sprintf("%v", v)
+			}
 		}
 
 		// Thread-safe send
@@ -335,6 +393,7 @@ func (h *ParrotHandler) executeAgent(
 		return stream.Send(&v1pb.ChatResponse{
 			EventType: eventType,
 			EventData: dataStr,
+			EventMeta: eventMeta,
 		})
 	})
 
@@ -343,27 +402,133 @@ func (h *ParrotHandler) executeAgent(
 		return streamAdapter.Send(eventType, eventData)
 	}
 
+	// Start Heartbeat Goroutine
+	// Sends a "thinking" event every 5 seconds if no other events occur.
+	// This prevents load balancers and clients from closing the connection due to timeout.
+	heartbeatDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-heartbeatDone:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				// Check time since last activity
+				lastTime := time.Unix(0, lastEventTime.Load())
+				if time.Since(lastTime) > 5*time.Second {
+					// Send heartbeat
+					streamMu.Lock()
+					// Just send a lightweight ping chunk
+					_ = stream.Send(&v1pb.ChatResponse{
+						EventType: "ping",
+						EventData: ".", // Minimal data
+					})
+					streamMu.Unlock()
+				}
+			}
+		}
+	}()
+
 	// Execute agent
-	if err := agent.ExecuteWithCallback(ctx, req.Message, req.History, callback); err != nil {
-		return err
+	execErr := agent.ExecuteWithCallback(ctx, req.Message, req.History, callback)
+	close(heartbeatDone) // Stop heartbeat immediately after execution finishes
+	if execErr != nil {
+		logger.Error("Agent execution failed", execErr)
+		// Don't return here, continue to send session summary
 	}
 
-	// Send done marker
+	// Prepare session summary
+
+	// Calculate session summary
+	sessionTotalDuration = time.Since(sessionStartTime).Milliseconds()
+
+	// Try to get detailed stats from agent if available (GeekParrot/EvolutionParrot)
+	// 尝试从 agent 获取详细统计数据（如果可用，如 GeekParrot/EvolutionParrot）
+	var detailedStats *agentpkg.SessionStats
+	if statsProvider, ok := agent.(agentpkg.SessionStatsProvider); ok {
+		detailedStats = statsProvider.GetSessionStats()
+	}
+
+	// Safely get tool usage stats
+	toolMu.Lock()
+	finalToolCallCount := int32(len(toolsUsed))
+	finalToolsUsed := make([]string, len(toolsUsed))
+	copy(finalToolsUsed, toolsUsed)
+	toolMu.Unlock()
+
+	// Determine status
+	status := "success"
+	if execErr != nil {
+		status = "error"
+	}
+
+	// Build session summary with available data
+	// 使用可用数据构建会话摘要
+	sessionSummary := &v1pb.SessionSummary{
+		SessionId:       fmt.Sprintf("conv_%d", req.ConversationID),
+		TotalDurationMs: sessionTotalDuration,
+		Status:          status,
+		ToolCallCount:   finalToolCallCount,
+		ToolsUsed:       finalToolsUsed,
+	}
+
+	// Add detailed stats if available (from GeekParrot/EvolutionParrot)
+	// 添加详细统计数据（如果可用，来自 GeekParrot/EvolutionParrot）
+	if detailedStats != nil {
+		sessionSummary.TotalDurationMs = detailedStats.TotalDurationMs
+		sessionSummary.ThinkingDurationMs = detailedStats.ThinkingDurationMs
+		sessionSummary.ToolDurationMs = detailedStats.ToolDurationMs
+		sessionSummary.GenerationDurationMs = detailedStats.GenerationDurationMs
+		sessionSummary.TotalInputTokens = detailedStats.InputTokens
+		sessionSummary.TotalOutputTokens = detailedStats.OutputTokens
+		sessionSummary.TotalCacheWriteTokens = detailedStats.CacheWriteTokens
+		sessionSummary.TotalCacheReadTokens = detailedStats.CacheReadTokens
+		sessionSummary.ToolCallCount = detailedStats.ToolCallCount
+		if len(detailedStats.ToolsUsed) > 0 {
+			tools := make([]string, 0, len(detailedStats.ToolsUsed))
+			for tool := range detailedStats.ToolsUsed {
+				tools = append(tools, tool)
+			}
+			sessionSummary.ToolsUsed = tools
+		}
+		sessionSummary.FilesModified = detailedStats.FilesModified
+		sessionSummary.FilePaths = detailedStats.FilePaths
+	}
+
+	// Safely send done marker
 	streamMu.Lock()
-	defer streamMu.Unlock()
-	if err := stream.Send(&v1pb.ChatResponse{
-		Done: true,
-	}); err != nil {
-		return err
+	sendErr := stream.Send(&v1pb.ChatResponse{
+		Done:           true,
+		SessionSummary: sessionSummary,
+	})
+	streamMu.Unlock()
 
+	if sendErr != nil {
+		// If send fails, return the error (prefer execErr if it exists)
+		if execErr != nil {
+			return execErr
+		}
+		return sendErr
 	}
+
+	// Safely get unique event count
+	countMu.Lock()
+	uniqueEventTokenCount := len(eventCounts)
+	countMu.Unlock()
 
 	logger.Debug("Agent execution completed",
 		slog.Int("total_chunks", totalChunks),
-		slog.Int("unique_events", countUniqueEvents(eventCount)),
+		slog.Int("unique_events", uniqueEventTokenCount),
+		slog.Int64("duration_ms", sessionTotalDuration),
+		slog.Int("tool_calls", int(finalToolCallCount)),
+		slog.Any("error", execErr),
 	)
 
-	return nil
+	return execErr
 }
 
 // RoutingHandler routes all agent requests through the parrot handler.
@@ -429,14 +594,4 @@ func NewChatRouter(cfg *ai.IntentClassifierConfig, routerSvc *router.Service) *a
 		BaseURL: cfg.BaseURL,
 		Model:   cfg.Model,
 	}, routerSvc)
-}
-
-// countUniqueEvents counts the number of unique event types in a sync.Map.
-func countUniqueEvents(m *sync.Map) int {
-	count := 0
-	m.Range(func(_, _ any) bool {
-		count++
-		return true
-	})
-	return count
 }

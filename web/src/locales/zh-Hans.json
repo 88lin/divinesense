@@ -71,6 +71,8 @@
     },
     "more-options": "更多选项",
     "newline-shortcut": "换行",
+    "input-hint-newline": "换行",
+    "input-hint-send": "发送",
     "parrot": {
       "agents": {
         "amazing": {
@@ -341,6 +343,19 @@
       "thinking": "思考中...",
       "processing": "处理中...",
       "error": "出错了"
+    },
+    "events": {
+      "thinking": "思考中",
+      "tool_use": "工具",
+      "tool_result": "结果",
+      "answer": "回复",
+      "error": "错误",
+      "input": "输入",
+      "output": "输出",
+      "no_output": "暂无输出...",
+      "running": "运行中...",
+      "success": "成功",
+      "failed": "失败"
     }
   },
   "auth": {

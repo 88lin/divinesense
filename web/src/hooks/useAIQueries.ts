@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { aiServiceClient } from "@/connect";
 import { ParrotAgentType, parrotToProtoAgentType } from "@/types/parrot";
 import {
@@ -13,8 +14,66 @@ import {
   SuggestTagsRequestSchema,
 } from "@/types/proto/api/v1/ai_service_pb";
 
-// Default timeout for streaming AI requests (5 minutes)
-const STREAM_TIMEOUT_MS = 5 * 60 * 1000;
+// Event metadata types for Geek/Evolution mode observability
+interface EventMetadata {
+  durationMs?: number;
+  totalDurationMs?: number;
+  toolName?: string;
+  toolId?: string;
+  status?: string;
+  errorMsg?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheWriteTokens?: number;
+  cacheReadTokens?: number;
+  inputSummary?: string;
+  outputSummary?: string;
+  filePath?: string;
+  lineCount?: number;
+}
+
+// Session summary for Geek/Evolution modes
+interface SessionSummary {
+  sessionId?: string;
+  totalDurationMs?: number;
+  thinkingDurationMs?: number;
+  toolDurationMs?: number;
+  generationDurationMs?: number;
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+  totalCacheWriteTokens?: number;
+  totalCacheReadTokens?: number;
+  toolCallCount?: number;
+  toolsUsed?: string[];
+  filesModified?: number;
+  filePaths?: string[];
+  status?: string;
+  errorMsg?: string;
+}
+
+// Safe conversion from protobuf bigint to JavaScript number
+// Protobuf int64 becomes bigint in TypeScript, which needs safe conversion
+const safeBigintToNumber = (value: bigint | undefined): number | undefined => {
+  if (value === undefined) return undefined;
+  // Check if value is within safe integer range
+  const maxSafe = BigInt(Number.MAX_SAFE_INTEGER);
+  const minSafe = BigInt(Number.MIN_SAFE_INTEGER);
+  if (value > maxSafe || value < minSafe) {
+    if (import.meta.env.DEV) {
+      console.warn("[AI Chat] Duration value exceeds safe integer range", { value: value.toString() });
+    }
+    // Return max safe value as fallback
+    return value > maxSafe ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
+  }
+  return Number(value);
+};
+
+// Constants for AI chat
+const STREAM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const SEMANTIC_SEARCH_LIMIT = 10; // Default search results limit
+const STALE_TIME_SHORT_MS = 60 * 1000; // 1 minute
+const STALE_TIME_LONG_MS = 5 * 60 * 1000; // 5 minutes
+const EVENT_DATA_PREVIEW_LENGTH = 100; // Preview length for event data
 
 // Query keys factory for consistent cache management
 export const aiKeys = {
@@ -37,12 +96,12 @@ export function useSemanticSearch(query: string, options: { enabled?: boolean } 
     queryFn: async () => {
       const request = create(SemanticSearchRequestSchema, {
         query,
-        limit: 10,
+        limit: SEMANTIC_SEARCH_LIMIT,
       });
       return await aiServiceClient.semanticSearch(request);
     },
     enabled: (options.enabled ?? true) && query.length > 2,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: STALE_TIME_SHORT_MS, // 1 minute
   });
 }
 
@@ -79,7 +138,7 @@ export function useRelatedMemos(name: string, options: { enabled?: boolean; limi
       return await aiServiceClient.getRelatedMemos(request);
     },
     enabled: (options.enabled ?? true) && !!name && name.startsWith("memos/"),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: STALE_TIME_LONG_MS, // 5 minutes
   });
 }
 
@@ -91,6 +150,8 @@ export function useRelatedMemos(name: string, options: { enabled?: boolean; limi
  */
 export function useChat() {
   const queryClient = useQueryClient();
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   return {
     /**
@@ -132,8 +193,8 @@ export function useChat() {
         }) => void;
         // Parrot-specific callbacks
         onThinking?: (message: string) => void;
-        onToolUse?: (toolName: string) => void;
-        onToolResult?: (result: string) => void;
+        onToolUse?: (toolName: string, meta?: EventMetadata) => void;
+        onToolResult?: (result: string, meta?: EventMetadata) => void;
         onMemoQueryResult?: (result: {
           memos: Array<{ uid: string; content: string; score: number }>;
           query: string;
@@ -147,6 +208,8 @@ export function useChat() {
           reason?: string;
           session_id?: string;
         }) => void;
+        // Observability callbacks (Geek/Evolution modes)
+        onSessionSummary?: (summary: SessionSummary) => void;
       },
     ) => {
       const request = create(ChatRequestSchema, {
@@ -172,15 +235,29 @@ export function useChat() {
       // WORKAROUND: Manually set evolutionMode if create() didn't include it
       // Root cause: @bufbuild/protobuf create() omits default bool values (false)
       // in JSON serialization, but backend expects explicit false for mode routing.
+      // This is a known limitation of protobuf JSON serialization.
+      // Track: https://github.com/bufbuild/protobuf/issues
       if (params.evolutionMode && request.evolutionMode === undefined) {
-        // biome-ignore lint/suspicious/noExplicitAny: Protobuf workaround for default bool values
-        (request as any).evolutionMode = true;
+        (request as unknown as { evolutionMode?: boolean }).evolutionMode = true;
       }
 
+      // Cancel any existing request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+
       // Set up timeout for the entire stream operation
-      const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => {
-        timeoutController.abort();
+      // Clear any existing timeout first
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+      }
+      timeoutIdRef.current = setTimeout(() => {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        timeoutIdRef.current = null;
         if (import.meta.env.DEV) {
           console.warn("[AI Chat] Stream timeout exceeded", { timeoutMs: STREAM_TIMEOUT_MS });
         }
@@ -190,7 +267,7 @@ export function useChat() {
 
       try {
         // Use the streaming method from Connect RPC client
-        const stream = aiServiceClient.chat(request);
+        const stream = aiServiceClient.chat(request, { signal });
 
         const sources: string[] = [];
         let fullContent = "";
@@ -244,19 +321,60 @@ export function useChat() {
               console.debug("[AI Chat] Parrot event", {
                 eventType: response.eventType,
                 eventDataLength: response.eventData.length,
-                eventDataPreview: response.eventData.slice(0, 100),
+                eventDataPreview: response.eventData.slice(0, EVENT_DATA_PREVIEW_LENGTH),
+                eventMeta: response.eventMeta,
               });
             }
             switch (response.eventType) {
               case "thinking":
                 callbacks?.onThinking?.(response.eventData);
                 break;
-              case "tool_use":
-                callbacks?.onToolUse?.(response.eventData);
+              case "tool_use": {
+                // Convert proto EventMetadata (bigint fields) to local EventMetadata (number fields)
+                const toolMeta = response.eventMeta
+                  ? {
+                      durationMs: safeBigintToNumber(response.eventMeta.durationMs),
+                      totalDurationMs: safeBigintToNumber(response.eventMeta.totalDurationMs),
+                      toolName: response.eventMeta.toolName,
+                      toolId: response.eventMeta.toolId,
+                      status: response.eventMeta.status,
+                      errorMsg: response.eventMeta.errorMsg,
+                      inputTokens: response.eventMeta.inputTokens,
+                      outputTokens: response.eventMeta.outputTokens,
+                      cacheWriteTokens: response.eventMeta.cacheWriteTokens,
+                      cacheReadTokens: response.eventMeta.cacheReadTokens,
+                      inputSummary: response.eventMeta.inputSummary,
+                      outputSummary: response.eventMeta.outputSummary,
+                      filePath: response.eventMeta.filePath,
+                      lineCount: response.eventMeta.lineCount,
+                    }
+                  : undefined;
+                callbacks?.onToolUse?.(response.eventData, toolMeta);
                 break;
-              case "tool_result":
-                callbacks?.onToolResult?.(response.eventData);
+              }
+              case "tool_result": {
+                // Convert proto EventMetadata (bigint fields) to local EventMetadata (number fields)
+                const resultMeta = response.eventMeta
+                  ? {
+                      durationMs: safeBigintToNumber(response.eventMeta.durationMs),
+                      totalDurationMs: safeBigintToNumber(response.eventMeta.totalDurationMs),
+                      toolName: response.eventMeta.toolName,
+                      toolId: response.eventMeta.toolId,
+                      status: response.eventMeta.status,
+                      errorMsg: response.eventMeta.errorMsg,
+                      inputTokens: response.eventMeta.inputTokens,
+                      outputTokens: response.eventMeta.outputTokens,
+                      cacheWriteTokens: response.eventMeta.cacheWriteTokens,
+                      cacheReadTokens: response.eventMeta.cacheReadTokens,
+                      inputSummary: response.eventMeta.inputSummary,
+                      outputSummary: response.eventMeta.outputSummary,
+                      filePath: response.eventMeta.filePath,
+                      lineCount: response.eventMeta.lineCount,
+                    }
+                  : undefined;
+                callbacks?.onToolResult?.(response.eventData, resultMeta);
                 break;
+              }
               case "answer":
                 // Handle final answer from agent (when no tool is used)
                 fullContent += response.eventData;
@@ -330,6 +448,32 @@ export function useChat() {
           // Handle completion
           if (response.done === true) {
             doneCalled = true;
+            // Send session summary if available (Geek/Evolution modes)
+            if (response.sessionSummary) {
+              // Convert proto SessionSummary (bigint fields) to local SessionSummary (number fields)
+              const summary = {
+                sessionId: response.sessionSummary.sessionId,
+                totalDurationMs: response.sessionSummary.totalDurationMs ? Number(response.sessionSummary.totalDurationMs) : undefined,
+                thinkingDurationMs: response.sessionSummary.thinkingDurationMs
+                  ? Number(response.sessionSummary.thinkingDurationMs)
+                  : undefined,
+                toolDurationMs: response.sessionSummary.toolDurationMs ? Number(response.sessionSummary.toolDurationMs) : undefined,
+                generationDurationMs: response.sessionSummary.generationDurationMs
+                  ? Number(response.sessionSummary.generationDurationMs)
+                  : undefined,
+                totalInputTokens: response.sessionSummary.totalInputTokens,
+                totalOutputTokens: response.sessionSummary.totalOutputTokens,
+                totalCacheWriteTokens: response.sessionSummary.totalCacheWriteTokens,
+                totalCacheReadTokens: response.sessionSummary.totalCacheReadTokens,
+                toolCallCount: response.sessionSummary.toolCallCount,
+                toolsUsed: response.sessionSummary.toolsUsed,
+                filesModified: response.sessionSummary.filesModified,
+                filePaths: response.sessionSummary.filePaths,
+                status: response.sessionSummary.status,
+                errorMsg: response.sessionSummary.errorMsg,
+              };
+              callbacks?.onSessionSummary?.(summary);
+            }
             callbacks?.onDone?.();
             break;
           }
@@ -341,7 +485,10 @@ export function useChat() {
         }
 
         // Clear timeout on successful completion
-        clearTimeout(timeoutId);
+        if (timeoutIdRef.current) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
 
         const duration = Date.now() - startTime;
         if (import.meta.env.DEV) {
@@ -355,7 +502,10 @@ export function useChat() {
         return { content: fullContent, sources };
       } catch (error) {
         // Clear timeout on error
-        clearTimeout(timeoutId);
+        if (timeoutIdRef.current) {
+          clearTimeout(timeoutIdRef.current);
+          timeoutIdRef.current = null;
+        }
 
         const duration = Date.now() - startTime;
 
@@ -380,6 +530,22 @@ export function useChat() {
         const err = error instanceof Error ? error : new Error(String(error));
         callbacks?.onError?.(err);
         throw err;
+      }
+    },
+    /**
+     * Stop the current chat stream.
+     */
+    stop: () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+      if (import.meta.env.DEV) {
+        console.debug("[AI Chat] Stream manually stopped");
       }
     },
     /**
@@ -472,7 +638,7 @@ export function useKnowledgeGraph(
       return await aiServiceClient.getKnowledgeGraph(request);
     },
     enabled: options.enabled ?? true,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: STALE_TIME_LONG_MS, // 5 minutes
   });
 }
 

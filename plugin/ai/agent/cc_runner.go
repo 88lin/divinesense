@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,29 +63,36 @@ func buildSystemPrompt(workDir, sessionID string, userID int32, deviceContext st
 	userAgent := "Unknown"
 	deviceInfo := "Unknown"
 	if deviceContext != "" {
-		if err := json.Unmarshal([]byte(deviceContext), &contextMap); err == nil {
-			if ua, ok := contextMap["userAgent"].(string); ok {
-				userAgent = ua
-			}
-			if mobile, ok := contextMap["isMobile"].(bool); ok {
-				if mobile {
-					deviceInfo = "Mobile"
-				} else {
-					deviceInfo = "Desktop"
+		// Optimization: only attempt JSON parse if it looks like JSON
+		// 优化：只在看起来像 JSON 时才尝试解析
+		if strings.HasPrefix(strings.TrimSpace(deviceContext), "{") {
+			if err := json.Unmarshal([]byte(deviceContext), &contextMap); err == nil {
+				if ua, ok := contextMap["userAgent"].(string); ok {
+					userAgent = ua
 				}
-			}
-			// Add more fields if available (screen, language, etc.)
-			// 如果有更多字段则添加（屏幕、语言等）
-			if w, ok := contextMap["screenWidth"].(float64); ok {
-				if h, ok := contextMap["screenHeight"].(float64); ok {
-					deviceInfo = fmt.Sprintf("%s (%dx%d)", deviceInfo, int(w), int(h))
+				if mobile, ok := contextMap["isMobile"].(bool); ok {
+					if mobile {
+						deviceInfo = "Mobile"
+					} else {
+						deviceInfo = "Desktop"
+					}
 				}
-			}
-			if lang, ok := contextMap["language"].(string); ok {
-				deviceInfo = fmt.Sprintf("%s, Language: %s", deviceInfo, lang)
+				// Add more fields if available (screen, language, etc.)
+				// 如果有更多字段则添加（屏幕、语言等）
+				if w, ok := contextMap["screenWidth"].(float64); ok {
+					if h, ok := contextMap["screenHeight"].(float64); ok {
+						deviceInfo = fmt.Sprintf("%s (%dx%d)", deviceInfo, int(w), int(h))
+					}
+				}
+				if lang, ok := contextMap["language"].(string); ok {
+					deviceInfo = fmt.Sprintf("%s, Language: %s", deviceInfo, lang)
+				}
+			} else {
+				// Fallback: use raw string if JSON parse failed
+				userAgent = deviceContext
 			}
 		} else {
-			// Fallback: use raw string if not JSON
+			// Not JSON - use raw string
 			userAgent = deviceContext
 		}
 	}
@@ -160,11 +168,197 @@ type ContentBlock struct {
 // with Claude Code CLI (Geek Mode, Evolution Mode, etc.).
 // 它为所有需要与 Claude Code CLI 交互的模式提供共享实现（极客模式、进化模式等）。
 type CCRunner struct {
-	cliPath string
-	timeout time.Duration
-	logger  *slog.Logger
-	mu      sync.Mutex
-	manager *CCSessionManager
+	cliPath        string
+	timeout        time.Duration
+	logger         *slog.Logger
+	mu             sync.Mutex
+	manager        *CCSessionManager
+	dangerDetector *DangerDetector
+	// Session stats for the last execution (thread-safe)
+	statsMu      sync.RWMutex
+	currentStats *SessionStats
+}
+
+// EventWithMeta extends the basic event with metadata for observability.
+// EventWithMeta 扩展基本事件，添加元数据以增强可观测性。
+type EventWithMeta struct {
+	EventType string     // Event type (thinking, tool_use, tool_result, etc.)
+	EventData string     // Event data content
+	Meta      *EventMeta // Enhanced metadata
+}
+
+// EventMeta contains detailed metadata for streaming events.
+// EventMeta 包含流式事件的详细元数据。
+type EventMeta struct {
+	// Timing
+	DurationMs      int64 // Event duration in milliseconds
+	TotalDurationMs int64 // Total elapsed time since start
+
+	// Tool call info
+	ToolName string // Tool name (e.g., "bash", "editor_write")
+	ToolID   string // Unique tool call ID
+	Status   string // "running", "success", "error"
+	ErrorMsg string // Error message if status=error
+
+	// Token usage (when available)
+	InputTokens      int32 // Input tokens
+	OutputTokens     int32 // Output tokens
+	CacheWriteTokens int32 // Cache write tokens
+	CacheReadTokens  int32 // Cache read tokens
+
+	// Summaries for UI
+	InputSummary  string // Human-readable input summary
+	OutputSummary string // Truncated output preview
+
+	// File operations
+	FilePath  string // Affected file path
+	LineCount int32  // Number of lines affected
+}
+
+// SessionStats collects session-level statistics for Geek/Evolution modes.
+// SessionStats 收集极客/进化模式的会话级别统计数据。
+type SessionStats struct {
+	mu                   sync.Mutex
+	SessionID            string
+	StartTime            time.Time
+	TotalDurationMs      int64
+	ThinkingDurationMs   int64
+	ToolDurationMs       int64
+	GenerationDurationMs int64
+	InputTokens          int32
+	OutputTokens         int32
+	CacheWriteTokens     int32
+	CacheReadTokens      int32
+	ToolCallCount        int32
+	ToolsUsed            map[string]bool
+	FilesModified        int32
+	FilePaths            []string
+
+	// Current tool tracking
+	currentToolStart time.Time
+	currentToolName  string
+	currentToolID    string
+
+	// Phase tracking for duration breakdown
+	thinkingStart   time.Time
+	generationStart time.Time
+	hasGeneration   bool // Tracks if any content was generated
+}
+
+// RecordToolUse records the start of a tool call.
+func (s *SessionStats) RecordToolUse(toolName, toolID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.currentToolStart = time.Now()
+	s.currentToolName = toolName
+	s.currentToolID = toolID
+	// Ensure ToolsUsed map is initialized (concurrency safety)
+	if s.ToolsUsed == nil {
+		s.ToolsUsed = make(map[string]bool)
+	}
+}
+
+// RecordToolResult records the end of a tool call.
+func (s *SessionStats) RecordToolResult() (durationMs int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.currentToolStart.IsZero() {
+		duration := time.Since(s.currentToolStart)
+		durationMs = duration.Milliseconds()
+		s.ToolDurationMs += durationMs
+		s.ToolCallCount++
+		if s.currentToolName != "" {
+			if s.ToolsUsed == nil {
+				s.ToolsUsed = make(map[string]bool)
+			}
+			s.ToolsUsed[s.currentToolName] = true
+		}
+		s.currentToolStart = time.Time{}
+		s.currentToolName = ""
+		s.currentToolID = ""
+	}
+	return
+}
+
+// RecordTokens records token usage.
+func (s *SessionStats) RecordTokens(input, output, cacheWrite, cacheRead int32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.InputTokens += input
+	s.OutputTokens += output
+	s.CacheWriteTokens += cacheWrite
+	s.CacheReadTokens += cacheRead
+}
+
+// StartThinking marks the start of the thinking phase.
+// StartThinking 标记思考阶段的开始。
+func (s *SessionStats) StartThinking() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.thinkingStart.IsZero() {
+		s.thinkingStart = time.Now()
+	}
+}
+
+// EndThinking marks the end of the thinking phase and records its duration.
+// EndThinking 标记思考阶段的结束并记录其持续时间。
+func (s *SessionStats) EndThinking() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.thinkingStart.IsZero() {
+		s.ThinkingDurationMs += time.Since(s.thinkingStart).Milliseconds()
+		s.thinkingStart = time.Time{} // Reset for next thinking phase
+	}
+}
+
+// StartGeneration marks the start of the generation phase.
+// StartGeneration 标记生成阶段的开始。
+func (s *SessionStats) StartGeneration() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.generationStart.IsZero() {
+		s.generationStart = time.Now()
+		s.hasGeneration = true
+	}
+}
+
+// EndGeneration marks the end of the generation phase and records its duration.
+// EndGeneration 标记生成阶段的结束并记录其持续时间。
+func (s *SessionStats) EndGeneration() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.generationStart.IsZero() {
+		s.GenerationDurationMs += time.Since(s.generationStart).Milliseconds()
+		s.generationStart = time.Time{} // Reset for next generation phase
+	}
+}
+
+// ToSummary converts stats to a summary map for JSON serialization.
+func (s *SessionStats) ToSummary() map[string]interface{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tools := make([]string, 0, len(s.ToolsUsed))
+	for tool := range s.ToolsUsed {
+		tools = append(tools, tool)
+	}
+
+	return map[string]interface{}{
+		"session_id":               s.SessionID,
+		"total_duration_ms":        s.TotalDurationMs,
+		"thinking_duration_ms":     s.ThinkingDurationMs,
+		"tool_duration_ms":         s.ToolDurationMs,
+		"generation_duration_ms":   s.GenerationDurationMs,
+		"total_input_tokens":       s.InputTokens,
+		"total_output_tokens":      s.OutputTokens,
+		"total_cache_write_tokens": s.CacheWriteTokens,
+		"total_cache_read_tokens":  s.CacheReadTokens,
+		"tool_call_count":          s.ToolCallCount,
+		"tools_used":               tools,
+		"files_modified":           s.FilesModified,
+		"file_paths":               s.FilePaths,
+		"status":                   "success",
+	}
 }
 
 // CCRunnerConfig defines mode-specific configuration for CCRunner execution.
@@ -200,17 +394,38 @@ func NewCCRunner(timeout time.Duration, logger *slog.Logger) (*CCRunner, error) 
 		logger = slog.Default()
 	}
 
+	// Initialize danger detector for security
+	dangerDetector := NewDangerDetector(logger)
+
 	return &CCRunner{
-		cliPath: cliPath,
-		timeout: timeout,
-		logger:  logger,
-		manager: NewCCSessionManager(logger, 30*time.Minute), // Default 30m idle timeout
+		cliPath:        cliPath,
+		timeout:        timeout,
+		logger:         logger,
+		manager:        NewCCSessionManager(logger, 30*time.Minute), // Default 30m idle timeout
+		dangerDetector: dangerDetector,
 	}, nil
 }
 
 // Execute runs Claude Code CLI with the given configuration and streams events.
 // Execute 使用给定配置运行 Claude Code CLI 并流式传输事件。
 func (r *CCRunner) Execute(ctx context.Context, cfg *CCRunnerConfig, prompt string, callback EventCallback) error {
+	// Security check: Detect dangerous operations before execution
+	// Skip danger check for Evolution mode (admin only, self-modification)
+	if cfg.Mode != "evolution" {
+		if dangerEvent := r.dangerDetector.CheckInput(prompt); dangerEvent != nil {
+			r.logger.Warn("Dangerous operation blocked",
+				"operation", dangerEvent.Operation,
+				"reason", dangerEvent.Reason,
+				"level", dangerEvent.Level,
+			)
+			// Send danger block event to client
+			if callback != nil {
+				_ = callback(EventTypeDangerBlock, dangerEvent)
+			}
+			return fmt.Errorf("dangerous operation blocked: %s", dangerEvent.Reason)
+		}
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -261,23 +476,47 @@ func (r *CCRunner) Execute(ctx context.Context, cfg *CCRunnerConfig, prompt stri
 			"session_id", cfg.SessionID)
 	}
 
+	// Initialize session stats for observability
+	stats := &SessionStats{
+		SessionID: cfg.SessionID,
+		StartTime: time.Now(),
+	}
+
 	// Send thinking event
 	// 发送思考事件
 	if callback != nil {
-		if err := callback(EventTypeThinking, fmt.Sprintf("ai.%s_mode.thinking", cfg.Mode)); err != nil {
+		meta := &EventMeta{
+			Status:          "running",
+			TotalDurationMs: 0,
+		}
+		if err := callback(EventTypeThinking, &EventWithMeta{EventType: EventTypeThinking, EventData: fmt.Sprintf("ai.%s_mode.thinking", cfg.Mode), Meta: meta}); err != nil {
 			return err
 		}
 	}
 
 	// Execute CLI with session management
 	// 执行 CLI 并管理会话
-	if err := r.executeWithSession(ctx, cfg, prompt, firstCall, callback); err != nil {
+	if err := r.executeWithSession(ctx, cfg, prompt, firstCall, callback, stats); err != nil {
 		r.logger.Error("CCRunner: execution failed",
 			"user_id", cfg.UserID,
 			"mode", cfg.Mode,
 			"error", err)
 		return err
 	}
+
+	// Finalize and save session stats
+	// 完成并保存会话统计数据
+	stats.TotalDurationMs = time.Since(stats.StartTime).Milliseconds()
+	r.statsMu.Lock()
+	r.currentStats = stats
+	r.statsMu.Unlock()
+
+	r.logger.Debug("CCRunner: Session completed",
+		"session_id", stats.SessionID,
+		"total_duration_ms", stats.TotalDurationMs,
+		"tool_duration_ms", stats.ToolDurationMs,
+		"tool_calls", stats.ToolCallCount,
+		"tools_used", len(stats.ToolsUsed))
 
 	return nil
 }
@@ -314,6 +553,52 @@ func (r *CCRunner) GetSessionManager() *CCSessionManager {
 	return r.manager
 }
 
+// GetSessionStats returns a copy of the current session stats.
+// GetSessionStats 返回当前会话统计数据的副本。
+func (r *CCRunner) GetSessionStats() *SessionStats {
+	r.statsMu.Lock()
+	defer r.statsMu.Unlock()
+
+	if r.currentStats == nil {
+		return nil
+	}
+
+	// Finalize any ongoing phases before copying
+	// 完成任何正在进行的阶段，然后再复制
+	stats := r.currentStats
+
+	// Close any open phase tracking (calculate remaining duration)
+	// 关闭任何打开的阶段追踪（计算剩余时长）
+	totalThinking := stats.ThinkingDurationMs
+	totalGeneration := stats.GenerationDurationMs
+
+	if !stats.thinkingStart.IsZero() {
+		totalThinking += time.Since(stats.thinkingStart).Milliseconds()
+	}
+	if !stats.generationStart.IsZero() {
+		totalGeneration += time.Since(stats.generationStart).Milliseconds()
+	}
+
+	// Return a copy with finalized durations
+	// 返回包含已完成时长的副本
+	return &SessionStats{
+		SessionID:            stats.SessionID,
+		StartTime:            stats.StartTime,
+		TotalDurationMs:      stats.TotalDurationMs,
+		ThinkingDurationMs:   totalThinking,
+		ToolDurationMs:       stats.ToolDurationMs,
+		GenerationDurationMs: totalGeneration,
+		InputTokens:          stats.InputTokens,
+		OutputTokens:         stats.OutputTokens,
+		CacheWriteTokens:     stats.CacheWriteTokens,
+		CacheReadTokens:      stats.CacheReadTokens,
+		ToolCallCount:        stats.ToolCallCount,
+		ToolsUsed:            stats.ToolsUsed,
+		FilesModified:        stats.FilesModified,
+		FilePaths:            stats.FilePaths,
+	}
+}
+
 // validateConfig validates the CCRunnerConfig.
 // validateConfig 验证 CCRunnerConfig。
 func (r *CCRunner) validateConfig(cfg *CCRunnerConfig) error {
@@ -347,6 +632,7 @@ func (r *CCRunner) executeWithSession(
 	prompt string,
 	firstCall bool,
 	callback EventCallback,
+	stats *SessionStats,
 ) error {
 	// Build system prompt
 	// 构建系统提示词
@@ -419,7 +705,7 @@ func (r *CCRunner) executeWithSession(
 
 	// Stream output with timeout
 	// 带超时流式输出
-	if err := r.streamOutput(ctx, cfg, stdout, stderr, callback); err != nil {
+	if err := r.streamOutput(ctx, cfg, stdout, stderr, callback, stats); err != nil {
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
@@ -447,10 +733,14 @@ func (r *CCRunner) streamOutput(
 	cfg *CCRunnerConfig,
 	stdout, stderr io.ReadCloser,
 	callback EventCallback,
+	stats *SessionStats,
 ) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, 2)
 	done := make(chan struct{})
+	// Create a cancel context to signal goroutines to stop
+	streamCtx, stopStreams := context.WithCancel(context.Background())
+	defer stopStreams()
 
 	// Stream stdout
 	// 流式处理 stdout
@@ -461,51 +751,77 @@ func (r *CCRunner) streamOutput(
 		buf := make([]byte, 0, scannerInitialBufSize)
 		scanner.Buffer(buf, scannerMaxBufSize)
 
-		for scanner.Scan() {
-			line := scanner.Text()
-			if line == "" {
-				continue
-			}
-
-			var msg StreamMessage
-			if err := json.Unmarshal([]byte(line), &msg); err != nil {
-				// Not JSON, treat as plain text
-				if len(line) > maxNonJSONOutputLength {
-					line = line[:maxNonJSONOutputLength]
+		scanDone := make(chan bool)
+		go func() {
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line == "" {
+					continue
 				}
-				r.logger.Debug("CCRunner: non-JSON output",
-					"user_id", cfg.UserID,
+
+				// Log raw line for debugging (truncate if too long)
+				logLine := line
+				if len(logLine) > 200 {
+					logLine = logLine[:200] + "..."
+				}
+				r.logger.Debug("CCRunner: raw line",
 					"mode", cfg.Mode,
-					"line", line)
-				if callback != nil {
-					callback(EventTypeAnswer, line)
+					"line", logLine)
+
+				var msg StreamMessage
+				if err := json.Unmarshal([]byte(line), &msg); err != nil {
+					// Not JSON, treat as plain text
+					if len(line) > maxNonJSONOutputLength {
+						line = line[:maxNonJSONOutputLength]
+					}
+					r.logger.Debug("CCRunner: non-JSON output",
+						"mode", cfg.Mode,
+						"line", line)
+					if callback != nil {
+						callback(EventTypeAnswer, line)
+					}
+					continue
 				}
-				continue
-			}
 
-			// Log message type for debugging
-			r.logger.Debug("CCRunner: received message",
-				"user_id", cfg.UserID,
-				"mode", cfg.Mode,
-				"type", msg.Type,
-				"has_name", msg.Name != "",
-				"has_output", msg.Output != "",
-				"has_error", msg.Error != "")
+				// Log message type for debugging (Debug level to avoid log flooding)
+				r.logger.Debug("CCRunner: received message",
+					"mode", cfg.Mode,
+					"type", msg.Type,
+					"name", msg.Name,
+					"has_output", msg.Output != "",
+					"has_error", msg.Error != "")
 
-			// Dispatch event to callback
-			if callback != nil {
-				if err := r.dispatchCallback(msg, callback); err != nil {
-					errCh <- err
+				// Dispatch event to callback
+				if callback != nil {
+					if err := r.dispatchCallback(msg, callback, stats); err != nil {
+						select {
+						case errCh <- err:
+						case <-streamCtx.Done():
+						}
+						return
+					}
+				}
+
+				// Check for completion
+				if msg.Type == "result" || msg.Type == "error" {
 					return
 				}
 			}
+			scanDone <- true
+		}()
 
-			// Check for completion
-			if msg.Type == "result" || msg.Type == "error" {
-				return
+		// Wait for scan to complete or context to be cancelled
+		select {
+		case <-scanDone:
+			if scanErr := scanner.Err(); scanErr != nil {
+				select {
+				case errCh <- scanErr:
+				case <-streamCtx.Done():
+				}
 			}
+		case <-streamCtx.Done():
+			// Scanner will be interrupted when stdout is closed externally
 		}
-		errCh <- scanner.Err()
 	}()
 
 	// Stream stderr to log
@@ -514,13 +830,28 @@ func (r *CCRunner) streamOutput(
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			r.logger.Warn("CCRunner: stderr from Claude Code CLI",
-				"user_id", cfg.UserID,
-				"mode", cfg.Mode,
-				"line", scanner.Text())
+
+		scanDone := make(chan bool)
+		go func() {
+			for scanner.Scan() {
+				r.logger.Warn("CCRunner: stderr from Claude Code CLI",
+					"user_id", cfg.UserID,
+					"mode", cfg.Mode,
+					"line", scanner.Text())
+			}
+			scanDone <- true
+		}()
+
+		select {
+		case <-scanDone:
+			if scanErr := scanner.Err(); scanErr != nil {
+				select {
+				case errCh <- scanErr:
+				case <-streamCtx.Done():
+				}
+			}
+		case <-streamCtx.Done():
 		}
-		errCh <- scanner.Err()
 	}()
 
 	// Wait for completion or timeout
@@ -551,45 +882,157 @@ func (r *CCRunner) streamOutput(
 		}
 		return nil
 	case <-ctx.Done():
-		timer.Stop()
+		stopStreams() // Signal goroutines to stop
+		// Drain errCh to prevent goroutines from blocking
+		for i := 0; i < 2; i++ {
+			select {
+			case <-errCh:
+			default:
+			}
+		}
 		return ctx.Err()
 	case <-timer.C:
+		stopStreams() // Signal goroutines to stop
+		// Drain errCh to prevent goroutines from blocking
+		for i := 0; i < 2; i++ {
+			select {
+			case <-errCh:
+			default:
+			}
+		}
 		return fmt.Errorf("execution timeout after %v", r.timeout)
 	}
 }
 
-// dispatchCallback dispatches stream events to the callback.
-// dispatchCallback 将流事件分发给回调。
-func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback) error {
+// dispatchCallback dispatches stream events to the callback with metadata.
+// IMPORTANT: This function is called from stream goroutines. The callback MUST:
+// 1. Return quickly (< 5 seconds) to avoid blocking stream processing
+// 2. NOT call back into Session/CCRunner methods (risk of deadlock)
+// 3. Be safe for concurrent invocation from multiple goroutines
+// dispatchCallback 将流事件分发给回调，附带元数据。
+// 重要：此函数从 stream goroutine 中调用。回调必须：
+// 1. 快速返回（< 5 秒）以避免阻塞流处理
+// 2. 不回调 Session/CCRunner 方法（死锁风险）
+// 3. 支持多 goroutine 并发调用
+func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, stats *SessionStats) error {
+	// Calculate total duration
+	totalDuration := time.Since(stats.StartTime).Milliseconds()
+
 	switch msg.Type {
 	case "error":
 		if msg.Error != "" {
 			return callback(EventTypeError, msg.Error)
 		}
 	case "thinking", "status":
+		// Start thinking phase tracking (ended in other cases or by defer)
+		stats.StartThinking()
+		// Ensure thinking is ended even if we return early from this case
+		// Note: if control flows to another case (tool_use, assistant), they will end thinking explicitly
+		defer func() {
+			stats.EndThinking()
+		}()
+
 		for _, block := range msg.GetContentBlocks() {
 			if block.Type == "text" && block.Text != "" {
-				if err := callback(EventTypeThinking, block.Text); err != nil {
+				meta := &EventMeta{
+					Status:          "running",
+					TotalDurationMs: totalDuration,
+				}
+				if err := callback(EventTypeThinking, &EventWithMeta{EventType: EventTypeThinking, EventData: block.Text, Meta: meta}); err != nil {
 					return err
 				}
 			}
 		}
 	case "tool_use":
+		// Tool use ends thinking, starts tool execution
+		stats.EndThinking()
+
 		if msg.Name != "" {
-			if err := callback(EventTypeToolUse, msg.Name); err != nil {
+			// Extract tool ID and input from content blocks
+			var toolID string
+			var inputSummary string
+			for _, block := range msg.GetContentBlocks() {
+				if block.Type == "tool_use" {
+					toolID = block.ID
+					if block.Input != nil {
+						// Create a human-readable summary of the input
+						inputSummary = summarizeInput(block.Input)
+					}
+				}
+			}
+			stats.RecordToolUse(msg.Name, toolID)
+
+			meta := &EventMeta{
+				ToolName:        msg.Name,
+				ToolID:          toolID,
+				Status:          "running",
+				TotalDurationMs: totalDuration,
+				InputSummary:    inputSummary,
+			}
+			r.logger.Debug("CCRunner: sending tool_use event", "tool_name", msg.Name, "tool_id", toolID)
+			if err := callback(EventTypeToolUse, &EventWithMeta{EventType: EventTypeToolUse, EventData: msg.Name, Meta: meta}); err != nil {
 				return err
 			}
 		}
 	case "tool_result":
 		if msg.Output != "" {
-			if err := callback(EventTypeToolResult, msg.Output); err != nil {
+			durationMs := stats.RecordToolResult()
+
+			meta := &EventMeta{
+				Status:          "success",
+				DurationMs:      durationMs,
+				TotalDurationMs: totalDuration,
+				OutputSummary:   truncateString(msg.Output, 500),
+			}
+			r.logger.Debug("CCRunner: sending tool_result event", "output_length", len(msg.Output), "duration_ms", durationMs)
+			if err := callback(EventTypeToolResult, &EventWithMeta{EventType: EventTypeToolResult, EventData: msg.Output, Meta: meta}); err != nil {
 				return err
 			}
 		}
 	case "message", "content", "text", "delta", "assistant":
+		// Assistant message starts generation phase
+		stats.EndThinking()
+		stats.StartGeneration()
+
 		for _, block := range msg.GetContentBlocks() {
 			if block.Type == "text" && block.Text != "" {
-				if err := callback(EventTypeAnswer, block.Text); err != nil {
+				if err := callback(EventTypeAnswer, &EventWithMeta{EventType: EventTypeAnswer, EventData: block.Text, Meta: &EventMeta{TotalDurationMs: totalDuration}}); err != nil {
+					return err
+				}
+			} else if block.Type == "tool_use" && block.Name != "" {
+				// Tool use is nested inside assistant message content
+				// End generation when tool is about to be used
+				stats.EndGeneration()
+
+				stats.RecordToolUse(block.Name, block.ID)
+
+				meta := &EventMeta{
+					ToolName:        block.Name,
+					ToolID:          block.ID,
+					Status:          "running",
+					TotalDurationMs: totalDuration,
+					InputSummary:    summarizeInput(block.Input),
+				}
+				r.logger.Info("CCRunner: found nested tool_use", "tool_name", block.Name, "id", block.ID)
+				if err := callback(EventTypeToolUse, &EventWithMeta{EventType: EventTypeToolUse, EventData: block.Name, Meta: meta}); err != nil {
+					return err
+				}
+			}
+		}
+	case "user":
+		// Tool results come as type:"user" with nested tool_result blocks
+		for _, block := range msg.GetContentBlocks() {
+			if block.Type == "tool_result" {
+				durationMs := stats.RecordToolResult()
+
+				meta := &EventMeta{
+					Status:          "success",
+					DurationMs:      durationMs,
+					TotalDurationMs: totalDuration,
+					OutputSummary:   truncateString(block.Content, 500),
+				}
+				r.logger.Info("CCRunner: found nested tool_result", "content_length", len(block.Content), "duration_ms", durationMs)
+				if err := callback(EventTypeToolResult, &EventWithMeta{EventType: EventTypeToolResult, EventData: block.Content, Meta: meta}); err != nil {
 					return err
 				}
 			}
@@ -598,11 +1041,50 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback) e
 		// Try to extract any text content
 		for _, block := range msg.GetContentBlocks() {
 			if block.Type == "text" && block.Text != "" {
-				callback(EventTypeAnswer, block.Text)
+				callback(EventTypeAnswer, &EventWithMeta{EventType: EventTypeAnswer, EventData: block.Text, Meta: &EventMeta{TotalDurationMs: totalDuration}})
 			}
 		}
 	}
 	return nil
+}
+
+// sanitizeUTF8 ensures a string contains only valid UTF-8 characters.
+// Invalid UTF-8 sequences are replaced with the Unicode replacement character.
+func sanitizeUTF8(s string) string {
+	// Go's string type already handles UTF-8, but when data comes from
+	// external sources (like file content or CLI output), it may contain
+	// invalid sequences. We use utf8.ValidString to check and strings.ToValidUTF8 to fix.
+	if s == "" {
+		return ""
+	}
+	// Convert to valid UTF-8, replacing invalid sequences with �
+	// Note: strings.ToValidUTF8 was added in Go 1.15
+	return strings.ToValidUTF8(s, "�")
+}
+
+// summarizeInput creates a human-readable summary of tool input.
+// Uses rune-level truncation to avoid creating invalid UTF-8.
+func summarizeInput(input map[string]any) string {
+	if input == nil {
+		return ""
+	}
+	// Extract common fields for summary (sanitize first)
+	if command, ok := input["command"].(string); ok && command != "" {
+		return truncateString(sanitizeUTF8(command), 50)
+	}
+	if query, ok := input["query"].(string); ok && query != "" {
+		return truncateString(sanitizeUTF8(query), 50)
+	}
+	if path, ok := input["path"].(string); ok && path != "" {
+		return "file: " + sanitizeUTF8(path)
+	}
+	// Fallback to JSON representation (with sanitization)
+	jsonBytes, err := json.Marshal(input)
+	if err != nil {
+		return "(invalid input)"
+	}
+	str := sanitizeUTF8(string(jsonBytes))
+	return truncateString(str, 100)
 }
 
 // GetCLIVersion returns the Claude Code CLI version.
@@ -614,4 +1096,43 @@ func (r *CCRunner) GetCLIVersion() (string, error) {
 		return "", fmt.Errorf("failed to get CLI version: %w", err)
 	}
 	return string(output), nil
+}
+
+// StopSession terminates a running session by session ID.
+// This is the implementation for session.stop from the spec.
+// StopSession 通过 session ID 终止正在运行的会话。
+// 这是规范中 session.stop 的实现。
+func (r *CCRunner) StopSession(sessionID string, reason string) error {
+	r.logger.Info("CCRunner: stopping session",
+		"session_id", sessionID,
+		"reason", reason)
+
+	return r.manager.TerminateSession(sessionID)
+}
+
+// StopSessionByConversationID terminates a session by its conversation ID.
+// StopSessionByConversationID 通过对话 ID 终止会话。
+func (r *CCRunner) StopSessionByConversationID(conversationID int64, reason string) error {
+	sessionID := ConversationIDToSessionID(conversationID)
+	return r.StopSession(sessionID, reason)
+}
+
+// SetDangerAllowPaths sets the allowed safe paths for the danger detector.
+// SetDangerAllowPaths 设置危险检测器的允许安全路径。
+func (r *CCRunner) SetDangerAllowPaths(paths []string) {
+	r.dangerDetector.SetAllowPaths(paths)
+}
+
+// SetDangerBypassEnabled enables or disables danger detection bypass.
+// WARNING: Only use for Evolution mode (admin only).
+// SetDangerBypassEnabled 启用或禁用危险检测绕过。
+// 警告：仅用于进化模式（仅管理员）。
+func (r *CCRunner) SetDangerBypassEnabled(enabled bool) {
+	r.dangerDetector.SetBypassEnabled(enabled)
+}
+
+// GetDangerDetector returns the danger detector instance.
+// GetDangerDetector 返回危险检测器实例。
+func (r *CCRunner) GetDangerDetector() *DangerDetector {
+	return r.dangerDetector
 }

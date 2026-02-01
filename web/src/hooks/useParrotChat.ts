@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { useQueryClient } from "@tanstack/react-query";
 import { aiServiceClient } from "@/connect";
 import {
+  DangerBlockEvent,
   MemoQueryResultData,
   ParrotAgentType,
   ParrotChatCallbacks,
@@ -111,6 +112,10 @@ export function useParrotChat() {
  * @param callbacks - Optional callbacks to handle events
  */
 function handleParrotEvent(eventType: string, eventData: string, callbacks?: ParrotChatCallbacks) {
+  // Debug log for tool_use events
+  if (eventType === "tool_use" || eventType === "tool_result") {
+    console.debug("[useParrotChat] Event:", eventType, "Data:", eventData);
+  }
   try {
     switch (eventType) {
       case ParrotEventType.THINKING:
@@ -125,13 +130,30 @@ function handleParrotEvent(eventType: string, eventData: string, callbacks?: Par
         callbacks?.onToolResult?.(eventData);
         break;
 
+      case ParrotEventType.DANGER_BLOCK:
+        try {
+          const result = JSON.parse(eventData) as DangerBlockEvent;
+          callbacks?.onDangerBlock?.(result);
+        } catch (parseError) {
+          const err = parseError instanceof Error ? parseError : new Error(String(parseError));
+          console.error("Failed to parse danger block event:", err);
+          console.error("Event data:", eventData);
+          // Include truncated raw data in error message for debugging
+          const rawDataPreview = eventData.length > 100 ? eventData.substring(0, 100) + "..." : eventData;
+          callbacks?.onError?.(new Error(`Failed to parse danger block event: ${err.message}. Raw data: ${rawDataPreview}`));
+        }
+        break;
+
       case ParrotEventType.MEMO_QUERY_RESULT:
         try {
           const result = JSON.parse(eventData) as MemoQueryResultData;
           callbacks?.onMemoQueryResult?.(result);
         } catch (parseError) {
-          console.error("Failed to parse memo query result:", parseError);
+          const err = parseError instanceof Error ? parseError : new Error(String(parseError));
+          console.error("Failed to parse memo query result:", err);
           console.error("Event data:", eventData);
+          const rawDataPreview = eventData.length > 100 ? eventData.substring(0, 100) + "..." : eventData;
+          callbacks?.onError?.(new Error(`Failed to parse memo query result: ${err.message}. Raw data: ${rawDataPreview}`));
         }
         break;
 
@@ -140,8 +162,11 @@ function handleParrotEvent(eventType: string, eventData: string, callbacks?: Par
           const result = JSON.parse(eventData) as ScheduleQueryResultData;
           callbacks?.onScheduleQueryResult?.(result);
         } catch (parseError) {
-          console.error("Failed to parse schedule query result:", parseError);
+          const err = parseError instanceof Error ? parseError : new Error(String(parseError));
+          console.error("Failed to parse schedule query result:", err);
           console.error("Event data:", eventData);
+          const rawDataPreview = eventData.length > 100 ? eventData.substring(0, 100) + "..." : eventData;
+          callbacks?.onError?.(new Error(`Failed to parse schedule query result: ${err.message}. Raw data: ${rawDataPreview}`));
         }
         break;
 
@@ -165,6 +190,9 @@ function handleParrotEvent(eventType: string, eventData: string, callbacks?: Par
     }
   } catch (error) {
     console.error("Error handling parrot event:", error);
+    // Propagate unexpected errors to the callback
+    const err = error instanceof Error ? error : new Error(String(error));
+    callbacks?.onError?.(err);
   }
 }
 
