@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.2] - 2026-02-01
+
+### 📚 Documentation
+- **README**: Added "CC Runner 异步架构" section with component overview
+  - SessionManager, Streamer, DangerDetector, SessionStats, StopChat RPC
+  - Frontend components: EventBadge, ToolCallCard, SessionSummaryPanel, TerminalOutput
+  - Architecture advantages: persistent sessions, full-duplex interaction, millisecond streaming
+- **ARCHITECTURE**: Added comprehensive CC Runner async architecture section
+  - Architecture diagram (Frontend → Backend → CLI)
+  - Core components with file paths
+  - Session mapping model (UUID v5 deterministic mapping)
+  - Interaction protocol (WebSocket events)
+  - Security & risk controls
+  - API endpoints
+  - Link to spec document: `docs/specs/cc_runner_async_arch.md`
+
 ## [v0.80.1] - 2026-02-01
 
 ### 🐛 Bug Fixes
