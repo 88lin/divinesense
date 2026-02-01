@@ -243,19 +243,56 @@ ChatRouter (意图分类)
 
 ## 开发指南
 
+### 🛠️ 开发工作流
+
 ```bash
-make start     # 启动所有服务
-make stop      # 停止服务
-make status    # 查看服务状态
-make logs      # 查看日志
-make test      # 运行测试
-make check-all # 运行所有检查（构建、测试、i18n）
+# 首次设置（克隆项目后）
+make deps-all              # 安装所有依赖
+make install-hooks        # 安装 git hooks（推荐！）
+
+# 日常开发
+make start               # 启动全栈服务
+make stop                # 停止服务
+make status              # 查看服务状态
+make logs                # 查看日志
+make test                # 运行测试
+make check-all           # 运行所有检查
+```
+
+### 🔒 Git Hooks
+
+DivineSense 使用 **pre-commit + pre-push** hooks 确保代码质量：
+
+| Hook | 检查内容 | 速度 | 触发时机 |
+|:-----|:---------|:-----|:---------|
+| **pre-commit** | `go fmt` + `go vet` | ~2秒 | 每次 `git commit` |
+| **pre-push** | `golangci-lint` + `go test` + `pnpm build` | ~1分钟 | 每次 `git push` |
+
+**跳过检查**：
+```bash
+git commit --no-verify -m "WIP"
+git push --no-verify
+```
+
+**重新安装 hooks**（更新 hooks 后）：
+```bash
+make install-hooks
+```
+
+### 🧪 本地 CI 检查
+
+```bash
+make ci-check             # 模拟完整 CI 检查
+make ci-backend          # 后端检查（golangci-lint + test）
+make ci-frontend         # 前端检查（lint + build）
+make lint                # 仅 golangci-lint
 ```
 
 **开发文档**：
 - [后端与数据库](docs/dev-guides/BACKEND_DB.md) - API、数据库结构、环境配置
 - [前端架构](docs/dev-guides/FRONTEND.md) - 布局、Tailwind 注意事项、组件
 - [系统架构](docs/dev-guides/ARCHITECTURE.md) - 项目结构、AI 代理、数据流
+- [Git 工作流](.claude/rules/git-workflow.md) - 分支管理、PR 规范
 
 ---
 

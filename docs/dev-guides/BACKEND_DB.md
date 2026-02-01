@@ -162,6 +162,50 @@ make deps-web           # 仅安装前端依赖
 make deps-ai            # 仅安装 AI 依赖
 ```
 
+### 本地 CI 检查
+
+```bash
+make ci-check           # 模拟完整 CI 检查（与 GitHub Actions 一致）
+make ci-backend         # 后端检查（golangci-lint + test）
+make ci-frontend        # 前端检查（lint + build）
+make lint               # 仅 golangci-lint
+make vet                # 仅 go vet
+```
+
+---
+
+## 🔒 Git Hooks
+
+DivineSense 使用 **pre-commit + pre-push** hooks 确保代码质量：
+
+| Hook | 检查内容 | 速度 | 触发时机 |
+|:-----|:---------|:-----|:---------|
+| **pre-commit** | `go fmt` + `go vet` | ~2秒 | 每次 `git commit` |
+| **pre-push** | `golangci-lint` + `go test` + `pnpm build` | ~1分钟 | 每次 `git push` |
+
+### 安装 Hooks
+
+```bash
+make install-hooks      # 安装 pre-commit + pre-push hooks
+```
+
+### 跳过检查
+
+```bash
+git commit --no-verify -m "WIP"
+git push --no-verify
+```
+
+### 重新安装 Hooks
+
+更新 hooks 后需重新安装：
+
+```bash
+make install-hooks
+```
+
+> **详细规范**：参见 [Git 工作流](../../.claude/rules/git-workflow.md)
+
 ---
 
 ## 配置（.env）

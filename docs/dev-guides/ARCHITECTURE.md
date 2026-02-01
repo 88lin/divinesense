@@ -101,6 +101,35 @@ divinesense/
 
 ---
 
+## 🔒 Git Hooks 工作流
+
+DivineSense 使用 **pre-commit + pre-push** hooks 确保代码质量：
+
+| Hook | 检查内容 | 速度 | 触发时机 |
+|:-----|:---------|:-----|:---------|
+| **pre-commit** | `go fmt` + `go vet` + `pnpm lint:fix` | ~5秒 | 每次 `git commit` |
+| **pre-push** | `golangci-lint` + `go test` + `pnpm build` | ~1分钟 | 每次 `git push` |
+
+### 安装与使用
+
+```bash
+# 安装 hooks
+make install-hooks
+
+# 本地 CI 检查（与 GitHub Actions 一致）
+make ci-check
+make ci-backend
+make ci-frontend
+
+# 跳过检查
+git commit --no-verify -m "WIP"
+git push --no-verify
+```
+
+> **详细规范**：参见 [Git 工作流](../../.claude/rules/git-workflow.md)
+
+---
+
 ## Parrot 代理架构
 
 ### 代理类型 (`plugin/ai/agent/`)

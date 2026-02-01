@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.5] - 2026-02-01
+
+### 🔧 Development Workflow
+- **Git Hooks**: Added pre-commit + pre-push workflow for local CI validation
+  - `pre-commit`: Lightweight checks (go fmt + go vet + pnpm lint:fix), ~5 seconds
+  - `pre-push`: Full CI checks (golangci-lint + go test + pnpm build), ~1 minute
+  - Catch CI issues locally before pushing to remote
+
+### ✨ Enhancements
+- **Makefile**: Added new targets for local CI validation
+  - `make install-hooks` — Install pre-commit + pre-push hooks
+  - `make ci-check` — Run full CI checks locally (same as GitHub Actions)
+  - `make ci-backend` — Backend checks only (golangci-lint + test)
+  - `make ci-frontend` — Frontend checks only (lint + build)
+
+### 📚 Documentation
+- **README**: Added development workflow section with git hooks documentation
+- **BACKEND_DB**: Added Git Hooks & Local CI checks sections
+- **FRONTEND**: Added Git Hooks section for frontend workflow
+- **ARCHITECTURE**: Added Git Hooks workflow section
+
 ## [v0.80.4] - 2026-02-01
 
 ### 🐛 Bug Fixes
