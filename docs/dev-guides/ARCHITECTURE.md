@@ -206,6 +206,108 @@ ChatRouter 实现**三层**意图分类系统：
 
 ---
 
+## CC Runner 异步架构 (Geek Mode 核心)
+
+**规格文档**：[CC Runner 异步架构说明书](../specs/cc_runner_async_arch.md) (v1.2)
+
+**概述**：Geek Mode 从一次性执行（One-shot）升级为**全双工持久化**（Full-Duplex Persistent）架构。
+
+### 架构图
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (React)                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
+│  │  EventBadge  │  │ ToolCallCard │  │  SessionSummaryPanel │ │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘ │
+│                              │                                  │
+│                        WebSocket (SSE)                         │
+└──────────────────────────────┼──────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────┐
+│                     Backend (Go)                                │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ Session Mgr │◄─┤   Streamer  │◄─┤  DangerDetector      │  │
+│  │  (30min)    │  │ (Bidirect)  │  │  (rm -rf, format)    │  │
+│  └─────────────┘  └──────────────┘  └──────────────────────┘  │
+└──────────────────────────────┼──────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────┐
+│                   Claude Code CLI (OS Process)                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  --session-id <UUID> --output-format stream-json          │ │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐  │ │
+│  │  │    CLI      │  │  In-Memory   │  │  Skills & MCP    │  │ │
+│  │  │   Engine    │◄─┤   Context    │  │    Registry      │  │ │
+│  │  └─────────────┘  └──────────────┘  └──────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 核心组件
+
+**位置**：`plugin/ai/agent/cc_runner/`
+
+| 组件 | 文件 | 描述 |
+|:-----|:-----|:-----|
+| **SessionManager** | `session_manager.go` | 会话生命周期管理（30min 空闲超时） |
+| **Streamer** | `streamer.go` | 双向流式转换（HTTP ⇄ CLI JSON Stream） |
+| **DangerDetector** | `danger_detector.go` | 危险命令检测（rm -rf, mkfs, etc.） |
+| **SessionStats** | `session_stats.go` | 实时指标收集（thinking, tokens, tools） |
+
+### 会话映射模型
+
+```
+前端 ConversationID (数据库 ID)
+         │
+         ▼ UUID v5 定向哈希
+         │
+    SessionID (UUID)
+         │
+         ▼
+Claude Code CLI Process
+```
+
+- **确定性映射**：`UUID v5(Namespace, "divinesense:conversation:{ID}")`
+- **状态恢复**：CLI 自动从 `~/.claude/sessions/` 恢复上下文
+- **物理隔离**：每个会话独立 OS 进程，互不干扰
+
+### 交互协议
+
+**Client → Server (WebSocket Events)**:
+
+| Event | Payload | 描述 |
+|:-----|:--------|:-----|
+| `session.start` | `{config}` | 启动新会话 |
+| `input.send` | `{text}` | 发送用户输入 |
+| `session.stop` | `{}` | 强制停止 |
+
+**Server → Client (Stream Events)**:
+
+| Event | Meta | 描述 |
+|:-----|:-----|:-----|
+| `thinking` | — | 思考过程（增量） |
+| `tool_use` | `{name, input, id}` | 工具调用 |
+| `tool_result` | `{is_error}` | 工具结果 |
+| `answer` | — | 最终回答（增量） |
+| `error` | — | 系统级错误 |
+
+### 安全与风控
+
+- **Permission Bypass**: 使用 `--permission-mode bypassPermissions`
+- **前端确认**: 对关键操作（如 `rm -rf`）进行 Regex 拦截
+- **Git 恢复**: 强制在 Git 仓库内运行，确保可回滚
+- **超时保护**: 30 分钟空闲自动 Kill
+
+### API 端点
+
+| RPC | 方法 | 描述 |
+|:-----|:-----|:-----|
+| `ChatService` | `StreamChat` | 流式聊天（SSE） |
+| `ChatService` | `StopChat` | 停止会话（所有权验证） |
+
+---
+
 ## AI 服务 (`plugin/ai/`)
 
 ### 服务概览

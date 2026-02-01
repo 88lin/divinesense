@@ -82,6 +82,31 @@ EvolutionMode (最高) → GeekMode → 常规代理路由
 - 30天自动保留
 - 每个代理独立记忆空间
 
+### 🤖 CC Runner 异步架构 (Geek Mode 核心)
+
+**v0.80.0 重大升级**：Geek Mode 从一次性执行升级为**全双工持久化**架构。
+
+| 组件 | 功能 |
+|:-----|:-----|
+| **SessionManager** | 持久化会话管理，30分钟空闲超时自动清理 |
+| **Streamer** | 双向事件流式传输（stdin/stdout/stderr） |
+| **DangerDetector** | 危险操作检测（rm -rf, format 等） |
+| **SessionStats** | 实时指标收集（思考时间、Token、工具调用） |
+| **StopChat RPC** | 会话停止端点（所有权验证） |
+
+**前端组件**：
+- **EventBadge**：事件类型可视化指示器（thinking, tool_use, answer）
+- **ToolCallCard**：工具调用详情展示
+- **SessionSummaryPanel**：会话指标摘要（时长、Token、工具、文件）
+- **TerminalOutput**：实时 CLI 输出显示
+
+**架构优势**：
+- 🔄 **持久化会话**：Claude Code CLI 进程保持存活，避免重复启动
+- 🌊 **全双工交互**：执行过程中随时注入用户反馈
+- ⚡ **毫秒级流式**：Token 级输出和工具状态实时更新
+
+> 详细规格：[CC Runner 异步架构说明书](docs/specs/cc_runner_async_arch.md)
+
 ### 🧠 AI 增强功能
 
 - **间隔重复复习**：基于记忆曲线的智能复习系统
