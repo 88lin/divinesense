@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.1] - 2026-02-01
+
+### 🐛 Bug Fixes
+- **Tests**: Fixed flaky schedule conflict resolver tests failing at month boundaries
+  - Replaced `time.Now()` with fixed `testBaseDate` (2026-02-15 UTC)
+  - Changed all `time.Local` to `time.UTC` for consistency
+  - Resolved CI failures when tests run at Jan 31 UTC crossing into February
+
 ## [v0.80.0] - 2026-02-01
 
 ### 🤖 CC Runner Async Upgrade (Major)
