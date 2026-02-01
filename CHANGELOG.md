@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.0] - 2026-02-01
+
+### 🤖 CC Runner Async Upgrade (Major)
+
+#### Core Architecture
+- **SessionManager**: Persistent session lifecycle management with 30-minute idle timeout
+- **Streamer**: Bidirectional event streaming for Claude Code CLI (stdin/stdout/stderr)
+- **DangerDetector**: Security layer detecting dangerous operations (rm -rf, format, etc.)
+- **SessionStats**: Real-time metrics collection (thinking time, generation time, tokens, tools)
+
+#### Concurrency & Safety
+- Fixed goroutine leaks (startup monitoring with 30s timeout)
+- Fixed pipe file descriptor leaks (proper cleanup on error paths)
+- Fixed timer race conditions (Session.close() with mutex protection)
+- Fixed context propagation (defer cancel() on all paths)
+
+#### API Enhancements
+- **StopChat RPC**: New endpoint with conversation ownership verification
+- **Event Metadata**: Enhanced streaming events with timing and tool info
+
+#### Frontend Components
+- **EventBadge**: Visual indicator for event types (thinking, tool_use, answer)
+- **ToolCallCard**: Display tool invocation details with status
+- **SessionSummaryPanel**: Compact session metrics (duration, tokens, tools, files)
+- **TerminalOutput**: Real-time CLI output display for Geek/Evolution modes
+
+#### Documentation
+- CC Runner async architecture specification
+- Claude Stream JSON format research
+- Event type UI research report
+- Agent Technology Report 2025
+- Git workflow guide (with rebase best practices)
+
+### 🔧 Development Workflow
+- Added Git workflow documentation with rebase guidelines
+- Enforced conventional commits and PR review process
+
 ## [v0.71.0] - 2026-01-31
 
 ### 🚀 Deployment Architecture & SSOT
