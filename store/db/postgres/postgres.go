@@ -41,11 +41,17 @@ func NewDB(profile *profile.Profile) (store.Driver, error) {
 		return nil, errors.New("profile is nil")
 	}
 
+	// Set default DSN if not provided (matching .env.example defaults)
+	dsn := profile.DSN
+	if dsn == "" {
+		dsn = "postgres://divinesense:divinesense@localhost:25432/divinesense?sslmode=disable"
+	}
+
 	// Open the PostgreSQL connection
-	db, err := sql.Open("postgres", profile.DSN)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Printf("Failed to open database: %s", err)
-		return nil, errors.Wrapf(err, "failed to open database: %s", profile.DSN)
+		return nil, errors.Wrapf(err, "failed to open database: %s", dsn)
 	}
 
 	// Configure connection pool for single-user personal assistant
