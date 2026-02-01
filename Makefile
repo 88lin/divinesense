@@ -49,6 +49,7 @@ WEB_DIR ?= web
 # ===========================================================================
 
 .PHONY: help run dev web test deps clean
+.PHONY: install-hooks ci-check
 .PHONY: docker-up docker-down docker-logs docker-reset
 .PHONY: docker-prod-up docker-prod-down docker-prod-logs
 .PHONY: db-connect db-reset db-vector
@@ -145,6 +146,10 @@ deps-ai: ## 安装 AI 依赖
 	@go mod tidy
 
 deps-all: deps deps-web ## 安装所有依赖
+
+install-hooks: ## 安装 git hooks (pre-commit 检查)
+	@echo "📦 Installing git hooks..."
+	@$(SCRIPT_DIR)/install-hooks.sh
 
 # ===========================================================================
 # Docker (PostgreSQL)
@@ -321,9 +326,55 @@ check-i18n-hardcode: ## 检查前端硬编码文本
 
 check-all: check-build check-test check-lint check-i18n ## 运行所有检查
 
-lint: ## 运行 golangci-lint
+##@ CI Quality Gates
+
+install-hooks: ## 安装 git hooks (pre-commit + pre-tag)
+	@echo "📦 Installing git hooks..."
+	@$(SCRIPT_DIR)/install-hooks.sh
+
+ci-check: ## 模拟 CI 运行所有检查（与 GitHub Actions 一致）
+	@$(MAKE) --no-print-directory ci-check-internal
+
+ci-check-internal:
+	@echo "🔍 Running CI checks locally..."
+	@echo ""
+	@$(MAKE) --no-print-directory ci-backend || { echo ""; exit 1; }
+	@$(MAKE) --no-print-directory ci-frontend || { echo ""; exit 1; }
+	@echo ""
+	@echo "✅ All CI checks passed!"
+
+ci-backend: ## 后端 CI 检查 (go mod tidy + golangci-lint + test)
+	@echo "📦 Backend:"
+	@echo "  → go mod tidy check..."
+	@cp go.mod go.mod.bak 2>/dev/null || true; \
+		cp go.sum go.sum.bak 2>/dev/null || true; \
+		go mod tidy; \
+		if ! git diff --quiet go.mod go.sum; then \
+			echo "  ❌ go.mod/go.sum not tidy. Run: go mod tidy"; \
+			mv go.mod.bak go.mod 2>/dev/null || true; \
+			mv go.sum.bak go.sum 2>/dev/null || true; \
+			exit 1; \
+		fi; \
+		rm -f go.mod.bak go.sum.bak
+	@echo "  → golangci-lint..."
+	@golangci-lint run --config=.golangci.yaml --timeout=3m --build-tags=noui
+	@echo "  → go test..."
+	@go test -short -timeout=30s -tags=noui ./...
+	@echo "  ✅ Backend checks passed"
+
+ci-frontend: ## 前端 CI 检查 (lint + build)
+	@echo "🎨 Frontend:"
+	@cd web && \
+		echo "  → pnpm lint..." && \
+		pnpm lint --silent && \
+		echo "  → pnpm build..." && \
+		pnpm build >/dev/null 2>&1 && \
+		cd .. && \
+		echo "  ✅ Frontend checks passed"
+
+lint: ## 运行 golangci-lint (使用 .golangci.yaml 配置)
 	@echo "Running golangci-lint..."
-	@golangci-lint run ./... || { echo "Linting failed"; exit 1; }
+	@golangci-lint run --config=.golangci.yaml --timeout=3m --build-tags=noui || { echo "Linting failed"; exit 1; }
 	@echo "Linting OK"
 
 vet: ## 运行 go vet

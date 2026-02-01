@@ -1,0 +1,11 @@
+#!/bin/sh
+# Pre-commit hook - lightweight checks (fast feedback)
+set -e
+
+echo "🔍 Quick pre-commit checks..."
+
+# Only fmt and vet for speed
+go fmt ./...
+go vet ./...
+
+echo "✅ Pre-commit checks passed!"

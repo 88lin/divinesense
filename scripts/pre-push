@@ -1,0 +1,72 @@
+#!/bin/sh
+# Pre-push hook - full CI checks before pushing to remote
+set -e
+
+echo "🚀 Running pre-push checks (full CI validation)..."
+echo ""
+
+# Color output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Get pushed branch
+REMOTE="$1"
+URL="$2"
+
+echo "Pushing to: $URL"
+echo ""
+
+# Backend full checks
+echo "📦 Backend:"
+echo "  → go mod tidy check..."
+cp go.mod go.mod.bak 2>/dev/null || true
+cp go.sum go.sum.bak 2>/dev/null || true
+go mod tidy
+if ! git diff --quiet go.mod go.sum; then
+    echo "    ${RED}✗ go.mod/go.sum not tidy${NC}"
+    echo "    Run: go mod tidy && git add go.mod go.sum"
+    mv go.mod.bak go.mod 2>/dev/null || true
+    mv go.sum.bak go.sum 2>/dev/null || true
+    exit 1
+fi
+rm -f go.mod.bak go.sum.bak
+
+echo "  → golangci-lint..."
+if ! golangci-lint run --config=.golangci.yaml --timeout=3m --build-tags=noui; then
+    echo "    ${RED}✗ golangci-lint failed${NC}"
+    echo "    Run 'make ci-backend' to fix"
+    exit 1
+fi
+
+echo "  → go test..."
+if ! go test -short -timeout=30s -tags=noui ./...; then
+    echo "    ${RED}✗ tests failed${NC}"
+    exit 1
+fi
+
+echo "    ${GREEN}✓ Backend checks passed${NC}"
+echo ""
+
+# Frontend checks
+echo "🎨 Frontend:"
+if [ -d "web" ] && [ -f "web/package.json" ]; then
+    cd web
+    echo "  → pnpm lint..."
+    if ! pnpm lint --silent; then
+        echo "    ${RED}✗ Frontend lint failed${NC}"
+        exit 1
+    fi
+
+    echo "  → pnpm build..."
+    if ! pnpm build >/dev/null 2>&1; then
+        echo "    ${RED}✗ Frontend build failed${NC}"
+        exit 1
+    fi
+    cd ..
+    echo "    ${GREEN}✓ Frontend checks passed${NC}"
+fi
+
+echo ""
+echo "${GREEN}✅ All pre-push checks passed! Ready to push.${NC}"
