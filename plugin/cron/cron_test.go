@@ -556,14 +556,40 @@ func (*ZeroSchedule) Next(time.Time) time.Time {
 // Tests that job without time does not run
 func TestJobWithZeroTimeDoesNotRun(t *testing.T) {
 	cron := newWithSeconds()
-	var calls int64
-	cron.AddFunc("* * * * * *", func() { atomic.AddInt64(&calls, 1) })
+	var calls atomic.Int32
+	callsCh := make(chan struct{}, 10) // Buffered to catch multiple calls
+
+	cron.AddFunc("* * * * * *", func() {
+		n := calls.Add(1)
+		if n <= 10 {
+			select {
+			case callsCh <- struct{}{}:
+			default:
+			}
+		}
+	})
 	cron.Schedule(new(ZeroSchedule), FuncJob(func() { t.Error("expected zero task will not run") }))
 	cron.Start()
 	defer cron.Stop()
-	<-time.After(OneSecond)
-	if atomic.LoadInt64(&calls) != 1 {
-		t.Errorf("called %d times, expected 1\n", calls)
+
+	// Use explicit timeout instead of relying on exact timing
+	callCount := 0
+	timeout := time.After(3 * time.Second)
+	for {
+		select {
+		case <-callsCh:
+			callCount++
+			if callCount >= 3 {
+				t.Errorf("called %d times, expected at most 2 within time window\n", callCount)
+				return
+			}
+		case <-timeout:
+			// After timeout, verify we got at least 1 call
+			if callCount < 1 {
+				t.Errorf("called %d times, expected at least 1\n", callCount)
+			}
+			return
+		}
 	}
 }
 

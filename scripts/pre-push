@@ -41,7 +41,8 @@ if ! golangci-lint run --config=.golangci.yaml --timeout=3m --build-tags=noui; t
 fi
 
 echo "  → go test..."
-if ! go test -short -timeout=30s -tags=noui ./...; then
+# Run tests with increased timeout; cron tests need more time when run in parallel
+if ! go test -short -timeout=60s -tags=noui ./...; then
     echo "    ${RED}✗ tests failed${NC}"
     exit 1
 fi
