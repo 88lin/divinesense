@@ -160,7 +160,9 @@ jobs:
             codesign -vvv dist/$output_name 2>&1 | grep -E "(valid on disk|satisfies its Designated Requirement)" || true
 
             # Generate checksum
+            cd dist
             shasum -a 256 "$output_name" > "$output_name.sha256"
+            cd ..
           done
 
       - name: Upload Release Assets
