@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.4] - 2026-02-01
+
+### 🐛 Bug Fixes
+- **Frontend**: Fixed `__core-js_shared__` error in vendor chunks
+  - Inject core-js polyfills as traditional script before modules
+  - Removed graph-vendor and utils-vendor chunks to avoid polyfill timing issues
+- **PostgreSQL**: Fixed SSL error when running binary without .env file
+  - Set default DSN in postgres.go matching .env.example defaults
+
+### ✨ Enhancements
+- **UX**: Auto-load .env file when running binary directly
+  - Silently loads .env from current directory
+  - Skips loading when running as systemd service (uses /etc/divinesense/config)
+- **UX**: Added comprehensive database connection error messages
+  - PostgreSQL not running → show docker/systemd start commands
+  - SSL errors → show how to add sslmode=disable
+  - Auth/permission errors → show specific fixes
+  - Database not exist → show create commands
+  - Detects .env file presence and provides hints
+
 ## [v0.80.3] - 2026-02-01
 
 ### 🐛 Bug Fixes
