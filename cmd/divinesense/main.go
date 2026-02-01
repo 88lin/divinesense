@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -24,6 +25,15 @@ var (
 	rootCmd = &cobra.Command{
 		Use:   "divinesense",
 		Short: `An AI-powered personal knowledge assistant. Capture, organize, and retrieve your thoughts with semantic search.`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Only load .env for direct binary execution (not when running as systemd service)
+			// Systemd service uses /etc/divinesense/config for environment variables
+			if !isRunningAsSystemdService() {
+				// Try to load .env file from current directory (silent if not found)
+				godotenv.Load()
+			}
+			return nil
+		},
 		Run: func(_ *cobra.Command, _ []string) {
 			instanceProfile := &profile.Profile{
 				Mode:        viper.GetString("mode"),
@@ -45,6 +55,7 @@ var (
 			dbDriver, err := db.NewDBDriver(instanceProfile)
 			if err != nil {
 				cancel()
+				printDatabaseError(err, instanceProfile)
 				slog.Error("failed to create db driver", "error", err)
 				return
 			}
@@ -183,6 +194,66 @@ func printGreetings(profile *profile.Profile) {
 	fmt.Printf("Documentation: %s\n", "https://github.com/hrygo/divinesense")
 	fmt.Printf("Source code: %s\n", "https://github.com/hrygo/divinesense")
 	fmt.Println("\nHappy note-taking!")
+}
+
+// isRunningAsSystemdService detects if the process is running under systemd
+func isRunningAsSystemdService() bool {
+	// Check if invoked by systemd (environment variables set by systemd)
+	return os.Getenv("INVOCATION_ID") != "" || os.Getenv("WATCHDOG_USEC") != ""
+}
+
+// printDatabaseError provides user-friendly error messages for database connection issues
+func printDatabaseError(err error, profile *profile.Profile) {
+	fmt.Fprintln(os.Stderr, "\n❌ Database Connection Failed")
+	fmt.Fprintln(os.Stderr, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	errMsg := err.Error()
+	switch {
+	case strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "no such host") ||
+		strings.Contains(errMsg, "cannot connect") || strings.Contains(errMsg, "localhost:25432"):
+		fmt.Fprintln(os.Stderr, "\n📌 PostgreSQL is not running.")
+		fmt.Fprintf(os.Stderr, "\n   Start PostgreSQL with:\n")
+		if profile.Driver == "postgres" {
+			fmt.Fprintf(os.Stderr, "   ■ Docker:  docker compose -f docker/compose/dev.yml up -d postgres\n")
+			fmt.Fprintf(os.Stderr, "   ■ System:  sudo systemctl start postgresql\n")
+		}
+		fmt.Fprintf(os.Stderr, "\n   Or use SQLite for development (no AI features):\n")
+		fmt.Fprintf(os.Stderr, "   ■ Set: DIVINESENSE_DRIVER=sqlite\n")
+		fmt.Fprintf(os.Stderr, "   ■ Or:   ./divinesense --driver=sqlite --data=./data\n")
+
+	case strings.Contains(errMsg, "SSL is not enabled") || strings.Contains(errMsg, "sslmode"):
+		fmt.Fprintln(os.Stderr, "\n📌 PostgreSQL SSL configuration mismatch.")
+		fmt.Fprintf(os.Stderr, "\n   Add ?sslmode=disable to your DSN:\n")
+		fmt.Fprintf(os.Stderr, "   ■ export DIVINESENSE_DSN=\"postgres://user:pass@localhost:25432/dbname?sslmode=disable\"\n")
+
+	case strings.Contains(errMsg, "password authentication failed") || strings.Contains(errMsg, "auth"):
+		fmt.Fprintln(os.Stderr, "\n📌 PostgreSQL authentication failed.")
+		fmt.Fprintf(os.Stderr, "\n   Check your credentials in the DSN or .env file.\n")
+
+	case strings.Contains(errMsg, "database") && strings.Contains(errMsg, "does not exist"):
+		fmt.Fprintln(os.Stderr, "\n📌 Database does not exist.")
+		fmt.Fprintf(os.Stderr, "\n   Create it with:\n")
+		fmt.Fprintf(os.Stderr, "   ■ docker exec -it postgres psql -U postgres -c \"CREATE DATABASE divinesense;\"\n")
+
+	case strings.Contains(errMsg, "permission denied"):
+		fmt.Fprintln(os.Stderr, "\n📌 Permission denied.")
+		fmt.Fprintf(os.Stderr, "\n   Check database user permissions.\n")
+		if strings.Contains(errMsg, "schema") {
+			fmt.Fprintf(os.Stderr, "   ■ Run: GRANT ALL ON SCHEMA public TO divinesense;\n")
+		}
+
+	default:
+		fmt.Fprintln(os.Stderr, "\n📌 Error:", errMsg)
+	}
+
+	// Check if .env file exists
+	if _, statErr := os.Stat(".env"); statErr == nil {
+		fmt.Fprintf(os.Stderr, "\n💡 Found .env file - configuration loaded from current directory.\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "\n💡 Tip: Create a .env file for local configuration (see .env.example)\n")
+	}
+
+	fmt.Fprintln(os.Stderr, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 }
 
 func main() {
