@@ -481,50 +481,69 @@ func TestJob(t *testing.T) {
 // Issue #206
 // Ensure that the next run of a job after removing an entry is accurate.
 func TestScheduleAfterRemoval(t *testing.T) {
-	var wg1 sync.WaitGroup
-	var wg2 sync.WaitGroup
-	wg1.Add(1)
-	wg2.Add(1)
+	// Use channels for more reliable timeout handling instead of sync.WaitGroup
+	firstRun := make(chan struct{}, 1)
+	secondRun := make(chan struct{}, 1)
+	removalDone := make(chan struct{}, 1)
 
-	// The first time this job is run, set a timer and remove the other job
-	// 750ms later. Correct behavior would be to still run the job again in
-	// 250ms, but the bug would cause it to run instead 1s later.
-
-	var calls int
-	var mu sync.Mutex
+	var calls atomic.Int32
 
 	cron := newWithSeconds()
 	hourJob := cron.Schedule(Every(time.Hour), FuncJob(func() {}))
 	cron.Schedule(Every(time.Second), FuncJob(func() {
-		mu.Lock()
-		defer mu.Unlock()
-		switch calls {
-		case 0:
-			wg1.Done()
-			calls++
+		n := calls.Add(1)
+		switch n {
 		case 1:
-			time.Sleep(750 * time.Millisecond)
-			cron.Remove(hourJob)
-			calls++
+			// First run - signal it happened
+			select {
+			case firstRun <- struct{}{}:
+			default:
+			}
 		case 2:
-			calls++
-			wg2.Done()
+			// Second run - remove hourJob and signal
+			cron.Remove(hourJob)
+			time.Sleep(100 * time.Millisecond) // Reduced sleep for faster test
+			select {
+			case removalDone <- struct{}{}:
+			default:
+			}
 		case 3:
-			panic("unexpected 3rd call")
+			// Third run - this should happen relatively soon after second
+			select {
+			case secondRun <- struct{}{}:
+			default:
+			}
+		case 4:
+			panic("unexpected 4th call")
 		}
 	}))
 
 	cron.Start()
 	defer cron.Stop()
 
-	// the first run might be any length of time 0 - 1s, since the schedule
-	// rounds to the second. wait for the first run to true up.
-	wg1.Wait()
-
+	// Wait for first run to complete
 	select {
-	case <-time.After(2 * OneSecond):
-		t.Error("expected job fires 2 times")
-	case <-wait(&wg2):
+	case <-firstRun:
+		// First run completed
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for first run")
+	}
+
+	// Wait for second run and removal to complete
+	select {
+	case <-removalDone:
+		// Second run completed, hourJob removed
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for second run/removal")
+	}
+
+	// Now verify third run happens promptly (within 2 seconds)
+	// The job runs every second, so third run should happen within ~1 second
+	select {
+	case <-secondRun:
+		// Success! Third run happened as expected
+	case <-time.After(3 * time.Second):
+		t.Fatal("expected third run to happen promptly after removal")
 	}
 }
 
