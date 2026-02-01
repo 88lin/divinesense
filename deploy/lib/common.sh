@@ -222,11 +222,11 @@ download_binary() {
     return 0
 }
 
-# 获取最新版本
+# 获取最新版本（带 v 前缀，如 v0.80.6）
 get_latest_version() {
     curl -s --connect-timeout $CURL_CONNECT_TIMEOUT --max-time $CURL_MAX_TIME \
         "https://api.github.com/repos/hrygo/divinesense/releases/latest" | \
-        grep -oP '"tag_name":\s*"v?\K[^"]+' | head -1
+        grep -oP '"tag_name":\s*"\K[^"]+' | head -1
 }
 
 # 检查服务状态
