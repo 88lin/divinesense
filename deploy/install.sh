@@ -188,8 +188,14 @@ install_binary_mode() {
     mkdir -p /home/divine/source
     chown -R divine:divine /home/divine
 
-    # 使用共享下载函数
-    local download_url="https://github.com/hrygo/divinesense/releases/latest/download/divinesense-linux-${BINARY_ARCH}"
+    # 获取最新版本号并构建正确的下载 URL
+    local LATEST_VERSION=$(get_latest_version)
+    log_info "最新版本: ${LATEST_VERSION}"
+
+    # 文件名格式: divinesense-v0.80.4-linux-amd64
+    local binary_name="divinesense-${LATEST_VERSION}-linux-${BINARY_ARCH}"
+    local download_url="https://github.com/hrygo/divinesense/releases/download/${LATEST_VERSION}/${binary_name}"
+
     if ! download_binary "$download_url" "$INSTALL_DIR/bin/divinesense" "$BINARY_ARCH"; then
         log_error "下载二进制文件失败"
         exit 1
