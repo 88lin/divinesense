@@ -1,3 +1,5 @@
+// Polyfill for core-js shared state (required by lodash-es, cytoscape)
+import "core-js/actual";
 import "@github/relative-time-element";
 import { QueryClientProvider } from "@tanstack/react-query";
 import React, { useEffect, useRef } from "react";

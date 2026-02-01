@@ -36,6 +36,7 @@ export default defineConfig({
     },
   },
   build: {
+    target: "es2020", // Modern browsers: Chrome 80+, Safari 13.1+, Firefox 72+
     rollupOptions: {
       output: {
         manualChunks: {
