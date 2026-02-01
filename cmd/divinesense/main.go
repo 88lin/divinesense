@@ -29,8 +29,8 @@ var (
 			// Only load .env for direct binary execution (not when running as systemd service)
 			// Systemd service uses /etc/divinesense/config for environment variables
 			if !isRunningAsSystemdService() {
-				// Try to load .env file from current directory (silent if not found)
-				godotenv.Load()
+				// Try to load .env file from current directory (ignore error if file doesn't exist)
+				_ = godotenv.Load()
 			}
 			return nil
 		},
