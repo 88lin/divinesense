@@ -1,6 +1,29 @@
 # DivineSense 部署指南
 
-本指南介绍 DivineSense 在阿里云 2C2G 服务器的两种部署方式。
+本指南介绍 DivineSense 的多种部署方式。
+
+---
+
+## 快速开始
+
+### 一键部署（推荐）
+
+```bash
+# 交互式安装（推荐新手）
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/install.sh | sudo bash -s -- --interactive
+
+# 二进制模式（Geek Mode 推荐）
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/install.sh | sudo bash -s -- --mode=binary
+
+# Docker 模式
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/install.sh | sudo bash -s -- --mode=docker
+```
+
+### 查看帮助
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/install.sh | sudo bash -s -- --help
+```
 
 ---
 
@@ -9,34 +32,12 @@
 | 特性           | Docker 模式    | 二进制模式          |
 | :------------- | :------------- | :------------------ |
 | Geek Mode 支持 | ⚠️ 需额外配置   | ✅ 原生支持          |
+| Evolution Mode 支持 | ❌ 不支持 | ✅ 原生支持 |
 | 资源占用       | 高 (容器开销)  | 低                  |
 | 启动速度       | 慢             | 快                  |
 | 更新方式       | 重建镜像       | 替换二进制          |
 | 数据隔离       | 容器隔离       | 需手动配置          |
 | 适用场景       | 快速部署、测试 | Geek Mode、生产环境 |
-
----
-
-## 快速安装
-
-### 统一安装脚本
-
-```bash
-# Docker 模式 (默认)
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash
-
-# 二进制模式 (推荐 Geek Mode)
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash -s -- --mode=binary
-
-# 指定版本
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash -s -- --mode=binary --version=v1.0.0
-```
-
-### 查看帮助
-
-```bash
-./deploy/aliyun/install.sh --help
-```
 
 ---
 
