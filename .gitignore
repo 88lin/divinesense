@@ -93,3 +93,7 @@ docs/plans/
 .qoder/
 
 *.log
+*.exe
+*.so
+*.dylib
+divinesense-*-*

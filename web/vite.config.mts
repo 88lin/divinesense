@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { polyfillsPlugin } from "./vite-plugin-polyfills";
 
 let devProxyServer = "http://localhost:28081";
 if (process.env.DEV_PROXY_SERVER && process.env.DEV_PROXY_SERVER.length > 0) {
@@ -11,7 +12,7 @@ if (process.env.DEV_PROXY_SERVER && process.env.DEV_PROXY_SERVER.length > 0) {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [polyfillsPlugin(), react(), tailwindcss()],
   server: {
     host: "0.0.0.0",
     port: 25173,
@@ -40,6 +41,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          // Merge core-js dependent packages into main entry to avoid polyfill issues
+          "polyfills": ["core-js/actual"],
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           "ui-vendor": [
             "@radix-ui/react-dialog",
@@ -55,12 +58,15 @@ export default defineConfig({
           "math-vendor": ["katex", "rehype-katex", "remark-math"],
           "query-vendor": ["@tanstack/react-query"],
           "i18n-vendor": ["i18next", "react-i18next"],
-          "graph-vendor": ["cytoscape", "react-force-graph-2d"],
-          "utils-vendor": ["dayjs", "lodash-es", "fuse.js", "uuid"],
+          // graph-vendor and utils-vendor removed to avoid core-js polyfill issues
+          // These will be bundled with the main entry
           "mermaid-vendor": ["mermaid"],
           "leaflet-vendor": ["leaflet", "react-leaflet"],
         },
       },
     },
+  },
+  optimizeDeps: {
+    include: ['core-js/actual', 'cytoscape', 'lodash-es', 'fuse.js', 'dayjs'],
   },
 });
