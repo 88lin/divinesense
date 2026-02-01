@@ -10,11 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testBaseDate is a fixed date used for all tests to avoid month boundary issues in CI.
+// Using mid-February (Feb 15, 2026) ensures we don't run into end-of-month problems.
+var testBaseDate = time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC)
+
 // TestConflictResolver_Resolve_NoConflict tests resolution when there's no conflict.
 func TestConflictResolver_Resolve_NoConflict(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now().Truncate(time.Hour).Add(time.Hour) // Round to next hour
 
 	// Empty mock store - no existing schedules
 	mockStore := &MockStoreForSchedule{schedules: []*store.Schedule{}}
@@ -22,7 +25,7 @@ func TestConflictResolver_Resolve_NoConflict(t *testing.T) {
 	resolver := NewConflictResolver(svc)
 
 	// Request a 1-hour slot
-	startTime := now
+	startTime := testBaseDate
 	duration := time.Hour
 
 	resolution, err := resolver.Resolve(ctx, userID, startTime, time.Time{}, duration)
@@ -39,11 +42,10 @@ func TestConflictResolver_Resolve_NoConflict(t *testing.T) {
 func TestConflictResolver_Resolve_WithConflict(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now().Truncate(time.Hour)
 
 	// Create a schedule that occupies 10:00-11:00
-	busyStart := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, time.Local)
-	busyEnd := time.Date(now.Year(), now.Month(), now.Day(), 11, 0, 0, 0, time.Local)
+	busyStart := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 10, 0, 0, 0, time.UTC)
+	busyEnd := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 11, 0, 0, 0, time.UTC)
 
 	mockStore := &MockStoreForSchedule{
 		schedules: []*store.Schedule{
@@ -77,14 +79,13 @@ func TestConflictResolver_Resolve_WithConflict(t *testing.T) {
 func TestConflictResolver_FindAllFreeSlots(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now()
-	testDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	testDate := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 0, 0, 0, 0, time.UTC)
 
 	// Create schedules that occupy 9:00-10:00 and 14:00-15:00
-	busy1Start := time.Date(now.Year(), now.Month(), now.Day(), 9, 0, 0, 0, time.Local)
-	busy1End := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, time.Local)
-	busy2Start := time.Date(now.Year(), now.Month(), now.Day(), 14, 0, 0, 0, time.Local)
-	busy2End := time.Date(now.Year(), now.Month(), now.Day(), 15, 0, 0, 0, time.Local)
+	busy1Start := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 9, 0, 0, 0, time.UTC)
+	busy1End := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 10, 0, 0, 0, time.UTC)
+	busy2Start := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 14, 0, 0, 0, time.UTC)
+	busy2End := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 15, 0, 0, 0, time.UTC)
 
 	mockStore := &MockStoreForSchedule{
 		schedules: []*store.Schedule{
@@ -130,14 +131,13 @@ func TestConflictResolver_FindAllFreeSlots(t *testing.T) {
 func TestConflictResolver_FindAllFreeSlots_FullyBooked(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now()
-	testDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	testDate := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 0, 0, 0, 0, time.UTC)
 
 	// Create schedules that occupy the entire day (8:00-22:00)
 	var schedules []*store.Schedule
 	for hour := 8; hour < 22; hour++ {
-		start := time.Date(now.Year(), now.Month(), now.Day(), hour, 0, 0, 0, time.Local)
-		end := time.Date(now.Year(), now.Month(), now.Day(), hour+1, 0, 0, 0, time.Local)
+		start := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), hour, 0, 0, 0, time.UTC)
+		end := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), hour+1, 0, 0, 0, time.UTC)
 		schedules = append(schedules, &store.Schedule{
 			ID:        int32(hour),
 			UID:       "busy-" + string(rune('0'+hour)),
@@ -163,11 +163,10 @@ func TestConflictResolver_FindAllFreeSlots_FullyBooked(t *testing.T) {
 func TestConflictResolver_SameDayPriority(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now().Truncate(time.Hour)
 
 	// Create a schedule at 10:00
-	busyStart := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, time.Local)
-	busyEnd := time.Date(now.Year(), now.Month(), now.Day(), 11, 0, 0, 0, time.Local)
+	busyStart := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 10, 0, 0, 0, time.UTC)
+	busyEnd := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 11, 0, 0, 0, time.UTC)
 
 	mockStore := &MockStoreForSchedule{
 		schedules: []*store.Schedule{
@@ -195,12 +194,12 @@ func TestConflictResolver_SameDayPriority(t *testing.T) {
 
 	// The auto-resolved slot should be on the same day (highest score)
 	autoResolved := resolution.AutoResolved
-	assert.Equal(t, now.YearDay(), autoResolved.Start.YearDay(), "Auto-resolved should be on same day")
+	assert.Equal(t, testBaseDate.YearDay(), autoResolved.Start.YearDay(), "Auto-resolved should be on same day")
 }
 
 // TestConflictResolver_CalculateScore tests the scoring algorithm.
 func TestConflictResolver_CalculateScore(t *testing.T) {
-	now := time.Date(2026, 1, 15, 10, 0, 0, 0, time.Local)
+	now := time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC)
 	resolver := &ConflictResolver{}
 
 	tests := []struct {
@@ -221,8 +220,8 @@ func TestConflictResolver_CalculateScore(t *testing.T) {
 		{
 			name: "same day, different time",
 			alternative: TimeSlot{
-				Start: time.Date(2026, 1, 15, 14, 0, 0, 0, time.Local),
-				End:   time.Date(2026, 1, 15, 15, 0, 0, 0, time.Local),
+				Start: time.Date(2026, 2, 15, 14, 0, 0, 0, time.UTC),
+				End:   time.Date(2026, 2, 15, 15, 0, 0, 0, time.UTC),
 			},
 			minScore:       140, // 100 (same day) + 20 (same afternoon) + 10 (same weekday) + 10 (afternoon prime time)
 			expectedReason: "should have high score for same day",
@@ -230,8 +229,8 @@ func TestConflictResolver_CalculateScore(t *testing.T) {
 		{
 			name: "adjacent day",
 			alternative: TimeSlot{
-				Start:      time.Date(2026, 1, 16, 10, 0, 0, 0, time.Local),
-				End:        time.Date(2026, 1, 16, 11, 0, 0, 0, time.Local),
+				Start:      time.Date(2026, 2, 16, 10, 0, 0, 0, time.UTC),
+				End:        time.Date(2026, 2, 16, 11, 0, 0, 0, time.UTC),
 				IsAdjacent: true,
 			},
 			minScore:       40, // Base score minus adjacent penalty
@@ -249,21 +248,21 @@ func TestConflictResolver_CalculateScore(t *testing.T) {
 
 // TestConflictResolver_ScoreAlternativesAndSort tests that alternatives are sorted by score.
 func TestConflictResolver_ScoreAlternativesAndSort(t *testing.T) {
-	now := time.Date(2026, 1, 15, 10, 0, 0, 0, time.Local)
+	now := time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC)
 	resolver := &ConflictResolver{}
 
 	alternatives := []TimeSlot{
 		{
-			Start: time.Date(2026, 1, 16, 10, 0, 0, 0, time.Local), // Next day - lower score
-			End:   time.Date(2026, 1, 16, 11, 0, 0, 0, time.Local),
+			Start: time.Date(2026, 2, 16, 10, 0, 0, 0, time.UTC), // Next day - lower score
+			End:   time.Date(2026, 2, 16, 11, 0, 0, 0, time.UTC),
 		},
 		{
-			Start: time.Date(2026, 1, 15, 9, 0, 0, 0, time.Local), // Same day - higher score
-			End:   time.Date(2026, 1, 15, 10, 0, 0, 0, time.Local),
+			Start: time.Date(2026, 2, 15, 9, 0, 0, 0, time.UTC), // Same day - higher score
+			End:   time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC),
 		},
 		{
-			Start: time.Date(2026, 1, 15, 14, 0, 0, 0, time.Local), // Same day afternoon - high score
-			End:   time.Date(2026, 1, 15, 15, 0, 0, 0, time.Local),
+			Start: time.Date(2026, 2, 15, 14, 0, 0, 0, time.UTC), // Same day afternoon - high score
+			End:   time.Date(2026, 2, 15, 15, 0, 0, 0, time.UTC),
 		},
 	}
 
@@ -277,19 +276,19 @@ func TestConflictResolver_ScoreAlternativesAndSort(t *testing.T) {
 
 // TestConflictResolver_BusinessHoursPreference tests preference for business hours.
 func TestConflictResolver_BusinessHoursPreference(t *testing.T) {
-	now := time.Date(2026, 1, 15, 10, 0, 0, 0, time.Local)
+	now := time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC)
 	resolver := &ConflictResolver{}
 
 	// Morning prime time (9-11)
 	morningSlot := TimeSlot{
-		Start: time.Date(2026, 1, 15, 9, 0, 0, 0, time.Local),
-		End:   time.Date(2026, 1, 15, 10, 0, 0, 0, time.Local),
+		Start: time.Date(2026, 2, 15, 9, 0, 0, 0, time.UTC),
+		End:   time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC),
 	}
 
 	// Lunch time (11-13) - less preferred
 	lunchSlot := TimeSlot{
-		Start: time.Date(2026, 1, 15, 12, 0, 0, 0, time.Local),
-		End:   time.Date(2026, 1, 15, 13, 0, 0, 0, time.Local),
+		Start: time.Date(2026, 2, 15, 12, 0, 0, 0, time.UTC),
+		End:   time.Date(2026, 2, 15, 13, 0, 0, 0, time.UTC),
 	}
 
 	morningScore := resolver.calculateScore(now, morningSlot)
@@ -302,8 +301,7 @@ func TestConflictResolver_BusinessHoursPreference(t *testing.T) {
 func TestConflictResolver_AdjacentDayPreference(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	// Use a fixed date to avoid issues with time.Now() at month boundaries in UTC
-	now := time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC)
+	now := testBaseDate
 
 	// Make the current day fully booked
 	var schedules []*store.Schedule
@@ -351,11 +349,10 @@ func abs(x int) int {
 func TestConflictResolver_DurationVariations(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now()
 
 	// Create a schedule at 10:00-11:00
-	busyStart := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, time.Local)
-	busyEnd := time.Date(now.Year(), now.Month(), now.Day(), 11, 0, 0, 0, time.Local)
+	busyStart := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 10, 0, 0, 0, time.UTC)
+	busyEnd := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 11, 0, 0, 0, time.UTC)
 
 	mockStore := &MockStoreForSchedule{
 		schedules: []*store.Schedule{
@@ -411,12 +408,11 @@ func TestConflictResolver_DurationVariations(t *testing.T) {
 func TestConflictResolver_WithRecurringSchedules(t *testing.T) {
 	ctx := context.Background()
 	userID := int32(1)
-	now := time.Now()
 
 	// Create a recurring daily schedule at 10:00-11:00
 	rule := "FREQ=DAILY;COUNT=5"
-	busyStart := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, time.Local)
-	busyEnd := time.Date(now.Year(), now.Month(), now.Day(), 11, 0, 0, 0, time.Local)
+	busyStart := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 10, 0, 0, 0, time.UTC)
+	busyEnd := time.Date(testBaseDate.Year(), testBaseDate.Month(), testBaseDate.Day(), 11, 0, 0, 0, time.UTC)
 
 	mockStore := &MockStoreForSchedule{
 		schedules: []*store.Schedule{
