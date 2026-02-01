@@ -30,7 +30,7 @@ var (
 			// Systemd service uses /etc/divinesense/config for environment variables
 			if !isRunningAsSystemdService() {
 				// Try to load .env file from current directory (ignore error if file doesn't exist)
-				_ = godotenv.Load()
+				_ = godotenv.Load() // nolint:errcheck // Error intentionally ignored
 			}
 			return nil
 		},
