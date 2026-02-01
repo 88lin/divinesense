@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.80.3] - 2026-02-01
+
+### 🐛 Bug Fixes
+- **PostgreSQL**: Fixed SSL error when running binary without .env file
+  - Set default DSN in postgres.go matching .env.example defaults
+  - Default: `postgres://divinesense:divinesense@localhost:25432/divinesense?sslmode=disable`
+  - Resolves: `pq: SSL is not enabled on the server` error
+
 ## [v0.80.2] - 2026-02-01
 
 ### 📚 Documentation
