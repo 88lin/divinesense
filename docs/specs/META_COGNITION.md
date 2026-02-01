@@ -116,7 +116,3 @@ type RetrievalQuality struct {
 - [AI 代理架构](../dev-guides/ARCHITECTURE.md#ai-代理架构)
 - [RAG 检索系统](../research/00-master-roadmap.md)
 - [调试经验](../research/DEBUG_LESSONS.md)
-
----
-
-> 更新于 2026-01-31

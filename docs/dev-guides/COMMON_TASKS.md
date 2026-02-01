@@ -150,7 +150,3 @@ cd web && rm -rf node_modules && pnpm install
 - [快速开始](../../README.md#快速开始)
 - [系统架构](./ARCHITECTURE.md)
 - [项目路径](./PROJECT_PATHS.md)
-
----
-
-> 更新于 2026-01-31

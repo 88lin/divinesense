@@ -33,15 +33,15 @@ divinesense/
 
 ## 🔧 后端关键路径
 
-| 功能模块     | 路径                         |
-| :----------- | :--------------------------- |
-| **AI 代理**  | `server/ai/parrot/`          |
-| **工具系统** | `server/ai/tools/`           |
-| **意图路由** | `server/ai/router/`          |
-| **笔记服务** | `server/service/memo/`       |
-| **日程服务** | `server/service/schedule/`   |
-| **聊天服务** | `server/service/chat/`       |
-| **数据迁移** | `server/store/db/migration/` |
+| 功能模块     | 路径                              |
+| :----------- | :-------------------------------- |
+| **AI 代理**  | `plugin/ai/agent/`                |
+| **工具系统** | `plugin/ai/agent/tools/`         |
+| **意图路由** | `plugin/ai/agent/chat_router.go` |
+| **笔记服务** | `server/service/memo/`            |
+| **日程服务** | `server/service/schedule/`        |
+| **聊天服务** | `server/service/chat/`            |
+| **数据迁移** | `server/store/migration/`         |
 
 ---
 
@@ -75,7 +75,3 @@ divinesense/
 - [系统架构](./ARCHITECTURE.md)
 - [后端开发](./BACKEND_DB.md)
 - [前端开发](./FRONTEND.md)
-
----
-
-> 更新于 2026-01-31
