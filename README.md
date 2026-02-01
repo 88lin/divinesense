@@ -48,15 +48,20 @@ docker run -d --name divinesense \
 
 ## 部署指南
 
-### 生产环境
+### 生产环境（云服务器）
 
 ```bash
 # 二进制模式（Geek Mode 推荐）
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash -s -- --mode=binary
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/install.sh | sudo bash -s -- --mode=binary
 
 # Docker 模式
-curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/aliyun/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/install.sh | sudo bash
 ```
+
+**⚠️ 云服务器部署注意**：
+- 安装后需在控制台开放安全组端口（默认 5230）
+- 使用 80 端口需配置 `AmbientCapabilities=CAP_NET_BIND_SERVICE`
+- 详见：[云服务器部署注意事项](docs/deployment/BINARY_DEPLOYMENT.md#云服务器部署注意事项)
 
 **详细文档**：[部署指南](docs/deployment/BINARY_DEPLOYMENT.md) | [交互式向导](deploy/INTERACTIVE_WIZARD.md)
 

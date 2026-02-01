@@ -260,19 +260,26 @@ EOF
     fi
 
     # Systemd service
+    # 注意: 使用 --data 参数确保数据目录正确，使用 --port 参数设置端口
+    # AmbientCapabilities=CAP_NET_BIND_SERVICE 允许非 root 用户绑定 1024 以下端口
     cat > /etc/systemd/system/${SERVICE_NAME}.service << EOF
 [Unit]
 Description=DivineSense AI-Powered Personal Second Brain
-After=network-online.target
+After=network-online.target docker.service
 Wants=network-online.target
 
 [Service]
 Type=exec
 User=divine
 EnvironmentFile=-${CONFIG_DIR}/config
-ExecStart=${INSTALL_DIR}/bin/divinesense
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart=${INSTALL_DIR}/bin/divinesense --port \${DIVINESENSE_PORT:-5230} --data ${INSTALL_DIR}/data
 Restart=always
 RestartSec=10s
+
+# 安全加固
+NoNewPrivileges=false
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target

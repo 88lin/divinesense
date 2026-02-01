@@ -233,9 +233,62 @@ curl -fsSL https://raw.githubusercontent.com/hrygo/divinesense/main/deploy/insta
 | 问题           | 解决方案                         |
 | -------------- | -------------------------------- |
 | 镜像拉取慢     | 一键安装脚本已自动配置国内镜像源 |
-| 服务无法启动   | 查看日志 (logs命令)              |
-| 忘记数据库密码 | 查看 `.db_password` 文件         |
-| 防火墙问题     | 确保开放 5230 端口               |
+| 服务无法启动   | `journalctl -u divinesense -n 50` 查看日志 |
+| 忘记数据库密码 | `cat /etc/divinesense/.db_password`         |
+| 外网无法访问   | 需在云控制台开放安全组端口 (默认 5230) |
+
+### 服务启动失败
+
+**问题**: `listen tcp :80: bind: permission denied`
+
+**原因**: 非 root 用户无法绑定 1024 以下端口
+
+**解决**:
+```bash
+# 方法 1: 使用 8080 等非特权端口
+/opt/divinesense/deploy-binary.sh set-port 8080
+
+# 方法 2: 添加 AmbientCapabilities
+sudo tee /etc/systemd/system/divinesense.service << EOF
+[Service]
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart=/opt/divinesense/bin/divinesense --port 80 --data /opt/divinesense/data
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart divinesense
+```
+
+### 数据库连接失败
+
+**问题**: `type "vector" does not exist`
+
+**原因**: pgvector 扩展未启用
+
+**解决**:
+```bash
+# 启用 pgvector 扩展
+docker exec divinesense-postgres psql -U divine -d divinesense -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 重启服务
+systemctl restart divinesense
+```
+
+### 下载失败
+
+**问题**: `curl: (22) The requested URL returned error: 404`
+
+**原因**: GitHub Releases 文件名格式不匹配
+
+**解决**: 已在安装脚本中修复，确保使用最新版本
+
+### 端口切换
+
+**快速切换端口**:
+```bash
+/opt/divinesense/deploy-binary.sh set-port 80     # 切换到 80 端口
+/opt/divinesense/deploy-binary.sh set-port 8080   # 切换到 8080 端口
+/opt/divinesense/deploy-binary.sh set-port 5230   # 切换回默认端口
+```
 
 ---
 

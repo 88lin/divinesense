@@ -65,10 +65,10 @@ get_current_version() {
     "${INSTALL_DIR}/bin/divinesense" --version 2>/dev/null | grep -oP 'v?\K[0-9.]+' || echo "unknown"
 }
 
-# 获取最新版本
+# 获取最新版本（保留 v 前缀）
 get_latest_version() {
     curl -s --connect-timeout $CURL_CONNECT_TIMEOUT --max-time $CURL_MAX_TIME \
-        "${GITHUB_API_URL}/releases/latest" | grep -oP '"tag_name":\s*"v?\K[^"]+' | head -1
+        "${GITHUB_API_URL}/releases/latest" | grep -oP '"tag_name":\s*"\K[^"]+' | head -1
 }
 
 # 升级服务
@@ -146,6 +146,74 @@ stop() {
     log_info "停止服务..."
     systemctl stop "$SERVICE_NAME"
     log_success "服务已停止"
+}
+
+# 设置端口
+set_port() {
+    check_installed
+
+    local new_port="$2"
+    if [ -z "${new_port}" ]; then
+        log_error "请指定端口号"
+        echo "用法: $0 set-port <端口号>"
+        echo ""
+        echo "常用端口:"
+        echo "  80    - HTTP 标准端口（需要 AmbientCapabilities）"
+        echo "  443   - HTTPS 标准端口（需要 AmbientCapabilities）"
+        echo "  5230  - DivineSense 默认端口"
+        echo "  8080  - 常用 HTTP 备用端口"
+        exit 1
+    fi
+
+    # 验证端口号范围
+    if ! [[ "${new_port}" =~ ^[0-9]+$ ]] || [ "${new_port}" -lt 1 ] || [ "${new_port}" -gt 65535 ]; then
+        log_error "无效的端口号: ${new_port}"
+        exit 1
+    fi
+
+    log_info "更改端口为 ${new_port}..."
+
+    # 检查是否为特权端口
+    if [ "${new_port}" -lt 1024 ]; then
+        log_warn "端口 ${new_port} 是特权端口，需要 AmbientCapabilities=CAP_NET_BIND_SERVICE"
+    fi
+
+    # 停止服务
+    systemctl stop "$SERVICE_NAME"
+
+    # 更新配置文件
+    sed -i "s/^DIVINESENSE_PORT=.*/DIVINESENSE_PORT=${new_port}/" "${CONFIG_DIR}/config" 2>/dev/null || true
+
+    # 更新 systemd 服务文件
+    local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
+    if [ -f "$service_file" ]; then
+        # 检查是否有 AmbientCapabilities
+        if ! grep -q "AmbientCapabilities" "$service_file"; then
+            # 如果是特权端口，添加 AmbientCapabilities
+            if [ "${new_port}" -lt 1024 ]; then
+                sed -i "/\[Service\]/a AmbientCapabilities=CAP_NET_BIND_SERVICE" "$service_file"
+            fi
+        fi
+
+        # 更新 ExecStart 行
+        sed -i "s|ExecStart=.* --port [0-9]*|ExecStart=${INSTALL_DIR}/bin/divinesense --port ${new_port} --data ${INSTALL_DIR}/data|" "$service_file"
+
+        systemctl daemon-reload
+    fi
+
+    # 启动服务
+    systemctl start "$SERVICE_NAME"
+
+    # 等待服务就绪
+    sleep 3
+
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log_success "端口已更改为 ${new_port}"
+        log_info "访问地址: http://$(get_server_ip):${new_port}"
+    else
+        log_error "服务启动失败，请检查日志: journalctl -u ${SERVICE_NAME} -n 50"
+        exit 1
+    fi
 }
 
 # 显示状态
@@ -387,6 +455,7 @@ show_help() {
     echo "  logs      - 查看服务日志"
     echo "  backup    - 备份数据库"
     echo "  restore   - 恢复数据库 <文件>"
+    echo "  set-port  - 更改服务端口 <端口号>"
     echo "  uninstall - 卸载 DivineSense"
     echo ""
     echo "环境变量:"
@@ -398,6 +467,8 @@ show_help() {
     echo "  $0 logs                # 查看日志"
     echo "  $0 backup              # 创建备份"
     echo "  $0 restore backup.sql.gz # 恢复备份"
+    echo "  $0 set-port 80         # 更改为 80 端口"
+    echo "  $0 set-port 8080       # 更改为 8080 端口"
     echo ""
 }
 
@@ -426,6 +497,9 @@ case "${1:-help}" in
         ;;
     restore)
         restore "$@"
+        ;;
+    set-port)
+        set_port "$@"
         ;;
     uninstall)
         uninstall

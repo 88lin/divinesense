@@ -163,6 +163,65 @@ sudo systemctl restart divinesense
 
 ---
 
+## 云服务器部署注意事项
+
+### 阿里云 ECS / 腾讯云 CVM
+
+部署到云服务器时，需要注意以下事项：
+
+#### 1. 安全组配置
+
+安装完成后，需要在云控制台开放对应端口：
+
+| 服务 | 默认端口 | 说明 |
+|:-----|:---------|:-----|
+| DivineSense | 5230 | Web 访问端口 |
+| PostgreSQL | 25432 | 数据库端口（建议仅内网） |
+
+**阿里云操作路径**：
+1. ECS 实例 → 安全组 → 配置规则
+2. 添加入方向规则：端口 `5230/5230`，授权对象 `0.0.0.0/0`
+
+#### 2. 使用标准 80 端口
+
+如果需要使用 80 端口（HTTP 标准端口），需要特殊配置：
+
+```bash
+# 修改配置文件
+sudo nano /etc/divinesense/config
+# 修改: DIVINESENSE_PORT=80
+
+# 修改 systemd 服务文件，添加低端口绑定权限
+sudo nano /etc/systemd/system/divinesense.service
+# 在 [Service] 段添加: AmbientCapabilities=CAP_NET_BIND_SERVICE
+# 修改 ExecStart 为: ExecStart=/opt/divinesense/bin/divinesense --port 80 --data /opt/divinesense/data
+
+# 重载并重启
+sudo systemctl daemon-reload
+sudo systemctl restart divinesense
+```
+
+#### 3. 域名配置（可选）
+
+配置域名后，可以使用 Nginx 反向代理：
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:5230;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+---
+
 ## 升级
 
 ### Docker 模式
