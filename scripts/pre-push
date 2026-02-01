@@ -55,7 +55,7 @@ echo "🎨 Frontend:"
 if [ -d "web" ] && [ -f "web/package.json" ]; then
     cd web
     echo "  → pnpm lint..."
-    if ! pnpm lint --silent; then
+    if ! pnpm --silent lint; then
         echo "    ${RED}✗ Frontend lint failed${NC}"
         exit 1
     fi
