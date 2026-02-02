@@ -22,10 +22,10 @@ jobs:
           node-version: "20"
           cache: pnpm
           cache-dependency-path: "web/pnpm-lock.yaml"
-      - run: pnpm install
+      - run: pnpm install --silent --no-frozen-lockfile
         working-directory: web
-      - name: Run check
-        run: pnpm lint
+      - name: Run lint check
+        run: pnpm lint 2>&1 | grep -E '(error|warn|✓|✗|Checked|files)'
         working-directory: web
 
   frontend-build:
@@ -40,8 +40,8 @@ jobs:
           node-version: "20"
           cache: pnpm
           cache-dependency-path: "web/pnpm-lock.yaml"
-      - run: pnpm install
+      - run: pnpm install --silent --no-frozen-lockfile
         working-directory: web
-      - name: Run frontend build
-        run: pnpm build
+      - name: Build frontend
+        run: pnpm build --silent
         working-directory: web

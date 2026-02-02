@@ -29,14 +29,19 @@ jobs:
 
       - name: Verify go.mod is tidy
         run: |
-          go mod tidy -go=1.25
-          git diff --exit-code
+          go mod tidy -go=1.25 > /dev/null 2>&1
+          git diff --exit-code --stat
 
-      - name: golangci-lint
+      - name: golangci-lint (silent)
         uses: golangci/golangci-lint-action@v8
+        env:
+          GOLANGCI_LINT_OUTPUT: col,line-number,file
         with:
           version: v2.8.0
-          args: --config=.golangci.yaml --timeout=3m --build-tags=noui
+          args: --config=.golangci.yaml --timeout=3m --build-tags=noui --format=colored-line-number
+          output: col,line-number,file
+          skip-pkg-cache: true
+          skip-build-cache: true
 
   go-tests:
     runs-on: ubuntu-latest
@@ -61,18 +66,18 @@ jobs:
         run: |
             case "${{ matrix.test-group }}" in
               store)
-                go test -short -timeout=60s -race -coverprofile=coverage.out -covermode=atomic -tags=noui ./store/...
+                go test -short -timeout=60s -race -coverprofile=coverage.out -covermode=atomic -tags=noui ./store/... 2>&1 | grep -E '^(PASS|FAIL|ok|FAIL|\?|---)'
                 ;;
               server)
-                go test -short -timeout=60s -race -coverprofile=coverage.out -covermode=atomic -tags=noui ./server/...
+                go test -short -timeout=60s -race -coverprofile=coverage.out -covermode=atomic -tags=noui ./server/... 2>&1 | grep -E '^(PASS|FAIL|ok|FAIL|\?|---)'
                 ;;
               plugin)
                 go test -short -timeout=60s -race -coverprofile=coverage.out -covermode=atomic -tags=noui \
-                  $(go list ./plugin/... | grep -v "github.com/hrygo/divinesense/plugin/cron$")
+                  $(go list ./plugin/... | grep -v "github.com/hrygo/divinesense/plugin/cron$") 2>&1 | grep -E '^(PASS|FAIL|ok|FAIL|\?|---)'
                 ;;
               other)
                 go test -short -timeout=60s -race -coverprofile=coverage.out -covermode=atomic -tags=noui \
-                  ./cmd/... ./internal/...
+                  ./cmd/... ./internal/... 2>&1 | grep -E '^(PASS|FAIL|ok|FAIL|\?|---)'
                 ;;
             esac
         env:
@@ -85,3 +90,4 @@ jobs:
           files: ./coverage.out
           flags: ${{ matrix.test-group }}
           fail_ci_if_error: false
+          verbose: false

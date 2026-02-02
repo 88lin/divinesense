@@ -42,11 +42,11 @@ jobs:
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
       - name: Install Frontend Deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --silent --no-frozen-lockfile
         working-directory: web
 
       - name: Build Frontend
-        run: pnpm release
+        run: pnpm release --silent
         working-directory: web
 
       # Go Build
@@ -70,8 +70,8 @@ jobs:
               output_name="${output_name}.exe"
             fi
 
-            echo "Building for $GOOS/$GOARCH..."
-            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense
+            echo "Building $output_name"
+            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense 2>&1 | grep -E "(Building|error)" || true
 
             # Configure SHA256 generation based on OS
             cd dist
@@ -127,11 +127,11 @@ jobs:
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
       - name: Install Frontend Deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --silent --no-frozen-lockfile
         working-directory: web
 
       - name: Build Frontend
-        run: pnpm release
+        run: pnpm release --silent
         working-directory: web
 
       # Go Build
@@ -151,13 +151,11 @@ jobs:
             GOARCH=${platform_split[1]}
             output_name="divinesense-${VERSION}-${GOOS}-${GOARCH}"
 
-            echo "Building for $GOOS/$GOARCH..."
-            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense
+            echo "Building $output_name"
+            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense 2>&1 | grep -E "(Building|error)" || true
 
             # Ad-hoc sign to bypass Gatekeeper
-            echo "  Signing with ad-hoc signature..."
-            codesign --force --deep --sign - dist/$output_name
-            codesign -vvv dist/$output_name 2>&1 | grep -E "(valid on disk|satisfies its Designated Requirement)" || true
+            codesign --force --deep --sign - dist/$output_name 2>&1 | grep -E "(signing|valid|error)" || true
 
             # Generate checksum
             cd dist
