@@ -18,8 +18,9 @@
 
 ## 🏗️ 架构与核心能力
 
-| 文档                                                                   | 描述                           | 状态     |
+| 文案                                                                   | 描述                           | 状态     |
 | :--------------------------------------------------------------------- | :----------------------------- | :------- |
+| [ai-core-refactor-research.md](./ai-core-refactor-research.md)         | AI Core 模块提升重构调研       | 📝 待实施 |
 | [auto-update-research.md](./auto-update-research.md)                   | 应用自动更新功能调研           | 📝 待开发 |
 | [idea-researcher-self-research.md](./idea-researcher-self-research.md) | Idea Researcher Skill 自我调研 | ✅ 已完成 |
 | [skill-design-audit.md](./skill-design-audit.md)                       | Skill 设计原则与审计           | ✅ 已完成 |
