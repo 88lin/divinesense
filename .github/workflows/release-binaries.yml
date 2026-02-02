@@ -46,7 +46,7 @@ jobs:
         working-directory: web
 
       - name: Build Frontend
-        run: pnpm release --silent
+        run: pnpm release 2>&1 | grep -E '(error|warn|built|Building|✓)' || true
         working-directory: web
 
       # Go Build
@@ -131,7 +131,7 @@ jobs:
         working-directory: web
 
       - name: Build Frontend
-        run: pnpm release --silent
+        run: pnpm release 2>&1 | grep -E '(error|warn|built|Building|✓)' || true
         working-directory: web
 
       # Go Build

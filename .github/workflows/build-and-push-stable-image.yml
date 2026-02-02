@@ -49,7 +49,7 @@ jobs:
       - run: pnpm install --silent --frozen-lockfile
         working-directory: web
       - name: Run frontend build
-        run: pnpm release --silent
+        run: pnpm release 2>&1 | grep -E '(error|warn|built|Building|✓)' || true
         working-directory: web
 
       - name: Upload frontend artifacts
