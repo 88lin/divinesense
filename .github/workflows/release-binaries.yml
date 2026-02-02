@@ -42,7 +42,7 @@ jobs:
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
       - name: Install Frontend Deps
-        run: pnpm install --silent --no-frozen-lockfile
+        run: pnpm install --silent --frozen-lockfile
         working-directory: web
 
       - name: Build Frontend
@@ -71,7 +71,7 @@ jobs:
             fi
 
             echo "Building $output_name"
-            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense 2>&1 | grep -E "(Building|error)" || true
+            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense
 
             # Configure SHA256 generation based on OS
             cd dist
@@ -127,7 +127,7 @@ jobs:
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
       - name: Install Frontend Deps
-        run: pnpm install --silent --no-frozen-lockfile
+        run: pnpm install --silent --frozen-lockfile
         working-directory: web
 
       - name: Build Frontend
@@ -152,10 +152,10 @@ jobs:
             output_name="divinesense-${VERSION}-${GOOS}-${GOARCH}"
 
             echo "Building $output_name"
-            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense 2>&1 | grep -E "(Building|error)" || true
+            env GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.Version=$VERSION" -o dist/$output_name ./cmd/divinesense
 
             # Ad-hoc sign to bypass Gatekeeper
-            codesign --force --deep --sign - dist/$output_name 2>&1 | grep -E "(signing|valid|error)" || true
+            codesign --force --deep --sign - dist/$output_name
 
             # Generate checksum
             cd dist
