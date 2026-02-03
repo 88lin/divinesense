@@ -25,6 +25,7 @@
 | [idea-researcher-self-research.md](./idea-researcher-self-research.md) | Idea Researcher Skill 自我调研 | ✅ 已完成 |
 | [skill-design-audit.md](./skill-design-audit.md)                       | Skill 设计原则与审计           | ✅ 已完成 |
 | [cc-runner-async-upgrade.md](./cc-runner-async-upgrade.md)             | CCRunner 异步化与 UX 升级      | ✅ 已完成 |
+| [session-nested-model-research.md](./session-nested-model-research.md) | 会话嵌套模型调研 (母会话-子会话) | 📝 待实施 |
 
 ---
 
