@@ -15,6 +15,8 @@ import (
 	"github.com/hrygo/divinesense/ai"
 	"github.com/hrygo/divinesense/ai/core/retrieval"
 	"github.com/hrygo/divinesense/internal/profile"
+	"github.com/hrygo/divinesense/plugin/chat_apps/channels"
+	chatstore "github.com/hrygo/divinesense/plugin/chat_apps/store"
 	"github.com/hrygo/divinesense/plugin/markdown"
 	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
 	"github.com/hrygo/divinesense/server/auth"
@@ -33,6 +35,7 @@ type APIV1Service struct {
 	v1pb.UnimplementedAuthServiceServer
 	v1pb.UnimplementedInstanceServiceServer
 	v1pb.UnimplementedMemoServiceServer
+	v1pb.UnimplementedChatAppServiceServer
 	MarkdownService      markdown.Service
 	Profile              *profile.Profile
 	Store                *store.Store
@@ -41,6 +44,8 @@ type APIV1Service struct {
 	ScheduleAgentService *ScheduleAgentService
 	thumbnailSemaphore   *semaphore.Weighted
 	Secret               string
+	chatChannelRouter    *channels.ChannelRouter
+	chatAppStore         *chatstore.ChatAppStore
 }
 
 func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store) *APIV1Service {
@@ -54,6 +59,8 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 		MarkdownService:    markdownService,
 		thumbnailSemaphore: semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
 		ScheduleService:    &ScheduleService{Store: store},
+		chatChannelRouter:  channels.NewChannelRouter(nil),
+		chatAppStore:       chatstore.NewChatAppStore(store.GetDriver().GetDB()),
 	}
 
 	// Initialize AI service if enabled
@@ -119,6 +126,14 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 
 // RegisterGateway registers the gRPC-Gateway and Connect handlers with the given Echo instance.
 func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Echo) error {
+	// Validate chat apps configuration at startup
+	if err := validateChatAppsConfig(); err != nil {
+		slog.Warn("chat apps configuration invalid, chat apps features will be disabled",
+			"error", err,
+		)
+		// Don't fail startup, just log a warning
+	}
+
 	// Auth middleware for gRPC-Gateway - runs after routing, has access to method name.
 	// Uses the same PublicMethods config as the Connect AuthInterceptor.
 	authenticator := auth.NewAuthenticator(s.Store, s.Secret)
@@ -202,6 +217,10 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 			return err
 		}
 	}
+	// Register ChatAppService
+	if err := v1pb.RegisterChatAppServiceHandlerServer(ctx, gwMux, s); err != nil {
+		return err
+	}
 	gwGroup := echoServer.Group("")
 	gwGroup.Use(middleware.CORS())
 	handler := echo.WrapHandler(gwMux)
@@ -236,6 +255,12 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	// Register metrics routes (direct REST endpoints)
 	systemGroup := echoServer.Group("/api/v1/system", corsHandler)
 	systemGroup.GET("/metrics/overview", s.GetMetricsOverview)
+
+	// Initialize chat channels from database
+	if err := s.initializeChatChannels(ctx); err != nil {
+		slog.Warn("failed to initialize chat channels", "error", err)
+		// Don't fail startup if chat channels fail to initialize
+	}
 
 	return nil
 }

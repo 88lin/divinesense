@@ -1,7 +1,19 @@
-import { BarChart3Icon, CogIcon, DatabaseIcon, KeyIcon, LibraryIcon, LucideIcon, Settings2Icon, UserIcon, UsersIcon } from "lucide-react";
+import {
+  BarChart3Icon,
+  CogIcon,
+  DatabaseIcon,
+  KeyIcon,
+  LibraryIcon,
+  LucideIcon,
+  MessageSquareIcon,
+  Settings2Icon,
+  UserIcon,
+  UsersIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import MobileHeader from "@/components/MobileHeader";
+import ChatAppsSection from "@/components/Settings/ChatAppsSection";
 import InstanceSection from "@/components/Settings/InstanceSection";
 import MemberSection from "@/components/Settings/MemberSection";
 import MemoRelatedSettings from "@/components/Settings/MemoRelatedSettings";
@@ -19,17 +31,18 @@ import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
 import { User_Role } from "@/types/proto/api/v1/user_service_pb";
 import { useTranslate } from "@/utils/i18n";
 
-type SettingSection = "my-account" | "preference" | "member" | "system" | "memo-related" | "storage" | "sso" | "metrics";
+type SettingSection = "my-account" | "preference" | "member" | "system" | "memo-related" | "storage" | "sso" | "metrics" | "chat-apps";
 
 interface State {
   selectedSection: SettingSection;
 }
 
-const BASIC_SECTIONS: SettingSection[] = ["my-account", "preference"];
+const BASIC_SECTIONS: SettingSection[] = ["my-account", "preference", "chat-apps"];
 const ADMIN_SECTIONS: SettingSection[] = ["member", "system", "memo-related", "storage", "sso", "metrics"];
 const SECTION_ICON_MAP: Record<SettingSection, LucideIcon> = {
   "my-account": UserIcon,
   preference: CogIcon,
+  "chat-apps": MessageSquareIcon,
   member: UsersIcon,
   system: Settings2Icon,
   "memo-related": LibraryIcon,
@@ -97,7 +110,7 @@ const Setting = () => {
                 {BASIC_SECTIONS.map((item) => (
                   <SectionMenuItem
                     key={item}
-                    text={t(`setting.${item}`)}
+                    text={item === "chat-apps" ? t(`setting.${item}.title`) : t(`setting.${item}`)}
                     icon={SECTION_ICON_MAP[item]}
                     isSelected={state.selectedSection === item}
                     onClick={() => handleSectionSelectorItemClick(item)}
@@ -135,7 +148,7 @@ const Setting = () => {
                   <SelectContent>
                     {settingsSectionList.map((settingSection) => (
                       <SelectItem key={settingSection} value={settingSection}>
-                        {t(`setting.${settingSection}`)}
+                        {settingSection === "chat-apps" ? t(`setting.${settingSection}.title`) : t(`setting.${settingSection}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -146,6 +159,8 @@ const Setting = () => {
               <MyAccountSection />
             ) : state.selectedSection === "preference" ? (
               <PreferencesSection />
+            ) : state.selectedSection === "chat-apps" ? (
+              <ChatAppsSection />
             ) : state.selectedSection === "member" ? (
               <MemberSection />
             ) : state.selectedSection === "system" ? (
