@@ -16,6 +16,7 @@ import (
 	"github.com/hrygo/divinesense/ai"
 	agentpkg "github.com/hrygo/divinesense/ai/agent"
 	"github.com/hrygo/divinesense/ai/router"
+	aistats "github.com/hrygo/divinesense/ai/stats"
 	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
 	"github.com/hrygo/divinesense/server/internal/errors"
 	"github.com/hrygo/divinesense/server/internal/observability"
@@ -32,13 +33,15 @@ type ParrotHandler struct {
 	factory    *AgentFactory
 	llm        ai.LLMService
 	chatRouter *agentpkg.ChatRouter
+	persister  *aistats.Persister // session stats persister
 }
 
 // NewParrotHandler creates a new parrot handler.
-func NewParrotHandler(factory *AgentFactory, llm ai.LLMService) *ParrotHandler {
+func NewParrotHandler(factory *AgentFactory, llm ai.LLMService, persister *aistats.Persister) *ParrotHandler {
 	return &ParrotHandler{
-		factory: factory,
-		llm:     llm,
+		factory:   factory,
+		llm:       llm,
+		persister: persister,
 	}
 }
 
@@ -311,6 +314,10 @@ func (h *ParrotHandler) executeAgent(
 	var toolsUsed []string
 	var toolMu sync.Mutex
 
+	// Track total cost from session_stats event
+	var totalCostUsd float64
+	var costMu sync.Mutex
+
 	// Track last event time for heartbeats
 	lastEventTime := atomic.Int64{}
 	lastEventTime.Store(time.Now().UnixNano())
@@ -374,6 +381,30 @@ func (h *ParrotHandler) executeAgent(
 					toolMu.Unlock()
 				}
 			}
+		} else if eventType == agentpkg.EventTypeSessionStats {
+			// Handle session_stats event (from CCRunner result message)
+			// Extract and store total cost for final SessionSummary
+			if sessionStatsData, ok := eventData.(*agentpkg.SessionStatsData); ok {
+				costMu.Lock()
+				totalCostUsd = sessionStatsData.TotalCostUSD
+				costMu.Unlock()
+				logger.Info("Session stats received",
+					slog.Float64("total_cost_usd", sessionStatsData.TotalCostUSD),
+					slog.Int("total_tokens", int(sessionStatsData.TotalTokens)),
+					slog.Int64("duration_ms", sessionStatsData.TotalDurationMs))
+
+				// Enqueue for async persistence
+				if h.persister != nil {
+					enqueued := h.persister.EnqueueSessionStatsData(sessionStatsData)
+					if !enqueued {
+						logger.Warn("Failed to enqueue session stats for persistence",
+							slog.String("session_id", sessionStatsData.SessionID),
+							slog.Int("queue_size", h.persister.QueueSize()))
+					}
+				}
+			}
+			// Don't stream session_stats to frontend (it's included in final SessionSummary)
+			return nil
 		} else {
 			// Handle legacy event types (string, error)
 			switch v := eventData.(type) {
@@ -423,19 +454,27 @@ func (h *ParrotHandler) executeAgent(
 					// Send heartbeat
 					streamMu.Lock()
 					// Just send a lightweight ping chunk
-					_ = stream.Send(&v1pb.ChatResponse{
+					err := stream.Send(&v1pb.ChatResponse{
 						EventType: "ping",
 						EventData: ".", // Minimal data
 					})
 					streamMu.Unlock()
+					// If send fails, client disconnected - stop heartbeat early
+					if err != nil {
+						logger.Debug("Heartbeat send failed, stopping", slog.String("error", err.Error()))
+						return
+					}
 				}
 			}
 		}
 	}()
 
 	// Execute agent
+	defer close(heartbeatDone) // Ensure heartbeat stops even on panic
 	execErr := agent.ExecuteWithCallback(ctx, req.Message, req.History, callback)
-	close(heartbeatDone) // Stop heartbeat immediately after execution finishes
+	logger.Info("Agent: ExecuteWithCallback completed",
+		slog.String("execErr", fmt.Sprintf("%v", execErr)),
+		slog.Int64("duration_ms", time.Since(sessionStartTime).Milliseconds()))
 	if execErr != nil {
 		logger.Error("Agent execution failed", execErr)
 		// Don't return here, continue to send session summary
@@ -445,12 +484,17 @@ func (h *ParrotHandler) executeAgent(
 
 	// Calculate session summary
 	sessionTotalDuration = time.Since(sessionStartTime).Milliseconds()
+	logger.Info("Agent: preparing session summary",
+		slog.Int64("duration_ms", sessionTotalDuration))
 
 	// Try to get detailed stats from agent if available (GeekParrot/EvolutionParrot)
 	// 尝试从 agent 获取详细统计数据（如果可用，如 GeekParrot/EvolutionParrot）
 	var detailedStats *agentpkg.SessionStats
 	if statsProvider, ok := agent.(agentpkg.SessionStatsProvider); ok {
 		detailedStats = statsProvider.GetSessionStats()
+		logger.Info("Agent: got detailed stats from SessionStatsProvider")
+	} else {
+		logger.Info("Agent: agent is not a SessionStatsProvider")
 	}
 
 	// Safely get tool usage stats
@@ -469,11 +513,31 @@ func (h *ParrotHandler) executeAgent(
 	// Build session summary with available data
 	// 使用可用数据构建会话摘要
 	sessionSummary := &v1pb.SessionSummary{
-		SessionId:       fmt.Sprintf("conv_%d", req.ConversationID),
 		TotalDurationMs: sessionTotalDuration,
 		Status:          status,
 		ToolCallCount:   finalToolCallCount,
 		ToolsUsed:       finalToolsUsed,
+		TotalCostUsd:    totalCostUsd,
+	}
+
+	// Set SessionId from detailedStats (Geek/Evolution modes use real UUID session IDs)
+	// If no detailed stats available, fall back to conversation ID format for backward compatibility
+	// 从 detailedStats 设置 SessionId（Geek/Evolution 模式使用真实的 UUID session ID）
+	// 如果没有详细统计数据，回退到 conversation ID 格式以保持向后兼容
+	if detailedStats != nil && detailedStats.SessionID != "" {
+		sessionSummary.SessionId = detailedStats.SessionID
+	} else {
+		sessionSummary.SessionId = fmt.Sprintf("conv_%d", req.ConversationID)
+	}
+
+	// Set mode based on request parameters
+	// 根据请求参数设置模式
+	if req.EvolutionMode {
+		sessionSummary.Mode = "evolution"
+	} else if req.GeekMode {
+		sessionSummary.Mode = "geek"
+	} else {
+		sessionSummary.Mode = "normal"
 	}
 
 	// Add detailed stats if available (from GeekParrot/EvolutionParrot)
@@ -501,6 +565,13 @@ func (h *ParrotHandler) executeAgent(
 
 	// Safely send done marker
 	streamMu.Lock()
+	logger.Info("Agent: sending done marker with session summary",
+		slog.String("session_id", sessionSummary.SessionId),
+		slog.Int64("duration_ms", sessionSummary.TotalDurationMs),
+		slog.Int64("tool_calls", int64(sessionSummary.ToolCallCount)),
+		slog.Bool("done", true),
+		slog.Bool("has_session_summary", sessionSummary != nil),
+	)
 	sendErr := stream.Send(&v1pb.ChatResponse{
 		Done:           true,
 		SessionSummary: sessionSummary,
@@ -508,6 +579,14 @@ func (h *ParrotHandler) executeAgent(
 	streamMu.Unlock()
 
 	if sendErr != nil {
+		logger.Error("Agent: failed to send done marker", sendErr,
+			slog.String("error", sendErr.Error()))
+	} else {
+		logger.Info("Agent: done marker sent successfully")
+	}
+
+	if sendErr != nil {
+		logger.Error("Agent: failed to send done marker", sendErr)
 		// If send fails, return the error (prefer execErr if it exists)
 		if execErr != nil {
 			return execErr

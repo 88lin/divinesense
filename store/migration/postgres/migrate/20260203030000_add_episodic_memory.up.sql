@@ -24,15 +24,15 @@ CREATE TABLE episodic_memory (
 );
 
 -- Index for querying user's episodes by time
-CREATE INDEX idx_episodic_memory_user_time 
+CREATE INDEX idx_episodic_memory_user_time
 ON episodic_memory(user_id, timestamp DESC);
 
 -- Index for filtering by agent type
-CREATE INDEX idx_episodic_memory_agent 
+CREATE INDEX idx_episodic_memory_agent
 ON episodic_memory(agent_type);
 
 -- Index for importance-based queries
-CREATE INDEX idx_episodic_memory_importance 
+CREATE INDEX idx_episodic_memory_importance
 ON episodic_memory(user_id, importance DESC);
 
 COMMENT ON TABLE episodic_memory IS 'Stores episodic memories for AI agents to learn from past interactions';

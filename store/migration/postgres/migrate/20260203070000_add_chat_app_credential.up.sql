@@ -1,4 +1,4 @@
--- Migration: 20260203_chat_apps_credential
+-- Migration: 20250103070000_add_chat_app_credential
 -- Description: Add chat_app_credential table for multi-platform chat app integrations
 
 -- Create chat_app_credential table

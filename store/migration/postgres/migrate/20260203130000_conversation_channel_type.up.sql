@@ -1,4 +1,4 @@
--- Migration: 20260203_conversation_channel_type
+-- Migration: 20250103130000_conversation_channel_type
 -- Description: Add channel_type column to conversation_context table
 
 -- Add channel_type column to track where conversations originated

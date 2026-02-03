@@ -1,4 +1,4 @@
--- Migration: V0.53.4__add_chat_app_app_secret
+-- Migration: 20250103080000_add_chat_app_app_secret
 -- Description: Add app_secret column to chat_app_credential for DingTalk AppSecret
 
 -- Add app_secret column for storing additional secrets (e.g., DingTalk AppSecret)

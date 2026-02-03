@@ -272,8 +272,25 @@ export function useChat() {
         const sources: string[] = [];
         let fullContent = "";
         let doneCalled = false;
+        let responseCount = 0;
+
+        if (import.meta.env.DEV) {
+          console.log("[AI Chat] Starting stream loop", { message: params.message.slice(0, 50) });
+        }
 
         for await (const response of stream) {
+          responseCount++;
+          if (import.meta.env.DEV) {
+            console.log("[AI Chat] Stream response", {
+              responseCount,
+              hasContent: !!response.content,
+              hasEventType: !!response.eventType,
+              hasEventMeta: !!response.eventMeta,
+              done: response.done,
+              hasSessionSummary: !!response.sessionSummary,
+              eventType: response.eventType,
+            });
+          }
           // Handle sources (sent in first response)
           if (response.sources.length > 0) {
             sources.push(...response.sources);
@@ -447,12 +464,22 @@ export function useChat() {
 
           // Handle completion
           if (response.done === true) {
+            if (import.meta.env.DEV) {
+              console.log("[AI Chat] Received done=true signal", {
+                responseCount,
+                hasSessionSummary: !!response.sessionSummary,
+                sessionId: response.sessionSummary?.sessionId,
+                sessionSummary: response.sessionSummary,
+                fullResponse: response,
+              });
+            }
             doneCalled = true;
             // Send session summary if available (Geek/Evolution modes)
             if (response.sessionSummary) {
               // Convert proto SessionSummary (bigint fields) to local SessionSummary (number fields)
               const summary = {
                 sessionId: response.sessionSummary.sessionId,
+                mode: response.sessionSummary.mode, // "geek" | "evolution" | "normal"
                 totalDurationMs: response.sessionSummary.totalDurationMs ? Number(response.sessionSummary.totalDurationMs) : undefined,
                 thinkingDurationMs: response.sessionSummary.thinkingDurationMs
                   ? Number(response.sessionSummary.thinkingDurationMs)
@@ -469,6 +496,7 @@ export function useChat() {
                 toolsUsed: response.sessionSummary.toolsUsed,
                 filesModified: response.sessionSummary.filesModified,
                 filePaths: response.sessionSummary.filePaths,
+                totalCostUSD: response.sessionSummary.totalCostUsd,
                 status: response.sessionSummary.status,
                 errorMsg: response.sessionSummary.errorMsg,
               };
@@ -481,7 +509,16 @@ export function useChat() {
 
         // Fallback: if stream ended without done signal, call onDone
         if (!doneCalled) {
+          if (import.meta.env.DEV) {
+            console.warn("[AI Chat] Stream ended without done=true signal", {
+              responseCount,
+              doneCalled,
+              callingFallback: true,
+            });
+          }
           callbacks?.onDone?.();
+        } else if (import.meta.env.DEV) {
+          console.log("[AI Chat] Stream completed successfully", { responseCount, doneCalled });
         }
 
         // Clear timeout on successful completion

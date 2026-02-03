@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	pluginai "github.com/hrygo/divinesense/ai"
 	"github.com/hrygo/divinesense/ai/core/retrieval"
 	"github.com/hrygo/divinesense/ai/memory"
 	"github.com/hrygo/divinesense/ai/router"
+	aistats "github.com/hrygo/divinesense/ai/stats"
 	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
 	"github.com/hrygo/divinesense/server/auth"
 	"github.com/hrygo/divinesense/server/middleware"
@@ -37,10 +39,32 @@ type AIService struct {
 	contextBuilder           *aichat.ContextBuilder
 	conversationSummarizer   *aichat.ConversationSummarizer
 	EmbeddingModel           string
+	persister                *aistats.Persister // session stats async persister
 	routerServiceMu          sync.RWMutex
 	chatEventBusMu           sync.RWMutex
 	contextBuilderMu         sync.RWMutex
 	conversationSummarizerMu sync.RWMutex
+	mu                       sync.RWMutex
+}
+
+// Close gracefully shuts down the AI service, including the persister.
+func (s *AIService) Close(timeout time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var errs []error
+
+	if s.persister != nil {
+		if err := s.persister.Close(timeout); err != nil {
+			errs = append(errs, fmt.Errorf("persister close failed: %w", err))
+		}
+		s.persister = nil
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("AIService close errors: %v", errs)
+	}
+	return nil
 }
 
 // IsEnabled returns whether AI features are enabled.

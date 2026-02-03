@@ -18,11 +18,11 @@ CREATE TABLE conversation_context (
 );
 
 -- Index for querying user's sessions
-CREATE INDEX idx_conversation_context_user 
+CREATE INDEX idx_conversation_context_user
 ON conversation_context(user_id);
 
 -- Index for sorting by update time
-CREATE INDEX idx_conversation_context_updated 
+CREATE INDEX idx_conversation_context_updated
 ON conversation_context(updated_ts DESC);
 
 -- Note: session_id already has a UNIQUE constraint which creates an implicit index,

@@ -2,10 +2,10 @@
 -- Memos 0.51.0 Baseline Migration
 -- =============================================================================
 --
--- 用途: 将低于 0.51.0 的数据库同步到当前 schema
--- 场景: 从历史版本 (0.19 - 0.50) 升级到 0.51.0
+-- Purpose: Sync databases below 0.51.0 to current schema
+-- Scenario: Upgrading from legacy versions (0.19 - 0.50) to 0.51.0
 --
--- 注意: 此脚本使用 IF NOT EXISTS 确保幂等性，可重复执行
+-- Note: This script uses IF NOT EXISTS to ensure idempotency
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -122,5 +122,5 @@ CREATE TRIGGER trigger_ai_conversation_updated_ts
 -- Update Schema Version
 -- -----------------------------------------------------------------------------
 INSERT INTO system_setting (name, value, description) VALUES
-('schema_version', '0.51.0', '数据库 schema 版本')
+('schema_version', '0.51.0', 'Database schema version')
 ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;

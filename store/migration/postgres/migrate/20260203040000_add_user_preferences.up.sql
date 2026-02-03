@@ -27,7 +27,7 @@ CREATE TRIGGER trigger_user_preferences_updated_ts
   EXECUTE FUNCTION update_user_preferences_updated_ts();
 
 -- GIN index for efficient JSONB queries
-CREATE INDEX idx_user_preferences_gin 
+CREATE INDEX idx_user_preferences_gin
 ON user_preferences USING gin(preferences);
 
 COMMENT ON TABLE user_preferences IS 'Stores user preferences for AI personalization';
