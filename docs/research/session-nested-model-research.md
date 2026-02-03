@@ -104,50 +104,130 @@
 ### 数据模型
 
 ```sql
--- 扩展 ai_conversation 表
-ALTER TABLE ai_conversation ADD COLUMN parent_conversation_id INTEGER;
-ALTER TABLE ai_conversation ADD COLUMN session_mode VARCHAR(20); -- 'normal'|'geek'|'evolution'
-ALTER TABLE ai_conversation ADD COLUMN cc_session_id VARCHAR(64); -- 仅用于引用
+-- 文件: store/migration/postgres/V0.82.0__add_subsession_support.sql
 
--- 索引
+-- 扩展 ai_conversation 表支持子会话
+ALTER TABLE ai_conversation
+    ADD COLUMN parent_conversation_id INTEGER REFERENCES ai_conversation(id),
+    ADD COLUMN session_mode VARCHAR(20) DEFAULT 'normal',  -- 'normal'|'geek'|'evolution'
+    ADD COLUMN cc_session_id VARCHAR(64);
+
 CREATE INDEX idx_conversation_parent ON ai_conversation(parent_conversation_id);
+CREATE INDEX idx_conversation_mode ON ai_conversation(session_mode);
+CREATE INDEX idx_conversation_cc_session ON ai_conversation(cc_session_id);
+```
+
+**数据存储示例**：
+```
+ai_conversation:
+┌─────┬──────────────┬─────────────┬──────────────┬───────────────────┐
+│ id  │ parent_id    │ mode        │ cc_session_id│ title             │
+├─────┼──────────────┼─────────────┼──────────────┼───────────────────┤
+│ 100 │ NULL         │ 'normal'    │ NULL         │ '主会话'         │
+│ 101 │ 100          │ 'geek'      │ 'uuid-xxx'   │ '极客子会话'     │
+└─────┴──────────────┴─────────────┴──────────────┴───────────────────┘
+
+ai_message (Q&A 完整保存):
+┌──────┬─────────────────┬──────────┬──────────────┬─────────────────────────┐
+│ id   │ conversation_id│ role     │ type         │ content                 │
+├──────┼─────────────────┼──────────┼──────────────┼─────────────────────────┤
+│ 1001 │ 101             │ 'user'   │ 'MESSAGE'    │ 'Q1: 分析性能瓶颈'      │
+│ 1002 │ 101             │ 'user'   │ 'MESSAGE'    │ 'Q2: 检查内存泄漏'      │
+│ 1003 │ 101             │ 'user'   │ 'MESSAGE'    │ 'Q3: 生成优化代码'      │
+│ 1004 │ 101             │'assistant'│ 'MESSAGE'    │ '[完整 CC 响应]'       │
+│ 1005 │ 101             │ 'user'   │ 'MESSAGE'    │ 'Q4: 再优化一下'        │
+│ 1006 │ 101             │'assistant'│ 'MESSAGE'    │ '[第二波响应]'         │
+└──────┴─────────────────┴──────────┴──────────────┴─────────────────────────┘
 ```
 
 **不保留**：
-- ❌ CC CLI 原始会话内容
-- ❌ thinking/tool_use 详细过程
-- ❌ artifacts 文件内容
+- ❌ CC CLI 原始会话内容（已在本地持久化）
+- ❌ thinking/tool_use 详细过程（可从 CC Session 查看）
 
 **保留**：
-- ✅ 子会话摘要（1-3 句话）
-- ✅ cc_session_id（用于本地调试时追溯）
-- ✅ 产出的文件路径列表
+- ✅ 完整 Q+A（每条作为 `ai_message` 保存）
+- ✅ cc_session_id（用于本地追溯）
+- ❌ LLM 摘要（不需要，完整 Q+A 更好）
 
 ### 前端类型定义
 
 ```typescript
-// 扩展 Conversation 类型
-export interface Conversation {
-  id: string;
-  parentConversationId?: string; // 母会话 ID
-  sessionMode?: 'normal' | 'geek' | 'evolution'; // 会话模式
-  ccSessionId?: string; // CC CLI session ID
+// 子会话元数据
+export interface SubsessionMetadata {
+  id: string;                 // 子会话 ID (conversation_id)
+  mode: 'geek' | 'evolution';
+  ccSessionId: string;
+  parentConversationId: string;  // 母会话 ID
+  status: 'active' | 'idle' | 'closed';
+  enteredAt: number;
+  lastActivityAt: number;
 
-  // 现有字段...
-  title: string;
-  messages: ChatItem[];
-  // ...
+  // 追加的指令列表
+  pendingInputs: SubsessionInput[];
 }
 
-// 新增：子会话卡片数据
-export interface SubsessionMetadata {
+// 子会话中的单条输入
+export interface SubsessionInput {
   id: string;
-  mode: 'geek' | 'evolution';
-  status: 'running' | 'completed' | 'failed';
-  startTime: number;
-  endTime?: number;
-  summary?: string; // LLM 生成的摘要
-  artifacts?: string[]; // 产出文件路径
+  content: string;
+  timestamp: number;
+  status: 'queued' | 'processing' | 'completed';
+}
+```
+
+### 后端实现（基于现有异步架构）
+
+**关键发现**：`plugin/ai/agent/session_manager.go` 已实现持久会话
+- `GetOrCreateSession()` - 获取/创建持久会话
+- `Session.WriteInput()` - 线程安全的 Stdin 追加
+- 30 分钟空闲超时自动清理
+
+**GeekParrot 改造**：
+
+```go
+type GeekParrot struct {
+    // ... 现有字段
+
+    // 新增：持久会话支持
+    persistentSession *Session
+    sessionMutex     sync.RWMutex
+    conversationID   int64
+}
+
+// EnterSubsession 进入子会话模式（启动持久会话）
+func (p *GeekParrot) EnterSubsession(ctx context.Context, cfg CCRunnerConfig) (*Session, error) {
+    sess, err := p.runner.StartAsyncSession(ctx, &cfg)
+    if err != nil {
+        return nil, err
+    }
+
+    p.persistentSession = sess
+    p.conversationID = cfg.ConversationID
+
+    // 启动流式输出读取循环
+    go p.streamLoop(sess, cfg.ConversationID)
+
+    return sess, nil
+}
+
+// AppendInput 追加用户输入（线程安全）
+func (p *GeekParrot) AppendInput(ctx context.Context, input string) error {
+    sess := p.persistentSession
+    if sess == nil {
+        return fmt.Errorf("no active subsession")
+    }
+
+    msg := map[string]any{
+        "type": "user",
+        "message": map[string]any{
+            "role": "user",
+            "content": []map[string]any{
+                {"type": "text", "text": input},
+            },
+        },
+    }
+
+    return sess.WriteInput(msg)  // 线程安全，直接写入 Stdin
 }
 ```
 
@@ -155,148 +235,139 @@ export interface SubsessionMetadata {
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 事件流: 母会话 → 子会话 → 总结                                       │
+│ 事件流: 母会话 → 子会话 → 持续交互                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│ 1. subsession_start                                                  │
-│    { mode: "geek", cc_session_id: "xxx" }                           │
-│    ↓ 前端显示 SubsessionCard (status: running)                      │
+│ 1. subsession_enter                                                 │
+│    { mode: "geek", cc_session_id: "xxx" }                          │
+│    ↓ 前端显示 SubsessionPanel                                       │
 │                                                                      │
-│ 2. thinking / tool_use / answer (原有流)                             │
-│    ↓ 前端实时显示执行过程                                            │
+│ 2. 用户追加指令 (可多次)                                            │
+│    Q1 → AppendInput() → sess.WriteInput() → CC Stdin               │
+│    Q2 → AppendInput() → sess.WriteInput() → CC Stdin               │
+│    Q3 → AppendInput() → sess.WriteInput() → CC Stdin               │
+│    ↓ 前端实时显示 Q 列表                                            │
 │                                                                      │
-│ 3. subsession_summary                                                │
-│    { summary: "• 发现3个性能瓶颈...", artifacts: [...], cc_session_id }│
-│    ↓ 前端更新 SubsessionCard (status: completed, 显示总结)           │
+│ 3. CC 响应 (流式)                                                   │
+│    thinking → tool_use → answer (现有事件流)                        │
+│    ↓ 前端实时显示 CC 思考和响应                                     │
+│                                                                      │
+│ 4. subsession_exit                                                  │
+│    用户退出或超时                                                    │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 前端组件
+### 前端组件设计
 
-**SubsessionCard** - 子会话卡片展示
+**SubsessionPanel** - 子会话面板：
 
 ```tsx
-<SubsessionCard
-  subsession={{
-    mode: "geek",
-    status: "completed",
-    summary: "• 重构了 data_pipeline.go，减少30%内存占用\n• 添加了单元测试覆盖",
-    artifacts: ["optimized_pipeline.go", "test_coverage.html"]
-  }}
-  onViewDetails={(ccSessionId) => {/* 可选：打开详情 */}}
-/>
-```
+function SubsessionPanel({ subsession, onAppendInput, onExit }) {
+  return (
+    <div className="border-l-2 border-geek-theme/50">
+      {/* 头部 */}
+      <div className="flex items-center justify-between px-4 py-2">
+        <span>🔄 {subsession.mode === 'geek' ? '极客模式' : '进化模式'}</span>
+        <Button onClick={onExit}>退出子会话</Button>
+      </div>
 
----
+      {/* 已追加的指令列表 */}
+      <div className="px-4 py-2 space-y-1">
+        {subsession.pendingInputs.map((input, idx) => (
+          <div key={input.id}>
+            【Q{idx + 1}】{input.content} {formatTime(input.timestamp)}
+            {input.status === 'processing' && <span>💭 处理中...</span>}
+          </div>
+        ))}
+      </div>
 
-## 4. 实现要点
+      {/* CC 响应区域（流式） */}
+      <CcResponseStream ccSessionId={subsession.ccSessionId} />
 
-### 后端
-
-**新增服务**：`server/service/subsession/`
-
-```go
-type SubsessionService struct {
-    store        *store.Store
-    llmService   llm.Service // 用于生成总结
-}
-
-// CreateSubsession 创建子会话
-func (s *SubsessionService) CreateSubsession(
-    ctx context.Context,
-    parentConversationID int32,
-    mode string, // "geek" | "evolution"
-) (*Subsession, error)
-
-// FinalizeSubsession 结束子会话并生成总结
-func (s *SubsessionService) FinalizeSubsession(
-    ctx context.Context,
-    subsessionID string,
-) (*SubsessionSummary, error)
-```
-
-**总结生成 Prompt**：
-
-```go
-const summaryPrompt = `
-以下是一次 Claude Code CLI 会话的执行记录：
-%s
-
-请用 1-3 句话总结这次会话：
-1. 主要做了什么？
-2. 产出了什么结果？
-3. 是否有需要用户关注的事项？
-
-输出格式：
-• [要点1]
-• [要点2]
-...
-`
-```
-
-### AI 代理更新
-
-**GeekParrot / EvolutionParrot** - 新增子会话生命周期钩子：
-
-```go
-func (p *GeekParrot) ExecuteWithCallback(...) error {
-    // 1. 通知前端：子会话启动
-    callback(EventTypeSubsessionStart, map[string]any{
-        "mode": "geek",
-        "cc_session_id": p.sessionID,
-    })
-
-    // 2. 执行 CC Runner（原有逻辑）
-    if err := p.runner.Execute(ctx, cfg, userInput, callback); err != nil {
-        return err
-    }
-
-    // 3. 子会话结束，触发总结生成
-    summary, err := p.subsessionSvc.FinalizeSubsession(ctx, p.sessionID)
-    if err != nil {
-        slog.Warn("Failed to generate subsession summary", "error", err)
-    } else {
-        // 4. 发送总结到母会话
-        callback(EventTypeSubsessionSummary, map[string]any{
-            "summary": summary.Text,
-            "artifacts": summary.Artifacts,
-            "cc_session_id": p.sessionID,
-        })
-    }
-
-    return nil
+      {/* 追加输入框 */}
+      <Input
+        placeholder="追加指令... (直接发送给 CC)"
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') {
+            onAppendInput(e.currentTarget.value);
+          }
+        }}
+      />
+    </div>
+  );
 }
 ```
 
 ---
 
-## 5. 风险与缓解
+## 4. UI 展示
 
-| 风险 | 影响 | 措施 |
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 🔄 极客模式                                    [退出子会话]        │
+├─────────────────────────────────────────────────────────────────┤
+│ 【Q1】分析 data_pipeline.go 的性能瓶颈          [10:23:01]       │
+│ 【Q2】再检查一下内存泄漏风险                     [10:23:15]       │
+│ 【Q3】优化后的代码生成到 optimized_pipeline.go    [10:23:30]      │
+│                                                                  │
+│ 💭 CC 正在思考...                                                │
+│ [████████░░░░░░] 执行 bash: go test -v ...                     │
+│                                                                  │
+│ ─────────────────────────────────────────────────────────────── │ │
+│                                                                  │
+│ 📝 [A1] 完整响应内容...                                          │
+│ • 发现 3 个性能瓶颈...                                           │
+│ • [下载 optimized_pipeline.go]                                  │
+│                                                                  │
+│ 【Q4】再优化一下                               [10:25:00]       │
+│                                                                  │
+│ 💭 CC 正在思考...                                                │
+│                                                                  │
+│ ─────────────────────────────────────────────────────────────── │ │
+│                                                                  │
+│ 📝 [A2] 第二波响应...                                            │
+│ ─────────────────────────────────────────────────────────────── │ │
+│                                                                  │
+│ [追加指令]                                                       │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 输入框...                                      [发送]         │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. 实现阶段
+
+| 阶段 | 内容 | 文件 |
 |:-----|:-----|:-----|
-| LLM 总结质量不稳定 | 中 | 使用可靠模型 + 模板优化 + 失败时显示默认消息 |
-| 子会话状态同步 | 中 | WebSocket 事件 + 心跳检测 |
-| 产出文件路径解析 | 低 | 标准化工作目录 + 相对路径 |
+| **P1** | 数据库迁移 + Store 接口 | `V0.82.0__add_subsession_support.sql`, `store/db/postgres/ai_conversation.go` |
+| **P2** | GeekParrot 持久会话改造 | `plugin/ai/agent/geek_parrot.go` |
+| **P3** | EvolutionParrot 持久会话改造 | `plugin/ai/agent/evolution_parrot.go` |
+| **P4** | 后端 Chat Handler 扩展 | `server/router/api/v1/ai/handler.go` |
+| **P5** | 前端类型 + Context | `web/src/types/aichat.ts`, `web/src/contexts/AIChatContext.tsx` |
+| **P6** | 前端 SubsessionPanel 组件 | `web/src/components/chat/SubsessionPanel.tsx` |
+| **P7** | 前端流式响应组件 | `web/src/components/chat/CcResponseStream.tsx` |
+| **P8** | 集成测试 + 文档 | `docs/specs/subsession_model.md` |
 
 ---
 
 ## 6. 参考资料
 
 - **CC Runner 异步架构**: `docs/specs/cc_runner_async_arch.md`
-- **会话服务**: `plugin/ai/session/interface.go`
-- **GeekParrot**: `plugin/ai/agent/geek_parrot.go`
-- **EvolutionParrot**: `plugin/ai/agent/evolution_parrot.go`
-- **前端上下文**: `web/src/contexts/AIChatContext.tsx`
-- **Session Manager**: `plugin/ai/agent/session_manager.go`
+- **SessionManager**: `plugin/ai/agent/session_manager.go`（已实现持久会话）
+- **CCRunner**: `plugin/ai/agent/cc_runner.go`（已实现 UUID v5 映射）
+- **Proto 定义**: `proto/api/v1/ai_service.proto`
+- **前端类型**: `web/src/types/aichat.ts`
 
 ---
 
 ## 7. Issue 链接
 
-**[#55](https://github.com/hrygo/divinesense/issues/55)** - [feat] 会话嵌套模型 - 母会话与子会话(Geek/Evolution)的统一架构
+**[#57](https://github.com/hrygo/divinesense/issues/57)** - [feat] 会话嵌套模型 - 母会话与子会话(Geek/Evolution)的统一架构
 
 ---
 
-*调研完成时间: 2026-02-03*
+*调研完成时间: 2026-02-03 (v2.0)*
 *调研者: Claude (Idea Researcher v3.1)*
