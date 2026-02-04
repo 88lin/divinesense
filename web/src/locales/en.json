@@ -978,6 +978,17 @@
       "delete-failed": "Failed to delete chat app credential",
       "update-failed": "Failed to update chat app credential"
     },
+    "mobile": {
+      "api-management-desktop-only": "API access token management is only available on desktop",
+      "desktop-only": "Desktop Only",
+      "desktop-required-title": "Desktop Required",
+      "desktop-required-description": "This feature is only available on desktop. Please access from a computer to manage these settings.",
+      "member-desktop-only": "Member management is only available on desktop",
+      "storage-desktop-only": "Storage configuration is only available on desktop",
+      "system-desktop-only": "System settings are only available on desktop",
+      "sso-desktop-only": "SSO configuration is only available on desktop",
+      "memo-desktop-only": "Memo-related settings are only available on desktop"
+    },
     "account-section": {
       "change-password": "Change password",
       "email-note": "Optional",
@@ -1004,10 +1015,14 @@
     "member": "Member",
     "member-list": "Member list",
     "memo-related": "Memo",
+    "memo-related-title": "Memo Related",
     "metrics": "Metrics",
+    "metrics-title": "Metrics",
     "metrics-section": {
+      "title": "Metrics Dashboard",
       "errors": "Errors",
       "latency": "Latency (P50)",
+      "mock-data": "Mock data - Metrics service not yet implemented",
       "overview": "Overview",
       "p95": "Latency (P95)",
       "requests": "Total Requests",
@@ -1037,7 +1052,10 @@
       "title": "Memo related settings"
     },
     "my-account": "My Account",
+    "personal": "Personal",
+    "admin": "Admin",
     "preference": "Preferences",
+    "settings": "Settings",
     "preference-section": {
       "default-memo-sort-option": "Memo display time",
       "default-memo-visibility": "Default memo visibility",
@@ -1049,6 +1067,7 @@
     },
     "sso": "SSO",
     "sso-section": {
+      "title": "Single Sign-On",
       "authorization-endpoint": "Authorization endpoint",
       "client-id": "Client ID",
       "client-secret": "Client secret",
@@ -1074,6 +1093,7 @@
     },
     "storage": "Storage",
     "storage-section": {
+      "title": "Object Storage",
       "accesskey": "Access key",
       "accesskey-placeholder": "Access key / Access ID",
       "bucket": "Bucket",

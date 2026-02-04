@@ -973,6 +973,17 @@
       "delete-failed": "删除聊天应用凭证失败",
       "update-failed": "更新聊天应用凭证失败"
     },
+    "mobile": {
+      "api-management-desktop-only": "API 访问令牌管理仅在桌面端可用",
+      "desktop-only": "仅限桌面端",
+      "desktop-required-title": "需要桌面端",
+      "desktop-required-description": "此功能仅在桌面端可用，请从电脑访问以管理这些设置。",
+      "member-desktop-only": "成员管理仅在桌面端可用",
+      "storage-desktop-only": "存储配置仅在桌面端可用",
+      "system-desktop-only": "系统设置仅在桌面端可用",
+      "sso-desktop-only": "SSO 配置仅在桌面端可用",
+      "memo-desktop-only": "笔记相关设置仅在桌面端可用"
+    },
     "account-section": {
       "change-password": "修改密码",
       "email-note": "可选",
@@ -999,10 +1010,14 @@
     "member": "成员",
     "member-list": "成员列表",
     "memo-related": "备忘录",
+    "memo-related-title": "备忘录相关",
     "metrics": "系统指标",
+    "metrics-title": "系统指标",
     "metrics-section": {
+      "title": "系统指标仪表盘",
       "errors": "错误",
       "latency": "延迟 (P50)",
+      "mock-data": "模拟数据 - 指标服务尚未实现",
       "overview": "概览",
       "p95": "延迟 (P95)",
       "requests": "总请求数",
@@ -1032,7 +1047,10 @@
       "title": "备忘录相关设置"
     },
     "my-account": "我的账号",
+    "personal": "个人",
+    "admin": "管理员",
     "preference": "偏好设置",
+    "settings": "设置",
     "preference-section": {
       "default-memo-sort-option": "备忘录显示时间",
       "default-memo-visibility": "默认备忘录可见性",
@@ -1044,6 +1062,7 @@
     },
     "sso": "单点登录",
     "sso-section": {
+      "title": "单点登录",
       "authorization-endpoint": "授权端点（Authorization Endpoint）",
       "client-id": "客户端ID（Client ID）",
       "client-secret": "客户端密钥（Client Secret）",
@@ -1069,6 +1088,7 @@
     },
     "storage": "存储",
     "storage-section": {
+      "title": "对象存储",
       "accesskey": "访问密钥（Access key）",
       "accesskey-placeholder": "Access key / Access ID",
       "bucket": "储存桶（Bucket）",
