@@ -31,6 +31,7 @@ export interface ConversationMessage {
       filePath?: string;
       duration?: number;
       isError?: boolean;
+      round?: number; // 第几轮思考（0-based）
     }>; // List of tools called by the agent
     toolResults?: Array<{
       name: string;
@@ -39,8 +40,16 @@ export interface ConversationMessage {
       outputSummary?: string;
       duration?: number;
       isError?: boolean;
+      round?: number; // 第几轮思考（0-based）
     }>; // List of tool execution results
-    thinking?: string;
+    // 多轮思考支持：thinkingSteps 数组或单一 thinking 字符串（向后兼容）
+    thinkingSteps?: Array<{
+      content: string;
+      timestamp: number;
+      round: number; // 第几轮（0-based）
+    }>;
+    thinking?: string; // 保留单一字符串向后兼容
+    mode?: AIMode; // 消息生成时的 AI 模式
   };
 }
 
@@ -87,6 +96,15 @@ export interface ReferencedSchedule {
  * Chat item - union of message and separator
  */
 export type ChatItem = ConversationMessage | ContextSeparator;
+
+/**
+ * Type guard to check if an item is a ContextSeparator
+ * @param item - The chat item to check
+ * @returns True if the item is a ContextSeparator
+ */
+export function isContextSeparator(item: ChatItem): item is ContextSeparator {
+  return "type" in item && item.type === "context-separator";
+}
 
 /**
  * Conversation state type

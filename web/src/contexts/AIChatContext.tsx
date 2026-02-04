@@ -7,10 +7,10 @@ import {
   AIChatState,
   AIMode,
   ChatItem,
-  ContextSeparator,
   Conversation,
   ConversationMessage,
   ConversationViewMode,
+  isContextSeparator,
   ReferencedMemo,
   SidebarTab,
 } from "@/types/aichat";
@@ -85,11 +85,6 @@ export function useAIChat(): AIChatContextValue {
 interface AIChatProviderProps {
   children: ReactNode;
   initialState?: Partial<AIChatState>;
-}
-
-// Helper function to check if item is ContextSeparator
-function isContextSeparator(item: ChatItem): item is ContextSeparator {
-  return "type" in item && item.type === "context-separator";
 }
 
 // FIFO: Enforce message cache limit (only counts MSG, keeps SEP between MSG)
@@ -535,7 +530,18 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
             ...c,
             // Only update title if valid new title generated, otherwise keep original
             title: newTitle || c.title,
-            messages: [...c.messages, { ...message, id: newMessageId, timestamp: now }],
+            messages: [
+              ...c.messages,
+              {
+                ...message,
+                id: newMessageId,
+                timestamp: now,
+                metadata: {
+                  ...message.metadata,
+                  mode: state.currentMode,
+                },
+              },
+            ],
             messageCount: newMessageCount, // Update message count for conversation list
             updatedAt: now,
           };
@@ -556,6 +562,14 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
           messages: c.messages.map((m) => {
             if (isContextSeparator(m)) return m;
             if (m.id !== messageId) return m;
+            // Deep merge metadata to preserve existing fields
+            if (updates.metadata) {
+              return {
+                ...m,
+                ...updates,
+                metadata: { ...m.metadata, ...updates.metadata },
+              };
+            }
             return { ...m, ...updates };
           }),
           updatedAt: Date.now(),
@@ -693,7 +707,15 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
 
           if (matchIndex !== -1) {
             // Found a match! Replace local message with synced real message
-            mergedMessages[matchIndex] = msg;
+            // Preserve local metadata (like mode) that might be missing from backend
+            const localMsg = mergedMessages[matchIndex] as ConversationMessage;
+            mergedMessages[matchIndex] = {
+              ...msg,
+              metadata: {
+                ...localMsg.metadata,
+                ...msg.metadata,
+              },
+            };
             // Add new UID to set to prevent duplicate additions
             existingUids.add(uid);
           } else {
@@ -996,6 +1018,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
   }, []);
 
   // Sync messages when conversation changes (only for valid numeric IDs)
+  // Note: syncMessages uses functional state updates, so it's stable across renders
   useEffect(() => {
     if (state.currentConversationId) {
       const numericId = parseInt(state.currentConversationId);
@@ -1003,6 +1026,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
         syncMessages(state.currentConversationId);
       }
     }
+    // syncMessages is intentionally excluded from deps - it uses functional setState
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentConversationId]);
 
