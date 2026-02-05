@@ -241,7 +241,7 @@ export interface AIChatContextValue {
 
   // Phase 4: Block actions (Unified Block Model support)
   loadBlocks: (conversationId: string) => Promise<void>;
-  appendUserInput: (blockId: number, content: string) => Promise<void>;
+  appendUserInput: (blockId: number, content: string, conversationId: number) => Promise<void>;
   updateBlockStatus: (blockId: number, status: "pending" | "streaming" | "completed" | "error") => void;
 
   // Persistence
