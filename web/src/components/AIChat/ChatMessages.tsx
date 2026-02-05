@@ -1,16 +1,17 @@
 import { memo, ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import TypingCursor from "@/components/AIChat/TypingCursor";
 import { cn } from "@/lib/utils";
 import { type AIMode, ChatItem, ConversationMessage, isContextSeparator, MessageRole } from "@/types/aichat";
 // Phase 4: Import Block types
 import type { Block as AIBlock } from "@/types/block";
 import { BLOCK_STATUS, blockModeToParrotAgentType, EVENT_TYPE, getBlockModeName } from "@/types/block";
-import type { SessionSummary } from "@/types/parrot";
+import type { BlockSummary } from "@/types/parrot";
 import { PARROT_THEMES, ParrotAgentType } from "@/types/parrot";
 import { BlockType } from "@/types/proto/api/v1/ai_service_pb";
 import { UnifiedMessageBlock } from "./UnifiedMessageBlock";
 // Event transformation utilities
-import { extractThinkingSteps, extractToolCalls, normalizeTimestamp } from "./utils/eventTransformers";
+import { extractThinkingSteps, extractToolCalls, normalizeTimestamp, type ThinkingStep } from "./utils/eventTransformers";
 
 // ============================================================================
 // Helper Hooks for ChatMessages
@@ -27,25 +28,17 @@ function useStreamingStatus(blocks: AIBlock[] | undefined, isStreaming: boolean)
   }, [blocks, isStreaming]);
 }
 
-/** Hook to determine the effective parrot ID considering session and block modes */
-function useEffectiveParrotId(
-  currentParrotId: ParrotAgentType | undefined,
-  sessionSummary: SessionSummary | undefined,
-  blocks: AIBlock[] | undefined,
-): ParrotAgentType {
+/** Hook to determine the effective parrot ID from Block.mode (single source of truth) */
+function useEffectiveParrotId(currentParrotId: ParrotAgentType | undefined, blocks: AIBlock[] | undefined): ParrotAgentType {
   return useMemo(() => {
-    // Session summary has highest priority
-    if (sessionSummary?.mode === "geek") return ParrotAgentType.GEEK;
-    if (sessionSummary?.mode === "evolution") return ParrotAgentType.EVOLUTION;
-
-    // Check last Block mode
+    // Block.mode is the single source of truth for mode determination
     if (blocks && blocks.length > 0) {
       const lastAIBlock = blocks[blocks.length - 1];
       return blockModeToParrotAgentType(lastAIBlock.mode);
     }
 
     return currentParrotId ?? ParrotAgentType.AMAZING;
-  }, [currentParrotId, sessionSummary?.mode, blocks]);
+  }, [currentParrotId, blocks]);
 }
 
 // ============================================================================
@@ -63,8 +56,8 @@ interface ChatMessagesProps {
   /** Phase 2: 流式渲染支持 */
   isStreaming?: boolean;
   streamingContent?: string;
-  /** Session summary for Geek/Evolution modes */
-  sessionSummary?: SessionSummary;
+  /** Block summary for Geek/Evolution modes */
+  blockSummary?: BlockSummary;
   /** Phase 4: Block data support */
   blocks?: AIBlock[];
 }
@@ -82,7 +75,25 @@ interface MessageBlock {
   assistantMessage?: ConversationMessage;
   isLatest: boolean;
   /** Session summary attached to this block (only for last block) */
-  attachSessionSummary?: boolean;
+  attachBlockSummary?: boolean;
+}
+
+/**
+ * Translate i18n keys in thinking steps content
+ * Optimized to avoid creating new array when no translation is needed.
+ * @param steps - Thinking steps with possibly raw i18n keys
+ * @param t - Translation function
+ * @returns Thinking steps with translated content
+ */
+function translateThinkingSteps(steps: ThinkingStep[], t: (key: string) => string): ThinkingStep[] {
+  // Check if any step needs translation (starts with "ai.")
+  const needsTranslation = steps.some((s) => s.content.startsWith("ai."));
+  if (!needsTranslation) return steps;
+
+  return steps.map((step) => ({
+    ...step,
+    content: step.content.startsWith("ai.") ? t(step.content) : step.content,
+  }));
 }
 
 /**
@@ -96,8 +107,11 @@ interface MessageBlock {
  * - status: BlockStatus (pending/streaming/completed/error)
  * - eventStream: BlockEvent[] (thinking/tool_use/tool_result/answer events)
  * - sessionStats: SessionStats (for Geek/Evolution modes)
+ * @param blocks - Array of AIBlock objects
+ * @param hasBlockSummary - Whether block summary is available
+ * @param t - Translation function for i18n keys
  */
-function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasSessionSummary: boolean): MessageBlock[] {
+function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: boolean, t: (key: string) => string): MessageBlock[] {
   const messageBlocks: MessageBlock[] = [];
 
   for (const block of blocks) {
@@ -123,6 +137,7 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasSessionSummary: bo
     };
 
     // Build assistant message from assistantContent and eventStream
+    const rawThinkingSteps = extractThinkingSteps(block.eventStream);
     const assistantMessage: ConversationMessage = {
       id: `block-${block.id}-assistant`,
       role: "assistant" as MessageRole,
@@ -131,30 +146,30 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasSessionSummary: bo
       error: String(block.status) === String(BLOCK_STATUS.ERROR),
       metadata: {
         mode: getBlockModeName(block.mode) as AIMode,
-        // Parse eventStream to extract metadata for UI
-        thinkingSteps: extractThinkingSteps(block.eventStream),
+        // Parse eventStream to extract metadata for UI, translating i18n keys
+        thinkingSteps: translateThinkingSteps(rawThinkingSteps, t),
         toolCalls: extractToolCalls(block.eventStream),
       },
     };
 
     const isLatest = false; // Will be determined after loop
-    const attachSessionSummary = false; // Will be set for last block
+    const attachBlockSummary = false; // Will be set for last block if blockSummary available
 
     messageBlocks.push({
       id: String(block.id),
       userMessage,
       assistantMessage,
       isLatest,
-      attachSessionSummary,
+      attachBlockSummary,
     });
   }
 
-  // Mark last block as latest and attach session summary if available
+  // Mark last block as latest and attach block summary if available
   if (messageBlocks.length > 0) {
     const lastBlock = messageBlocks[messageBlocks.length - 1];
     lastBlock.isLatest = true;
-    if (hasSessionSummary && lastBlock.assistantMessage) {
-      lastBlock.attachSessionSummary = true;
+    if (hasBlockSummary && lastBlock.assistantMessage) {
+      lastBlock.attachBlockSummary = true;
     }
   }
 
@@ -164,8 +179,11 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasSessionSummary: bo
 /**
  * Group messages into user-assistant pairs
  * Legacy function for ChatItem[] support (backward compatibility)
+ * @param items - Array of ChatItem objects
+ * @param hasBlockSummary - Whether block summary is available
+ * @param t - Translation function for i18n keys
  */
-function groupMessagesIntoBlocks(items: ChatItem[], hasSessionSummary: boolean): MessageBlock[] {
+function groupMessagesIntoBlocks(items: ChatItem[], hasBlockSummary: boolean, _t: (key: string) => string): MessageBlock[] {
   const blocks: MessageBlock[] = [];
   let pendingUser: ConversationMessage | null = null;
 
@@ -231,13 +249,13 @@ function groupMessagesIntoBlocks(items: ChatItem[], hasSessionSummary: boolean):
     });
   }
 
-  // Mark last block as latest and attach session summary if available
+  // Mark last block as latest and attach block summary if available
   if (blocks.length > 0) {
     const lastBlock = blocks[blocks.length - 1];
     lastBlock.isLatest = true;
     // Only attach session summary to the last block if it has an assistant message
-    if (hasSessionSummary && lastBlock.assistantMessage) {
-      lastBlock.attachSessionSummary = true;
+    if (hasBlockSummary && lastBlock.assistantMessage) {
+      lastBlock.attachBlockSummary = true;
     }
   }
 
@@ -257,7 +275,7 @@ const ChatMessages = memo(function ChatMessages({
   amazingInsightCard,
   isStreaming = false,
   streamingContent = "",
-  sessionSummary,
+  blockSummary,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -377,16 +395,19 @@ const ChatMessages = memo(function ChatMessages({
     };
   }, []);
 
+  // Get translation function
+  const { t } = useTranslation();
+
   // Group messages into blocks
   // Phase 4: Use blocks if provided, otherwise fall back to items (backward compatibility)
   const messageBlocks = useMemo(() => {
     if (blocks && blocks.length > 0) {
       // Use new Block data structure
-      return convertAIBlocksToMessageBlocks(blocks, !!sessionSummary);
+      return convertAIBlocksToMessageBlocks(blocks, !!blockSummary, t);
     }
     // Legacy: use ChatItem[] structure
-    return groupMessagesIntoBlocks(items, !!sessionSummary);
-  }, [blocks, items, sessionSummary]);
+    return groupMessagesIntoBlocks(items, !!blockSummary, t);
+  }, [blocks, items, blockSummary, t]);
 
   // Phase 4: Check streaming status from either blocks or props (using extracted hook)
   const isLastStreaming = useStreamingStatus(blocks, isStreaming ?? false);
@@ -439,9 +460,8 @@ const ChatMessages = memo(function ChatMessages({
     return null;
   }, [isLastStreaming, blocks, messageBlocks, isStreaming]);
 
-  // Determine effective parrot ID based on session mode (Geek/Evolution override normal parrotId)
-  // Phase 4: Also consider Block mode (using extracted hook)
-  const effectiveParrotId = useEffectiveParrotId(currentParrotId, sessionSummary, blocks);
+  // Determine effective parrot ID from Block.mode (single source of truth)
+  const effectiveParrotId = useEffectiveParrotId(currentParrotId, blocks);
 
   return (
     <div
@@ -485,7 +505,7 @@ const ChatMessages = memo(function ChatMessages({
                 key={block.id}
                 userMessage={block.userMessage}
                 assistantMessage={block.assistantMessage}
-                sessionSummary={block.attachSessionSummary ? sessionSummary : undefined}
+                blockSummary={block.attachBlockSummary ? blockSummary : undefined}
                 parrotId={blockParrotId}
                 isLatest={block.isLatest}
                 isStreaming={isLastStreaming && block.isLatest}

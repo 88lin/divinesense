@@ -22,12 +22,15 @@ import { PartnerGreeting } from "@/components/AIChat/PartnerGreeting";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useAIChat } from "@/contexts/AIChatContext";
 import { useChat } from "@/hooks/useAIQueries";
+import { useBlocksWithFallback } from "@/hooks/useBlockQueries";
 import { useCapabilityRouter } from "@/hooks/useCapabilityRouter";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import type { AIMode, ChatItem } from "@/types/aichat";
+import type { Block as AIBlock } from "@/types/block";
+import { isActiveStatus } from "@/types/block";
 import { CapabilityStatus, CapabilityType, capabilityToParrotAgent } from "@/types/capability";
-import type { MemoQueryResultData, ScheduleQueryResultData, SessionSummary } from "@/types/parrot";
+import type { BlockSummary, MemoQueryResultData, ScheduleQueryResultData } from "@/types/parrot";
 import { ParrotAgentType } from "@/types/parrot";
 
 // ============================================================
@@ -47,8 +50,11 @@ interface UnifiedChatViewProps {
   onClearContext: () => void;
   memoQueryResults: MemoQueryResultData[];
   scheduleQueryResults: ScheduleQueryResultData[];
-  sessionSummary?: SessionSummary;
+  blockSummary?: BlockSummary;
   items: ChatItem[];
+  // Phase 4: Block data (primary source when available)
+  blocks?: AIBlock[];
+  // isLoadingBlocks?: boolean; // Reserved for future loading state
   currentCapability: CapabilityType;
   capabilityStatus: CapabilityStatus;
   recentMemoCount?: number;
@@ -74,8 +80,10 @@ function UnifiedChatView({
   onClearContext,
   memoQueryResults,
   scheduleQueryResults,
-  sessionSummary,
+  blockSummary,
   items,
+  blocks,
+  // isLoadingBlocks, // Reserved for future loading state
   currentCapability,
   capabilityStatus,
   recentMemoCount,
@@ -84,10 +92,8 @@ function UnifiedChatView({
   onModeChange,
   immersiveMode,
   onImmersiveModeToggle,
-  isAdmin = true,
 }: UnifiedChatViewProps) {
   const { t } = useTranslation();
-  const md = useMediaQuery("md");
 
   // P1-5: Concurrent rendering optimizations
   // Defer non-critical UI updates (query results) to improve input responsiveness
@@ -120,23 +126,21 @@ function UnifiedChatView({
 
   return (
     <div className={cn("w-full h-full flex flex-col relative bg-background", getModeContainerClass(currentMode))}>
-      {/* Desktop Header */}
-      {md && (
-        <ChatHeader
-          currentCapability={currentCapability}
-          capabilityStatus={capabilityStatus}
-          isThinking={isThinking}
-          currentMode={currentMode}
-          onModeChange={onModeChange}
-          immersiveMode={immersiveMode}
-          onImmersiveModeToggle={onImmersiveModeToggle}
-          isAdmin={isAdmin}
-        />
-      )}
+      {/* Header - desktop only */}
+      <ChatHeader
+        className="hidden lg:flex"
+        currentCapability={currentCapability}
+        capabilityStatus={capabilityStatus}
+        isThinking={isThinking}
+        currentMode={currentMode}
+        immersiveMode={immersiveMode}
+        onImmersiveModeToggle={onImmersiveModeToggle}
+      />
 
       {/* Messages Area with Welcome */}
       <ChatMessages
         items={items}
+        blocks={blocks}
         isTyping={isTyping}
         currentParrotId={ParrotAgentType.AMAZING}
         onCopyMessage={handleCopyMessage}
@@ -146,10 +150,10 @@ function UnifiedChatView({
             <AmazingInsightCard memos={deferredMemoResults[0]?.memos ?? []} schedules={deferredScheduleResults[0]?.schedules ?? []} />
           ) : undefined
         }
-        sessionSummary={sessionSummary}
+        blockSummary={blockSummary}
       >
         {/* Welcome message - 统一入口，示例提问直接发送 */}
-        {items.length === 0 && (
+        {(blocks?.length ?? 0) === 0 && items.length === 0 && (
           <PartnerGreeting
             recentMemoCount={recentMemoCount}
             upcomingScheduleCount={upcomingScheduleCount}
@@ -241,7 +245,7 @@ const AIChat = () => {
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [memoQueryResults, setMemoQueryResults] = useState<MemoQueryResultData[]>([]);
   const [scheduleQueryResults, setScheduleQueryResults] = useState<ScheduleQueryResultData[]>([]);
-  const [sessionSummary, setSessionSummary] = useState<SessionSummary | undefined>();
+  const [blockSummary, setBlockSummary] = useState<BlockSummary | undefined>();
   const [showCapabilityPanel, setShowCapabilityPanel] = useState(false);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -282,6 +286,9 @@ const AIChat = () => {
     setCapabilityStatus,
     setMode,
     toggleImmersiveMode,
+    // Phase 4: Block methods
+    appendUserInput,
+    loadBlocks,
   } = aiChat;
 
   const currentCapability = state.currentCapability || CapabilityType.AUTO;
@@ -289,7 +296,39 @@ const AIChat = () => {
   const currentMode = state.currentMode || "normal";
   const immersiveMode = state.immersiveMode || false;
 
-  // Get messages from current conversation (memoized to prevent unnecessary re-renders)
+  // ============================================================
+  // Phase 4: Unified Block Model - Use blocks as primary data source
+  // ============================================================
+  const currentConversationIdNum = useMemo(() => {
+    const id = currentConversation?.id;
+    return id ? parseInt(id, 10) : 0;
+  }, [currentConversation?.id]);
+
+  // Determine if we should enable auto-refresh for blocks
+  // Disable during streaming to avoid interrupting the LLM context
+  // Also disable when user is actively using the chat (isTyping)
+  const shouldAutoRefreshBlocks = useMemo(() => {
+    // Don't auto-refresh when AI is processing to avoid context cancellation
+    return !isTyping && !isThinking;
+  }, [isTyping, isThinking]);
+
+  // Use Block API as primary data source with error fallback (falls back to items for new conversations)
+  const {
+    blocks: blocksFromApi,
+    // isLoading: isLoadingBlocks, // Reserved for future loading state
+    shouldFallback: shouldFallbackToItems,
+    refetch: refetchBlocks,
+  } = useBlocksWithFallback(
+    currentConversationIdNum,
+    undefined, // No filters - get all blocks
+    { isActive: shouldAutoRefreshBlocks }, // Only auto-refresh when not streaming
+  );
+
+  // Use blocks from API if available and not in fallback mode, otherwise use empty array
+  const blocks = useMemo(() => (shouldFallbackToItems ? [] : blocksFromApi), [blocksFromApi, shouldFallbackToItems]);
+
+  // Legacy: Get messages from current conversation (fallback for empty blocks or API errors)
+  // TODO: Remove once Block API is fully integrated and stable
   const items = useMemo(() => currentConversation?.messages || [], [currentConversation?.messages]);
 
   const { t } = useTranslation();
@@ -406,9 +445,9 @@ const AIChat = () => {
               });
             }
           },
-          onSessionSummary: (summary) => {
-            debugLog("[Geek/Evolution Mode] Session summary:", summary);
-            setSessionSummary(summary);
+          onBlockSummary: (summary) => {
+            debugLog("[Geek/Evolution Mode] Block summary:", summary);
+            setBlockSummary(summary);
           },
           onMemoQueryResult: (result) => {
             if (_messageId === messageIdRef.current) {
@@ -448,6 +487,9 @@ const AIChat = () => {
             setIsTyping(false);
             setIsThinking(false);
             setCapabilityStatus("idle");
+            // IMPORTANT: Refetch blocks to get the complete assistant content
+            // This ensures the UI shows the final response instead of "initializing" state
+            refetchBlocks();
           },
           onError: (error) => {
             setIsTyping(false);
@@ -477,10 +519,27 @@ const AIChat = () => {
       const userMessage = (messageContent || input).trim();
       if (!userMessage) return;
 
-      // Block sending when AI is still typing/replying
-      // 用户可以在输入框输入文本，但当 AI 正在回复时不能发送新消息
-      if (isTyping) {
-        return;
+      // Phase 4: Check if there's a Block in streaming state
+      // If so, append user input to that Block instead of creating a new message
+      const streamingBlock = blocks?.find((b) => isActiveStatus(b.status));
+      if (streamingBlock) {
+        const blockId = Number(streamingBlock.id);
+        const convId = Number(streamingBlock.conversationId);
+        if (blockId > 0 && convId > 0) {
+          debugLog("Appending user input to streaming block", { blockId, convId, userMessage });
+          try {
+            // Pass conversationId for optimistic update
+            await appendUserInput(blockId, userMessage, convId);
+            // Only clear input AFTER successful append
+            setInput("");
+            return;
+          } catch (e) {
+            console.error("[AI Chat] Failed to append user input to block:", e);
+            // Don't clear input - let user retry
+            toast.error(t("ai.error-send-failed") || "Failed to send message. Please try again.");
+            return; // Stop execution, don't fall through to normal send
+          }
+        }
       }
 
       // 智能路由：根据输入内容自动识别能力
@@ -503,16 +562,15 @@ const AIChat = () => {
         // Prevent double creation due to race conditions/double clicks
         if (isCreatingConversationRef.current) return;
 
-        // No active conversation - create one with AMAZING agent (综合助手)
-        // (会话不再绑定特定Agent，能力可以在会话中动态切换)
-        const existingConversation = conversations.find((c) => !c.parrotId || c.parrotId === ParrotAgentType.AMAZING);
+        // No active conversation - create one with AUTO agent (由后端路由决定)
+        const existingConversation = conversations.find((c) => !c.parrotId || c.parrotId === ParrotAgentType.AUTO);
         if (existingConversation) {
           targetConversationId = existingConversation.id;
           selectConversation(existingConversation.id);
         } else {
           // Set lock before creating
           isCreatingConversationRef.current = true;
-          const { id, completed } = createConversation(ParrotAgentType.AMAZING);
+          const { id, completed } = createConversation(ParrotAgentType.AUTO);
           targetConversationId = id;
           creationPromise = completed.finally(() => {
             // Release lock when creation completes (success or failure)
@@ -586,6 +644,10 @@ const AIChat = () => {
       addMessage,
       handleParrotChat,
       resetTypingState,
+      // Phase 4: Block append dependencies
+      blocks,
+      appendUserInput,
+      loadBlocks,
     ],
   );
 
@@ -602,7 +664,7 @@ const AIChat = () => {
   }, [currentConversation, clearMessages]);
 
   const handleNewChat = useCallback(() => {
-    createConversation(ParrotAgentType.AMAZING);
+    createConversation(ParrotAgentType.AUTO);
   }, [createConversation]);
 
   const handleClearContext = useCallback(
@@ -694,8 +756,10 @@ const AIChat = () => {
       onClearContext={handleClearContext}
       memoQueryResults={memoQueryResults}
       scheduleQueryResults={scheduleQueryResults}
-      sessionSummary={sessionSummary}
+      blockSummary={blockSummary}
       items={items}
+      blocks={blocks}
+      // isLoadingBlocks={isLoadingBlocks} // Reserved for future loading state
       currentCapability={currentCapability}
       capabilityStatus={capabilityStatus}
       currentMode={currentMode}

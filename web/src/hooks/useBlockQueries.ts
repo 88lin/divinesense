@@ -10,6 +10,8 @@
 
 import { create } from "@bufbuild/protobuf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ApiError } from "@/config/errors";
+import { createRetryDelay, shouldRetryError } from "@/config/errors";
 import { aiServiceClient } from "@/connect";
 import type {
   AppendEventRequest,
@@ -59,16 +61,12 @@ const STALE_TIMES = {
 
 /** Retry configuration for different error types */
 const RETRY_CONFIG = {
-  /** Network errors - retry with exponential backoff */
-  NETWORK: {
-    retries: 3,
-    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  },
-  /** Timeout errors - retry immediately */
-  TIMEOUT: {
-    retries: 2,
-    retryDelay: 1000,
-  },
+  /** Maximum retry attempts for network errors */
+  MAX_RETRIES: 3,
+  /** Base retry delay in milliseconds */
+  BASE_RETRY_DELAY: 1000,
+  /** Maximum retry delay in milliseconds */
+  MAX_RETRY_DELAY: 30000,
 } as const;
 
 // Query keys factory for consistent cache management
@@ -103,8 +101,12 @@ export function useBlocks(conversationId: number, filters?: Partial<ListBlocksRe
     enabled: conversationId > 0,
     staleTime: is_active ? STALE_TIMES.ACTIVE_CONVERSATION : STALE_TIMES.BLOCK_LIST,
     gcTime: is_active ? CACHE_TIMES.ACTIVE_CONVERSATION : CACHE_TIMES.BLOCK_LIST,
-    retry: RETRY_CONFIG.NETWORK.retries,
-    retryDelay: RETRY_CONFIG.NETWORK.retryDelay,
+    retry: (failureCount, error) => {
+      // Use type-safe error handling instead of any
+      const err = error as ApiError;
+      return shouldRetryError(err, failureCount, RETRY_CONFIG.MAX_RETRIES);
+    },
+    retryDelay: createRetryDelay(RETRY_CONFIG.BASE_RETRY_DELAY, RETRY_CONFIG.MAX_RETRY_DELAY),
     refetchOnWindowFocus: is_active,
     refetchOnReconnect: true,
   });
@@ -127,17 +129,14 @@ export function useBlock(id: number, options?: { enabled?: boolean }) {
     enabled: (options?.enabled ?? true) && id > 0,
     staleTime: STALE_TIMES.BLOCK_DETAIL,
     gcTime: CACHE_TIMES.BLOCK_DETAIL,
-    retry: RETRY_CONFIG.NETWORK.retries,
-    retryDelay: RETRY_CONFIG.NETWORK.retryDelay,
+    retry: (failureCount, error) => {
+      const err = error as ApiError;
+      return shouldRetryError(err, failureCount, RETRY_CONFIG.MAX_RETRIES);
+    },
+    retryDelay: createRetryDelay(RETRY_CONFIG.BASE_RETRY_DELAY, RETRY_CONFIG.MAX_RETRY_DELAY),
   });
 }
 
-/**
- * Hook to create a new block with optimistic update
- *
- * Optimistically adds the block to the cache before the server responds,
- * rolling back on error.
- */
 /**
  * Hook to create a new block with optimistic update
  *
@@ -155,7 +154,7 @@ export function useCreateBlock() {
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      const conversationId = Number(variables.conversationId);
+      const conversationId = Number(variables.conversationId || 0);
       await queryClient.cancelQueries({ queryKey: blockKeys.list(conversationId) });
 
       // Snapshot previous value
@@ -164,19 +163,28 @@ export function useCreateBlock() {
       // Generate temp ID for optimistic update
       const tempId = BigInt(-Date.now());
 
-      // Create optimistic block
-      // biome-ignore lint/suspicious/noExplicitAny: Protobuf partial creation for optimistic update
-      const optimisticBlock = create(create(CreateBlockRequestSchema, variables as Record<string, unknown>) as any, {
+      // Create optimistic block with proper type safety
+      const now = BigInt(Date.now());
+      const optimisticBlock: Block = {
+        $typeName: "memos.api.v1.Block" as const,
         id: tempId,
         uid: `temp-${tempId}`,
-        status: BlockStatus.PENDING,
-        createdTs: BigInt(Date.now()),
-        updatedTs: BigInt(Date.now()),
+        conversationId: conversationId,
+        roundNumber: 0,
+        mode: variables.mode || BlockMode.NORMAL,
+        blockType: variables.blockType || BlockType.MESSAGE,
         userInputs: variables.userInputs || [],
         assistantContent: "",
         eventStream: [],
+        status: BlockStatus.PENDING,
         metadata: "{}",
-      }) as unknown as Block;
+        createdTs: now,
+        updatedTs: now,
+        assistantTimestamp: now,
+        ccSessionId: "",
+        parentBlockId: BigInt(0),
+        branchPath: "",
+      };
 
       // Optimistically update cache
       // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
@@ -219,7 +227,8 @@ export function useCreateBlock() {
         queryKey: blockKeys.list(Number(variables.conversationId)),
       });
     },
-    retry: RETRY_CONFIG.NETWORK.retries,
+    // Mutation operations should not auto-retry (may cause duplicate creation)
+    retry: 0,
   });
 }
 
@@ -565,4 +574,76 @@ export function fromProtoBlockStatus(status: BlockStatus): "pending" | "streamin
     default:
       return "pending";
   }
+}
+
+// ============================================================================
+// ERROR HANDLING & FALLBACK (Phase 4)
+// ============================================================================
+
+/**
+ * Result type for useBlocksWithFallback - includes error state for fallback
+ */
+interface BlocksWithFallbackResult {
+  blocks: Block[];
+  isLoading: boolean;
+  error: Error | null;
+  shouldFallback: boolean;
+  refetch: () => void; // Manual refetch function to refresh blocks
+}
+
+/**
+ * Hook to fetch blocks with automatic fallback on error
+ *
+ * When Block API fails (network error, 404, etc.), this hook returns
+ * an error state that signals the UI to fall back to ChatItem[].
+ *
+ * @param conversationId - The conversation ID to fetch blocks for
+ * @param filters - Optional filters for the block list
+ * @param options - Additional options like isActive (for active conversations)
+ * @returns BlocksWithFallbackResult with blocks, loading state, and error info
+ */
+export function useBlocksWithFallback(
+  conversationId: number,
+  filters?: Partial<ListBlocksRequest>,
+  options?: { isActive?: boolean },
+): BlocksWithFallbackResult {
+  const is_active = options?.isActive ?? false;
+
+  const query = useQuery({
+    queryKey: blockKeys.list(conversationId, filters),
+    queryFn: async () => {
+      const request = create(ListBlocksRequestSchema, {
+        conversationId,
+        ...filters,
+      } as Record<string, unknown>);
+      const response = await aiServiceClient.listBlocks(request);
+      return response;
+    },
+    enabled: conversationId > 0,
+    staleTime: is_active ? STALE_TIMES.ACTIVE_CONVERSATION : STALE_TIMES.BLOCK_LIST,
+    gcTime: is_active ? CACHE_TIMES.ACTIVE_CONVERSATION : CACHE_TIMES.BLOCK_LIST,
+    retry: (failureCount, error) => {
+      const err = error as ApiError;
+      return shouldRetryError(err, failureCount, RETRY_CONFIG.MAX_RETRIES);
+    },
+    retryDelay: createRetryDelay(RETRY_CONFIG.BASE_RETRY_DELAY, RETRY_CONFIG.MAX_RETRY_DELAY),
+    refetchOnWindowFocus: is_active,
+    refetchOnReconnect: true,
+  });
+
+  const blocks = query.data?.blocks || [];
+
+  // Determine if we should fallback based on error state
+  // Fallback conditions:
+  // 1. Query failed and has error
+  // 2. No blocks returned (might indicate API not available)
+  const shouldFallback = query.isError || (query.isSuccess && blocks.length === 0 && conversationId > 0);
+
+  return {
+    blocks,
+    isLoading: query.isLoading,
+    error: query.error ?? null,
+    shouldFallback,
+    refetch: query.refetch, // Expose refetch function for manual refresh after streaming
+  };
 }
