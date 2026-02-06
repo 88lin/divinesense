@@ -686,7 +686,17 @@ func (h *ParrotHandler) executeAgent(
 		if len(statsSnapshot.ToolsUsed) > 0 {
 			blockSummary.ToolsUsed = statsSnapshot.ToolsUsed
 		}
-		logger.Info("Agent: applied normal stats to BlockSummary")
+		// Convert milli-cents to USD (1 USD = 100000 milli-cents)
+		if statsSnapshot.TotalCostMilliCents > 0 {
+			blockSummary.TotalCostUsd = float64(statsSnapshot.TotalCostMilliCents) / 100000
+		}
+		logger.Info("Agent: applied normal stats to BlockSummary",
+			slog.Int("prompt_tokens", statsSnapshot.PromptTokens),
+			slog.Int("completion_tokens", statsSnapshot.CompletionTokens),
+			slog.Int64("duration_ms", statsSnapshot.TotalDurationMs),
+			slog.Int64("cost_milli_cents", statsSnapshot.TotalCostMilliCents),
+			slog.Float64("cost_usd", blockSummary.TotalCostUsd),
+		)
 	}
 
 	// Phase 5: Complete or mark error on Block BEFORE sending done marker
@@ -749,7 +759,10 @@ func (h *ParrotHandler) executeAgent(
 	logger.Info("Agent: sending done marker with block summary",
 		slog.String("session_id", blockSummary.SessionId),
 		slog.Int64("duration_ms", blockSummary.TotalDurationMs),
+		slog.Int("input_tokens", int(blockSummary.TotalInputTokens)),
+		slog.Int("output_tokens", int(blockSummary.TotalOutputTokens)),
 		slog.Int64("tool_calls", int64(blockSummary.ToolCallCount)),
+		slog.Float64("cost_usd", blockSummary.TotalCostUsd),
 		slog.Bool("done", true),
 	)
 	// Phase 4: Include BlockId in done marker

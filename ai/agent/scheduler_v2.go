@@ -171,7 +171,8 @@ func (a *SchedulerAgentV2) Execute(ctx context.Context, userInput string) (strin
 }
 
 // ExecuteWithCallback runs the agent with state-aware context and callback support.
-func (a *SchedulerAgentV2) ExecuteWithCallback(ctx context.Context, userInput string, conversationCtx *ConversationContext, callback func(event string, data string)) (string, error) {
+// Updated to accept interface{} for structured event data (EventWithMeta).
+func (a *SchedulerAgentV2) ExecuteWithCallback(ctx context.Context, userInput string, conversationCtx *ConversationContext, callback func(event string, data interface{})) (string, error) {
 	startTime := time.Now()
 
 	// Get prompt version for AB testing

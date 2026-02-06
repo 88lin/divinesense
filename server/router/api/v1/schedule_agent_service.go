@@ -157,12 +157,27 @@ func (s *ScheduleAgentService) ChatStream(req *v1pb.ScheduleAgentChatRequest, st
 	logger.Info("Conversation context state", "session_id", sessionID, "turn_count", summary.TurnCount, "existing", summary.TurnCount > 0)
 
 	// Define callback for streaming events
-	eventCallback := func(eventType string, eventData string) {
+	// Updated to accept interface{} for structured event data (EventWithMeta)
+	eventCallback := func(eventType string, eventData interface{}) {
+		// Extract string data from EventWithMeta if present
+		var dataStr string
+		switch v := eventData.(type) {
+		case string:
+			dataStr = v
+		case *agent.EventWithMeta:
+			// For structured events, use EventData as the string content
+			// The Meta contains additional metadata (tool_name, input_summary, etc.)
+			dataStr = v.EventData
+		default:
+			// Fallback: convert to string
+			dataStr = fmt.Sprintf("%v", eventData)
+		}
+
 		// Log significant events
 		if eventType == "tool_use" || eventType == "error" {
-			logger.Info("Agent event", "type", eventType, "data_len", len(eventData))
+			logger.Info("Agent event", "type", eventType, "data_len", len(dataStr))
 		} else {
-			logger.Debug("Agent event", "type", eventType, "data_len", len(eventData))
+			logger.Debug("Agent event", "type", eventType, "data_len", len(dataStr))
 		}
 
 		// Record turn part if needed?
@@ -171,7 +186,7 @@ func (s *ScheduleAgentService) ChatStream(req *v1pb.ScheduleAgentChatRequest, st
 		// Send event as JSON
 		eventJSON, err := json.Marshal(map[string]string{
 			"type": eventType,
-			"data": eventData,
+			"data": dataStr,
 		})
 		if err != nil {
 			logger.Error("Failed to marshal event", "error", err, "type", eventType)
@@ -182,17 +197,17 @@ func (s *ScheduleAgentService) ChatStream(req *v1pb.ScheduleAgentChatRequest, st
 		// Provide visibility into Agent's thought process in the backend logs
 		switch eventType {
 		case "tool_use":
-			logger.Info("🛠️ Agent Tool Start", "tool", eventData)
+			logger.Info("🛠️ Agent Tool Start", "tool", dataStr)
 		case "tool_result":
 			// Truncate result for logging
-			preview := eventData
+			preview := dataStr
 			if len(preview) > 100 {
 				preview = preview[:100] + "..."
 			}
 			logger.Info("✅ Agent Tool Result", "result", preview)
 		case "thought":
 			// Log reasoning trace
-			logger.Info("🧠 Agent Thought", "trace", eventData)
+			logger.Info("🧠 Agent Thought", "trace", dataStr)
 		case "thinking":
 			// logger.Debug("🤔 Agent Thinking...") // Keep debug to reduce noise
 		}
@@ -205,7 +220,7 @@ func (s *ScheduleAgentService) ChatStream(req *v1pb.ScheduleAgentChatRequest, st
 		}
 
 		// Send schedule_updated event if needed (only if first send succeeded)
-		if eventType == "tool_result" && containsSuccessMessage(eventData) {
+		if eventType == "tool_result" && containsSuccessMessage(dataStr) {
 			updateJSON, err := json.Marshal(map[string]string{
 				"type": "schedule_updated",
 				"data": "{}",

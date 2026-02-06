@@ -123,7 +123,8 @@ func NewAgent(llm ai.LLMService, config AgentConfig, tools []ToolWithSchema) *Ag
 }
 
 // Callback is called during agent execution for events.
-type Callback func(event string, data string)
+// Updated to accept interface{} for structured event data (EventWithMeta).
+type Callback func(event string, data interface{})
 
 // Event constants for callbacks.
 const (
@@ -216,9 +217,18 @@ func (a *Agent) RunWithCallback(ctx context.Context, input string, callback Call
 				toolName := match[1]
 				toolInput := match[2]
 
-				// Notify callback
+				// Notify callback with structured EventWithMeta
 				if callback != nil {
-					callback(EventToolUse, fmt.Sprintf("%s:%s", toolName, toolInput))
+					meta := &EventMeta{
+						ToolName:     toolName,
+						Status:       "running",
+						InputSummary: toolInput,
+					}
+					callback(EventToolUse, &EventWithMeta{
+						EventType: EventTypeToolUse,
+						EventData: toolName,
+						Meta:      meta,
+					})
 				}
 
 				toolStart := time.Now()
@@ -235,9 +245,18 @@ func (a *Agent) RunWithCallback(ctx context.Context, input string, callback Call
 					"duration_ms", time.Since(toolStart).Milliseconds(),
 				)
 
-				// Notify callback of result
+				// Notify callback of result with structured EventWithMeta
 				if callback != nil {
-					callback(EventToolResult, toolResult)
+					meta := &EventMeta{
+						ToolName:      toolName,
+						Status:        "success",
+						OutputSummary: toolResult,
+					}
+					callback(EventToolResult, &EventWithMeta{
+						EventType: EventTypeToolResult,
+						EventData: toolResult,
+						Meta:      meta,
+					})
 				}
 
 				// Add tool result as a user message
@@ -288,9 +307,18 @@ func (a *Agent) RunWithCallback(ctx context.Context, input string, callback Call
 			toolName := tc.Function.Name
 			toolInput := tc.Function.Arguments
 
-			// Notify callback
+			// Notify callback with structured EventWithMeta
 			if callback != nil {
-				callback(EventToolUse, fmt.Sprintf("%s:%s", toolName, toolInput))
+				meta := &EventMeta{
+					ToolName:     toolName,
+					Status:       "running",
+					InputSummary: toolInput,
+				}
+				callback(EventToolUse, &EventWithMeta{
+					EventType: EventTypeToolUse,
+					EventData: toolName,
+					Meta:      meta,
+				})
 			}
 
 			toolStart := time.Now()
@@ -307,9 +335,18 @@ func (a *Agent) RunWithCallback(ctx context.Context, input string, callback Call
 				"duration_ms", time.Since(toolStart).Milliseconds(),
 			)
 
-			// Notify callback of result
+			// Notify callback of result with structured EventWithMeta
 			if callback != nil {
-				callback(EventToolResult, toolResult)
+				meta := &EventMeta{
+					ToolName:      toolName,
+					Status:        "success",
+					OutputSummary: toolResult,
+				}
+				callback(EventToolResult, &EventWithMeta{
+					EventType: EventTypeToolResult,
+					EventData: toolResult,
+					Meta:      meta,
+				})
 			}
 
 			// Store for early stopping check

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -300,9 +301,11 @@ func TestSchedulerAgentV2_Callback(t *testing.T) {
 
 	var events []string
 	var eventData []string
-	callback := func(event, data string) {
+	callback := func(event string, data interface{}) {
 		events = append(events, event)
-		eventData = append(eventData, data)
+		if data != nil {
+			eventData = append(eventData, fmt.Sprintf("%v", data))
+		}
 	}
 
 	// Mock: LLM calls tool

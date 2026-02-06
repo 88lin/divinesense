@@ -63,10 +63,9 @@ export function useEventStream(
   // Refs for logic that might be implemented later
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sendMessage = useCallback((message: unknown) => {
+  const sendMessage = useCallback((_message: unknown) => {
     // This would send a message through the WebSocket
     // Implementation depends on the WebSocket library used
-    console.log("Sending message:", message);
   }, []);
 
   const disconnect = useCallback(() => {

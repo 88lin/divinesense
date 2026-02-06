@@ -253,8 +253,20 @@ func (p *MemoParrot) ExecuteWithCallback(
 			callbackSafe(EventTypeAnswer, cleanText+"\n")
 		}
 
+		// Send structured tool_use event with EventMetadata for UI consistency with Geek/Evolution modes
 		if callbackSafe != nil {
-			callbackSafe(EventTypeToolUse, fmt.Sprintf("正在搜索: %s", toolCall))
+			// Build EventMeta for structured tool use event
+			// This ensures frontend can parse and display tool calls consistently
+			meta := &EventMeta{
+				ToolName:     toolCall,
+				Status:       "running",
+				InputSummary: fmt.Sprintf("%s", toolInput),
+			}
+			callbackSafe(EventTypeToolUse, &EventWithMeta{
+				EventType: EventTypeToolUse,
+				EventData: toolCall, // Simple tool name for content
+				Meta:      meta,
+			})
 		}
 
 		// Track tool call (P1-A006)
@@ -328,9 +340,18 @@ func (p *MemoParrot) ExecuteWithCallback(
 			continue
 		}
 
-		// Send tool result (non-critical - use safe callback)
+		// Send structured tool_result event with EventMetadata
 		if callbackSafe != nil {
-			callbackSafe(EventTypeToolResult, toolResult)
+			meta := &EventMeta{
+				Status:        "success",
+				OutputSummary: toolResult,
+				ToolName:      toolCall,
+			}
+			callbackSafe(EventTypeToolResult, &EventWithMeta{
+				EventType: EventTypeToolResult,
+				EventData: toolResult,
+				Meta:      meta,
+			})
 		}
 
 		// Add to conversation

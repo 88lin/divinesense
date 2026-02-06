@@ -58,6 +58,24 @@ import { BranchIndicator } from "./BranchIndicator";
 
 type CodeComponentProps = React.ComponentProps<"code"> & { inline?: boolean };
 
+/**
+ * Extract pure tool name from function call string
+ *
+ * Handles various formats:
+ * - "search_files(query=\"xxx\")" -> { displayName: "search_files", fullCall: "search_files(query=\"xxx\")" }
+ * - "read_file(path=\"/a/b\")" -> { displayName: "read_file", fullCall: "read_file(path=\"/a/b\")" }
+ * - "memo_search" -> { displayName: "memo_search", fullCall: "memo_search" }
+ */
+function extractToolName(callName: string): { displayName: string; fullCall: string } {
+  // Match function name before opening parenthesis
+  const match = callName.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+  if (match) {
+    return { displayName: match[1], fullCall: callName };
+  }
+  // If no parentheses found, the entire string is the tool name
+  return { displayName: callName, fullCall: callName };
+}
+
 // Tool call type
 type ToolCall =
   | string
@@ -365,7 +383,7 @@ function BlockHeader({
       userMessage.metadata?.mode || (parrotId === "GEEK" ? "geek" : parrotId === "EVOLUTION" ? "evolution" : "normal");
 
     // 通用格式化函数
-    const formatCost = (cost?: number) => (cost ? `$${cost.toFixed(4)}` : "");
+    const formatCost = (cost?: number) => (cost ? `${t("ai.session_stats.currency_symbol")}${cost.toFixed(4)}` : "");
     const formatTokens = (input?: number, output?: number) => {
       if (input && output) return `${((input + output) / 1000).toFixed(1)}k`;
       return "";
@@ -812,16 +830,18 @@ function BlockBody({
 
             const calling = streamingPhase === "tools" && eventIndex === lastToolIndex;
             const call = event.data;
-            const callName = typeof call === "string" ? call : call.name;
+            const rawCallName = typeof call === "string" ? call : call.name;
+            // Extract pure tool name for title, full call for content
+            const { displayName, fullCall } = extractToolName(rawCallName);
 
             // Find result
             const result = toolResults.find(
-              (r) => r.name === callName || (typeof call === "object" && call.toolId && r.toolId === call.toolId),
+              (r) => r.name === rawCallName || (typeof call === "object" && call.toolId && r.toolId === call.toolId),
             );
 
             const isError = typeof call === "object" ? call.isError : assistantMessage?.error;
             // Determine operation type (Read vs Write)
-            const isWriteOp = ["write", "edit", "bash", "run_command"].some((k) => callName.toLowerCase().includes(k));
+            const isWriteOp = ["write", "edit", "bash", "run_command"].some((k) => displayName.toLowerCase().includes(k));
 
             return (
               <div key={event.id} className="relative group">
@@ -854,7 +874,7 @@ function BlockBody({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={cn("font-semibold text-sm", isWriteOp ? "text-purple-700 dark:text-purple-300" : "text-foreground")}>
-                        {callName}
+                        {displayName}
                       </span>
                       {/* Status Indicator */}
                       {result ? (
@@ -885,7 +905,7 @@ function BlockBody({
 
                   {/* Line 2: Function Call + Parameters (Compact) */}
                   <div className="mt-1 flex items-center gap-2 min-w-0">
-                    {/* Function with params */}
+                    {/* Function with params - prefer inputSummary, fallback to fullCall */}
                     {typeof call === "object" && call.inputSummary ? (
                       <code
                         className={cn(
@@ -899,6 +919,16 @@ function BlockBody({
                     ) : typeof call === "object" && call.filePath ? (
                       <code className="text-xs font-mono text-muted-foreground/70 truncate block" title={call.filePath}>
                         {call.filePath}
+                      </code>
+                    ) : fullCall !== displayName ? (
+                      <code
+                        className={cn(
+                          "text-xs font-mono truncate block",
+                          isError ? "text-red-600/80 dark:text-red-400/80" : "text-muted-foreground/70",
+                        )}
+                        title={fullCall}
+                      >
+                        {fullCall}
                       </code>
                     ) : null}
                   </div>

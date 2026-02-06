@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle2, Clock, DollarSign, FileEdit, Wrench, XCircle, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { type Block } from "@/types/block";
 
@@ -40,6 +41,8 @@ type StatusType = keyof typeof STATUS_CONFIG;
  * Shows: status | duration | tokens | tools | files
  */
 export function SessionSummaryPanel({ summary, className }: SessionSummaryPanelProps) {
+  const { t } = useTranslation();
+
   // Format duration in human-readable format
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
@@ -142,7 +145,10 @@ export function SessionSummaryPanel({ summary, className }: SessionSummaryPanelP
           {(hasTiming || hasTokens) && <span className="text-border/50">•</span>}
           <div className="flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5 text-green-500" />
-            <span className="font-mono font-medium">${summary.totalCostUSD!.toFixed(4)}</span>
+            <span className="font-mono font-medium">
+              {t("ai.session_stats.currency_symbol")}
+              {summary.totalCostUSD!.toFixed(4)}
+            </span>
           </div>
         </>
       )}
@@ -183,13 +189,19 @@ interface CompactSessionSummaryProps {
 }
 
 export function CompactSessionSummary({ summary, className }: CompactSessionSummaryProps) {
+  const { t } = useTranslation();
   const totalTokens = (summary.totalInputTokens || 0) + (summary.totalOutputTokens || 0);
 
   return (
     <div className={cn("flex items-center gap-3 text-xs text-muted-foreground", className)}>
       {summary.totalDurationMs && summary.totalDurationMs > 0 && <span>⏱ {summary.totalDurationMs}ms</span>}
       {totalTokens > 0 && <span>⚡ {totalTokens} token</span>}
-      {summary.totalCostUSD && summary.totalCostUSD > 0 && <span>💰 ${summary.totalCostUSD.toFixed(4)}</span>}
+      {summary.totalCostUSD && summary.totalCostUSD > 0 && (
+        <span>
+          💰 {t("ai.session_stats.currency_symbol")}
+          {summary.totalCostUSD.toFixed(4)}
+        </span>
+      )}
       {summary.toolCallCount && summary.toolCallCount > 0 && <span>🔧 {summary.toolCallCount} calls</span>}
     </div>
   );

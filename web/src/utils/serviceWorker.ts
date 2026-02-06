@@ -7,11 +7,7 @@
 
 const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 
-// Conditional logging - only in development
 const log = {
-  info: (...args: unknown[]) => {
-    if (import.meta.env.DEV) console.log("[ServiceWorker]", ...args);
-  },
   error: (...args: unknown[]) => {
     console.error("[ServiceWorker]", ...args);
   },
@@ -19,7 +15,6 @@ const log = {
 
 const registerServiceWorker = () => {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
-    log.info("Service Worker not supported in this environment");
     return;
   }
 
@@ -32,8 +27,6 @@ const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(swUrl)
       .then((registration) => {
-        log.info("Service Worker registered:", registration);
-
         // Check for updates
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
@@ -41,7 +34,6 @@ const registerServiceWorker = () => {
             newWorker.addEventListener("statechange", () => {
               if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
                 // New version available
-                log.info("New service worker available. Refresh to update.");
                 // Dispatch custom event for UI to handle
                 window.dispatchEvent(new CustomEvent("sw-update-available"));
               }

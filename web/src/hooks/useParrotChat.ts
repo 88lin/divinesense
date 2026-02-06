@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { aiServiceClient } from "@/connect";
 import {
   DangerBlockEvent,
+  type EventMetadata,
   MemoQueryResultData,
   ParrotAgentType,
   ParrotChatCallbacks,
@@ -11,7 +12,32 @@ import {
   parrotToProtoAgentType,
   ScheduleQueryResultData,
 } from "@/types/parrot";
+import type { EventMetadata as ProtoEventMetadata } from "@/types/proto/api/v1/ai_service_pb";
 import { ChatRequestSchema } from "@/types/proto/api/v1/ai_service_pb";
+
+/**
+ * Convert protobuf EventMetadata to local EventMetadata for UI callbacks.
+ * Handles bigint to number conversion and optional field mapping.
+ */
+function protoToEventMetadata(proto: ProtoEventMetadata): EventMetadata | undefined {
+  if (!proto?.toolName) return undefined;
+  return {
+    durationMs: proto.durationMs ? Number(proto.durationMs) : undefined,
+    totalDurationMs: proto.totalDurationMs ? Number(proto.totalDurationMs) : undefined,
+    toolName: proto.toolName,
+    toolId: proto.toolId || undefined,
+    status: proto.status,
+    errorMsg: proto.errorMsg || undefined,
+    inputTokens: proto.inputTokens,
+    outputTokens: proto.outputTokens,
+    cacheWriteTokens: proto.cacheWriteTokens,
+    cacheReadTokens: proto.cacheReadTokens,
+    inputSummary: proto.inputSummary,
+    outputSummary: proto.outputSummary,
+    filePath: proto.filePath,
+    lineCount: proto.lineCount,
+  };
+}
 
 /**
  * useParrotChat provides a hook for chatting with parrot agents.
@@ -65,7 +91,7 @@ export function useParrotChat() {
         for await (const response of stream) {
           // Handle parrot-specific events (eventType and eventData)
           if (response.eventType && response.eventData) {
-            handleParrotEvent(response.eventType, response.eventData, callbacks);
+            handleParrotEvent(response.eventType, response.eventData, response.eventMeta, callbacks);
           }
 
           // Handle content chunks (for backward compatibility)
@@ -109,13 +135,10 @@ export function useParrotChat() {
  *
  * @param eventType - The type of event
  * @param eventData - The event data (JSON string or plain text)
+ * @param eventMeta - The event metadata (structured data from EventWithMeta)
  * @param callbacks - Optional callbacks to handle events
  */
-function handleParrotEvent(eventType: string, eventData: string, callbacks?: ParrotChatCallbacks) {
-  // Debug log for tool_use events
-  if (eventType === "tool_use" || eventType === "tool_result") {
-    console.debug("[useParrotChat] Event:", eventType, "Data:", eventData);
-  }
+function handleParrotEvent(eventType: string, eventData: string, eventMeta?: ProtoEventMetadata, callbacks?: ParrotChatCallbacks) {
   try {
     switch (eventType) {
       case ParrotEventType.THINKING:
@@ -123,11 +146,26 @@ function handleParrotEvent(eventType: string, eventData: string, callbacks?: Par
         break;
 
       case ParrotEventType.TOOL_USE:
-        callbacks?.onToolUse?.(eventData);
+        // Use eventMeta if available (Normal mode with EventWithMeta)
+        // For backward compatibility, fall back to eventData if meta is missing
+        if (eventMeta?.toolName) {
+          const meta = protoToEventMetadata(eventMeta);
+          callbacks?.onToolUse?.(eventMeta.toolName, meta);
+        } else {
+          // Backward compatibility: old format without meta
+          callbacks?.onToolUse?.(eventData);
+        }
         break;
 
       case ParrotEventType.TOOL_RESULT:
-        callbacks?.onToolResult?.(eventData);
+        // Use eventMeta if available (Normal mode with EventWithMeta)
+        if (eventMeta?.toolName) {
+          const meta = protoToEventMetadata(eventMeta);
+          callbacks?.onToolResult?.(eventData, meta);
+        } else {
+          // Backward compatibility: old format without meta
+          callbacks?.onToolResult?.(eventData);
+        }
         break;
 
       case ParrotEventType.DANGER_BLOCK:
@@ -171,8 +209,6 @@ function handleParrotEvent(eventType: string, eventData: string, callbacks?: Par
         break;
 
       case ParrotEventType.SCHEDULE_UPDATED:
-        // Schedule updated event
-        console.log("Schedule updated:", eventData);
         break;
 
       case ParrotEventType.ERROR: {

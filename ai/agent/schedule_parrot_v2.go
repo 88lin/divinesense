@@ -35,10 +35,8 @@ func (p *ScheduleParrotV2) ExecuteWithCallback(
 	history []string,
 	callback EventCallback,
 ) error {
-	// Adapt the callback signature
-	// Existing: func(event string, data string)
-	// New: func(eventType string, eventData interface{})
-	adaptedCallback := func(event string, data string) {
+	// Adapt the callback signature - pass through EventCallback which accepts interface{}
+	adaptedCallback := func(event string, data interface{}) {
 		if callback == nil {
 			return
 		}
@@ -84,12 +82,21 @@ func (p *ScheduleParrotV2) StreamChat(ctx context.Context, input string, history
 	go func() {
 		defer close(responseChan)
 
-		_, err := p.agent.ExecuteWithCallback(ctx, input, nil, func(event, data string) {
+		_, err := p.agent.ExecuteWithCallback(ctx, input, nil, func(event string, data interface{}) {
 			if event == "answer" {
-				select {
-				case responseChan <- data:
-				case <-ctx.Done():
-					return
+				var answer string
+				switch v := data.(type) {
+				case string:
+					answer = v
+				case *EventWithMeta:
+					answer = v.EventData
+				}
+				if answer != "" {
+					select {
+					case responseChan <- answer:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		})

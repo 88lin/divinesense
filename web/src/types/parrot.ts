@@ -381,8 +381,8 @@ export interface ParrotChatCallbacks {
   onMemoQueryResult?: (result: MemoQueryResultData) => void;
   onScheduleQueryResult?: (result: ScheduleQueryResultData) => void;
   onThinking?: (message: string) => void;
-  onToolUse?: (toolName: string) => void;
-  onToolResult?: (result: string) => void;
+  onToolUse?: (toolName: string, meta?: EventMetadata) => void;
+  onToolResult?: (result: string, meta?: EventMetadata) => void;
   onDangerBlock?: (event: DangerBlockEvent) => void;
   onDone?: () => void;
   onError?: (error: Error) => void;

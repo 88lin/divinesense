@@ -89,7 +89,6 @@ const STREAM_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const SEMANTIC_SEARCH_LIMIT = 10; // Default search results limit
 const STALE_TIME_SHORT_MS = 60 * 1000; // 1 minute
 const STALE_TIME_LONG_MS = 5 * 60 * 1000; // 5 minutes
-const EVENT_DATA_PREVIEW_LENGTH = 100; // Preview length for event data
 
 // Query keys factory for consistent cache management
 export const aiKeys = {
@@ -282,38 +281,13 @@ export function useChat() {
         let doneCalled = false;
         let responseCount = 0;
 
-        if (import.meta.env.DEV) {
-          console.log("[AI Chat] Starting stream loop", { message: params.message.slice(0, 50) });
-        }
-
         for await (const response of stream) {
           responseCount++;
-          if (import.meta.env.DEV) {
-            console.log("[AI Chat] Stream response", {
-              responseCount,
-              hasContent: !!response.content,
-              hasEventType: !!response.eventType,
-              hasEventMeta: !!response.eventMeta,
-              done: response.done,
-              hasBlockSummary: !!response.blockSummary,
-              hasBlockId: response.blockId !== undefined && response.blockId !== 0n,
-              blockId: response.blockId,
-              eventType: response.eventType,
-            });
-          }
-
           // Phase 4: Handle Block ID - create optimistic block immediately for instant UI feedback
           // When we receive a block_id, it means a new block was created/updated
           // Instead of just invalidating, we create an optimistic block for instant rendering
           const blockId = response.blockId;
           if (blockId !== undefined && blockId !== 0n && params.conversationId) {
-            if (import.meta.env.DEV) {
-              console.log("[AI Chat] Received block_id, creating optimistic block", {
-                blockId: blockId.toString(),
-                conversationId: params.conversationId,
-              });
-            }
-
             // Create an optimistic block for instant UI feedback
             const now = BigInt(Date.now());
             const optimisticBlock: Block = {
@@ -415,14 +389,6 @@ export function useChat() {
 
           // Handle parrot-specific events
           if (response.eventType && response.eventData) {
-            if (import.meta.env.DEV) {
-              console.debug("[AI Chat] Parrot event", {
-                eventType: response.eventType,
-                eventDataLength: response.eventData.length,
-                eventDataPreview: response.eventData.slice(0, EVENT_DATA_PREVIEW_LENGTH),
-                eventMeta: response.eventMeta,
-              });
-            }
             switch (response.eventType) {
               case "thinking":
                 callbacks?.onThinking?.(response.eventData);
@@ -535,15 +501,6 @@ export function useChat() {
 
           // Handle completion
           if (response.done === true) {
-            if (import.meta.env.DEV) {
-              console.log("[AI Chat] Received done=true signal", {
-                responseCount,
-                hasBlockSummary: !!response.blockSummary,
-                sessionId: response.blockSummary?.sessionId,
-                blockSummary: response.blockSummary,
-                fullResponse: response,
-              });
-            }
             doneCalled = true;
             // Send block summary if available (Geek/Evolution modes)
             if (response.blockSummary) {
@@ -586,23 +543,12 @@ export function useChat() {
             });
           }
           callbacks?.onDone?.();
-        } else if (import.meta.env.DEV) {
-          console.log("[AI Chat] Stream completed successfully", { responseCount, doneCalled });
         }
 
         // Clear timeout on successful completion
         if (timeoutIdRef.current) {
           clearTimeout(timeoutIdRef.current);
           timeoutIdRef.current = null;
-        }
-
-        const duration = Date.now() - startTime;
-        if (import.meta.env.DEV) {
-          console.debug("[AI Chat] Stream completed successfully", {
-            durationMs: duration,
-            contentLength: fullContent.length,
-            sourcesCount: sources.length,
-          });
         }
 
         return { content: fullContent, sources };
@@ -649,9 +595,6 @@ export function useChat() {
       if (timeoutIdRef.current) {
         clearTimeout(timeoutIdRef.current);
         timeoutIdRef.current = null;
-      }
-      if (import.meta.env.DEV) {
-        console.debug("[AI Chat] Stream manually stopped");
       }
     },
     /**

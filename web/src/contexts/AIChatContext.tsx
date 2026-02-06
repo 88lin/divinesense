@@ -463,7 +463,6 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
   // Handle migration from localStorage
   const migrateFromStorage = useCallback(
     async (localConversations: Conversation[]) => {
-      console.log("Migrating AI conversations to cloud storage...");
       for (const local of localConversations) {
         try {
           // Use the shared conversion helper
@@ -476,7 +475,6 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
 
           // We don't bulk migrate history to avoid database bloat,
           // but the user's list is now persisted.
-          console.log(`Migrated conversation: ${local.title}`);
         } catch (e) {
           console.error(`Failed to migrate conversation: ${local.title}`, e);
         }

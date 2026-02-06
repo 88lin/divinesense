@@ -3,15 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-// ============================================================
-// Debug logger - only logs in development mode
-// ============================================================
-const debugLog = (...args: unknown[]) => {
-  if (import.meta.env.DEV) {
-    console.debug("[AIChat]", ...args);
-  }
-};
-
 import { ChatHeader } from "@/components/AIChat/ChatHeader";
 import { ChatInput } from "@/components/AIChat/ChatInput";
 import { ChatMessages } from "@/components/AIChat/ChatMessages";
@@ -359,7 +350,6 @@ const AIChat = () => {
             }
           },
           onToolUse: (toolName, meta) => {
-            debugLog("[Geek/Evolution Mode] Tool use event:", toolName, meta);
             setCapabilityStatus("processing");
             // Accumulate tool calls for this message
             toolCallsRef.current.push({
@@ -379,7 +369,6 @@ const AIChat = () => {
             }
           },
           onToolResult: (result, meta) => {
-            debugLog("[Geek/Evolution Mode] Tool result:", result, meta);
             // Update tool call with output result
             if (lastAssistantMessageIdRef.current && toolCallsRef.current.length > 0) {
               // Find the most recent tool call and update its output
@@ -407,7 +396,6 @@ const AIChat = () => {
             }
           },
           onBlockSummary: (summary) => {
-            debugLog("[Geek/Evolution Mode] Block summary:", summary);
             setBlockSummary(summary);
           },
           onMemoQueryResult: (result) => {
@@ -489,7 +477,6 @@ const AIChat = () => {
         const blockId = Number(streamingBlock.id);
         const convId = Number(streamingBlock.conversationId);
         if (blockId > 0 && convId > 0) {
-          debugLog("Appending user input to streaming block", { blockId, convId, userMessage });
           try {
             // Pass conversationId for optimistic update
             await appendUserInput(blockId, userMessage, convId);
@@ -747,7 +734,6 @@ const AIChat = () => {
       errorMsg: sessionStats.errorMessage || undefined,
     };
 
-    debugLog("[BlockSummary] Restored from sessionStats:", restoredSummary);
     setBlockSummary(restoredSummary);
   }, [blocks, blockSummary, setBlockSummary, safeBigIntToNumber]);
 
