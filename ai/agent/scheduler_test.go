@@ -301,11 +301,9 @@ func TestSchedulerAgentV2_Callback(t *testing.T) {
 
 	var events []string
 	var eventData []string
-	callback := func(event string, data interface{}) {
+	callback := func(event, data string) {
 		events = append(events, event)
-		if data != nil {
-			eventData = append(eventData, fmt.Sprintf("%v", data))
-		}
+		eventData = append(eventData, data)
 	}
 
 	// Mock: LLM calls tool
