@@ -594,11 +594,29 @@ func (h *ParrotHandler) executeAgent(
 	// Try to get detailed stats from agent if available (GeekParrot/EvolutionParrot)
 	// 尝试从 agent 获取详细统计数据（如果可用，如 GeekParrot/EvolutionParrot）
 	var detailedStats *agentpkg.SessionStats
+	var normalStats *agentpkg.NormalSessionStats
+
+	// Check for SessionStatsProvider (GeekParrot/EvolutionParrot)
 	if statsProvider, ok := agent.(agentpkg.SessionStatsProvider); ok {
 		detailedStats = statsProvider.GetSessionStats()
 		logger.Info("Agent: got detailed stats from SessionStatsProvider")
 	} else {
-		logger.Info("Agent: agent is not a SessionStatsProvider")
+		logger.Info("Agent: agent is not a SessionStatsProvider, checking for NormalSessionStatsProvider")
+
+		// Check for NormalSessionStatsProvider (MemoParrot/ScheduleParrotV2/AmazingParrot)
+		// Use type assertion to check if agent has GetSessionStats method returning *NormalSessionStats
+		type normalStatsGetter interface {
+			GetSessionStats() *agentpkg.NormalSessionStats
+		}
+		if normalProvider, ok := agent.(normalStatsGetter); ok && normalProvider != nil {
+			normalStats = normalProvider.GetSessionStats()
+			logger.Info("Agent: got normal stats from NormalSessionStatsProvider",
+				slog.Int("prompt_tokens", normalStats.PromptTokens),
+				slog.Int("completion_tokens", normalStats.CompletionTokens),
+				slog.Int64("duration_ms", normalStats.TotalDurationMs))
+		} else {
+			logger.Info("Agent: agent does not provide session stats")
+		}
 	}
 
 	// Safely get tool usage stats
@@ -634,7 +652,7 @@ func (h *ParrotHandler) executeAgent(
 	// NOTE: BlockSummary.Mode has been removed - Block.mode is the single source of truth.
 	// The mode is stored in the Block (currentBlock.mode) and should be read from there.
 
-	// Add detailed stats if available (from GeekParrot/EvolutionParrot)
+	// Add detailed stats if available (from GeekParrot/EvolutionParrot or NormalSessionStats)
 	if detailedStats != nil {
 		blockSummary.TotalDurationMs = detailedStats.TotalDurationMs
 		blockSummary.ThinkingDurationMs = detailedStats.ThinkingDurationMs
@@ -654,36 +672,28 @@ func (h *ParrotHandler) executeAgent(
 		}
 		blockSummary.FilesModified = detailedStats.FilesModified
 		blockSummary.FilePaths = detailedStats.FilePaths
+	} else if normalStats != nil {
+		// P1-A006: Include NormalSessionStats in BlockSummary for normal mode agents
+		statsSnapshot := normalStats.GetStatsSnapshot()
+		blockSummary.TotalDurationMs = statsSnapshot.TotalDurationMs
+		blockSummary.ThinkingDurationMs = statsSnapshot.ThinkingDurationMs
+		blockSummary.GenerationDurationMs = statsSnapshot.GenerationDurationMs
+		blockSummary.TotalInputTokens = int32(statsSnapshot.PromptTokens)
+		blockSummary.TotalOutputTokens = int32(statsSnapshot.CompletionTokens)
+		blockSummary.TotalCacheWriteTokens = int32(statsSnapshot.CacheWriteTokens)
+		blockSummary.TotalCacheReadTokens = int32(statsSnapshot.CacheReadTokens)
+		blockSummary.ToolCallCount = int32(statsSnapshot.ToolCallCount)
+		if len(statsSnapshot.ToolsUsed) > 0 {
+			blockSummary.ToolsUsed = statsSnapshot.ToolsUsed
+		}
+		logger.Info("Agent: applied normal stats to BlockSummary")
 	}
 
-	// Safely send done marker
-	streamMu.Lock()
-	logger.Info("Agent: sending done marker with block summary",
-		slog.String("session_id", blockSummary.SessionId),
-		slog.Int64("duration_ms", blockSummary.TotalDurationMs),
-		slog.Int64("tool_calls", int64(blockSummary.ToolCallCount)),
-		slog.Bool("done", true),
-	)
-	// Phase 4: Include BlockId in done marker
-	var blockId int64
-	if currentBlock != nil {
-		blockId = currentBlock.ID
-	}
-	sendErr := stream.Send(&v1pb.ChatResponse{
-		Done:         true,
-		BlockSummary: blockSummary,
-		BlockId:      blockId,
-	})
-	streamMu.Unlock()
-
-	if sendErr != nil {
-		logger.Error("Agent: failed to send done marker", sendErr,
-			slog.String("error", sendErr.Error()))
-	} else {
-		logger.Info("Agent: done marker sent successfully")
-	}
-
-	// Phase 5: Complete or mark error on Block
+	// Phase 5: Complete or mark error on Block BEFORE sending done marker
+	// This ensures that when the frontend calls refetchBlocks() after receiving the done event,
+	// the Block's assistantContent is already persisted in the database.
+	// This fixes the "Initializing..." stuck issue caused by the race condition where
+	// refetchBlocks() executes before CompleteBlock() completes.
 	if currentBlock != nil && h.blockManager != nil {
 		assistantContentMu.Lock()
 		finalContent := assistantContent.String()
@@ -725,8 +735,40 @@ func (h *ParrotHandler) executeAgent(
 					slog.Int64("block_id", currentBlock.ID),
 					slog.String("error", completeErr.Error()),
 				)
+			} else {
+				logger.Info("Agent: block completed successfully",
+					slog.Int64("block_id", currentBlock.ID),
+					slog.Int("content_length", len(finalContent)),
+				)
 			}
 		}
+	}
+
+	// Safely send done marker AFTER Block is completed
+	streamMu.Lock()
+	logger.Info("Agent: sending done marker with block summary",
+		slog.String("session_id", blockSummary.SessionId),
+		slog.Int64("duration_ms", blockSummary.TotalDurationMs),
+		slog.Int64("tool_calls", int64(blockSummary.ToolCallCount)),
+		slog.Bool("done", true),
+	)
+	// Phase 4: Include BlockId in done marker
+	var blockId int64
+	if currentBlock != nil {
+		blockId = currentBlock.ID
+	}
+	sendErr := stream.Send(&v1pb.ChatResponse{
+		Done:         true,
+		BlockSummary: blockSummary,
+		BlockId:      blockId,
+	})
+	streamMu.Unlock()
+
+	if sendErr != nil {
+		logger.Error("Agent: failed to send done marker", sendErr,
+			slog.String("error", sendErr.Error()))
+	} else {
+		logger.Info("Agent: done marker sent successfully")
 	}
 
 	if sendErr != nil {

@@ -140,16 +140,33 @@ func (m *EvolutionMode) Name() string {
 }
 
 // BuildSystemPrompt builds the Evolution Mode system prompt.
+// Implements a research-first workflow: idea-researcher → Issue → Planning → PR
 func (m *EvolutionMode) BuildSystemPrompt(cfg *CCRunnerConfig) string {
 	return `# Evolution Mode 🧬
 
-You are modifying DivineSense's own source code.
+You are evolving DivineSense's source code through a structured, interactive process.
 
-## Rules
-- Follow @CLAUDE.md
+## Decision Tree
+
+### Path A: Vague Request → Research First
+**Trigger**: "Can we add XXX", "I want to optimize YYY", "I have an idea..."
+
+→ Use /idea-researcher skill (interactive research → create Issue)
+→ After research: Ask user whether to execute now?
+
+### Path B: Clear Command → Plan & Confirm
+**Trigger**: "Execute #123", "Fix XXX bug", "Implement per spec"
+
+1. Output detailed plan (scope, steps, risks)
+2. Wait for confirmation: "Please confirm the plan. Reply 'execute' to proceed, or suggest changes."
+3. After confirmation: Follow @.claude/rules/git-workflow.md
+
+## Core Rules
+
+- Read @CLAUDE.md first
+- Follow @.claude/rules/git-workflow.md
 - All changes via PR
-
-Read @CLAUDE.md first.
+- Always confirm before execution
 `
 }
 

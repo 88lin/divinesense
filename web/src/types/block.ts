@@ -14,16 +14,23 @@ export type {
   AppendEventRequest,
   AppendUserInputRequest,
   Block,
+  BlockBranch,
   BlockEvent,
   BlockMode,
   BlockStatus,
   BlockType,
   CreateBlockRequest,
   DeleteBlockRequest,
+  DeleteBranchRequest,
+  ForkBlockRequest,
   GetBlockRequest,
+  ListBlockBranchesRequest,
+  ListBlockBranchesResponse,
   ListBlocksRequest,
   ListBlocksResponse,
   SessionStats,
+  SwitchBranchRequest,
+  TokenUsage,
   UpdateBlockRequest,
   UserInput,
 } from "./proto/api/v1/ai_service_pb";
@@ -88,6 +95,30 @@ export function isActiveStatus(status: BlockStatusEnum | string | number): boole
   const statusNum = typeof status === "number" ? status : parseInt(String(status), 10) || 0;
   // PENDING=1 or STREAMING=2 are active states
   return statusNum === 1 || statusNum === 2;
+}
+
+/**
+ * Type guard for checking if a status is streaming (2)
+ */
+export function isStreamingStatus(status: BlockStatusEnum | string | number): boolean {
+  const statusNum = typeof status === "number" ? status : parseInt(String(status), 10) || 0;
+  return statusNum === 2;
+}
+
+/**
+ * Type guard for checking if a status is completed (3)
+ */
+export function isCompletedStatus(status: BlockStatusEnum | string | number): boolean {
+  const statusNum = typeof status === "number" ? status : parseInt(String(status), 10) || 0;
+  return statusNum === 3;
+}
+
+/**
+ * Type guard for checking if a status is error (4)
+ */
+export function isErrorStatus(status: BlockStatusEnum | string | number): boolean {
+  const statusNum = typeof status === "number" ? status : parseInt(String(status), 10) || 0;
+  return statusNum === 4;
 }
 
 /**

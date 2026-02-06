@@ -21,6 +21,7 @@ import type {
   DeleteBlockRequest,
   ListBlocksRequest,
   UpdateBlockRequest,
+  UserInput,
 } from "@/types/proto/api/v1/ai_service_pb";
 import {
   AppendEventRequestSchema,
@@ -38,6 +39,17 @@ import {
 // ============================================================================
 // Query Configuration
 // ============================================================================
+
+/**
+ * Cache data structure for block list queries
+ * @internal
+ */
+interface BlockListCacheData {
+  blocks: Block[];
+  totalCount: number;
+}
+
+// Query keys factory for consistent cache management
 
 /** Cache time configuration for different query types */
 const CACHE_TIMES = {
@@ -184,11 +196,16 @@ export function useCreateBlock() {
         ccSessionId: "",
         parentBlockId: BigInt(0),
         branchPath: "",
+        costEstimate: BigInt(0),
+        modelVersion: "",
+        userFeedback: "",
+        regenerationCount: 0,
+        errorMessage: "",
+        archivedAt: BigInt(0),
       };
 
       // Optimistically update cache
-      // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-      queryClient.setQueryData(blockKeys.list(conversationId), (old: any) => {
+      queryClient.setQueryData(blockKeys.list(conversationId), (old: BlockListCacheData | undefined) => {
         if (!old) return { blocks: [optimisticBlock], totalCount: 1 };
         return {
           ...old,
@@ -212,8 +229,7 @@ export function useCreateBlock() {
       queryClient.setQueryData(blockKeys.detail(Number(newBlock.id)), newBlock);
 
       // Replace optimistic block in list with actual block
-      // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-      queryClient.setQueryData(blockKeys.list(conversationId), (old: any) => {
+      queryClient.setQueryData(blockKeys.list(conversationId), (old: BlockListCacheData | undefined) => {
         if (!old) return { blocks: [newBlock], totalCount: 1 };
         return {
           ...old,
@@ -253,8 +269,7 @@ export function useUpdateBlock() {
       const previousBlock = queryClient.getQueryData(blockKeys.detail(blockId));
 
       // Optimistically update cache
-      // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-      queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+      queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
         if (!old) return old;
         return {
           ...old,
@@ -344,8 +359,7 @@ export function useAppendEvent() {
       const blockId = Number(variables.id);
 
       // Direct cache update instead of invalidation (faster)
-      // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-      queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+      queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
         if (!old) return old;
 
         // Append event to existing event stream
@@ -393,8 +407,7 @@ export function useAppendEventsBatch() {
 
       // Update caches for all affected blocks
       for (const [blockId, events] of updatesByBlock) {
-        // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-        queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+        queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
           if (!old) return old;
           return {
             ...old,
@@ -421,8 +434,7 @@ export function useStreamingBlock(blockId: number) {
   const queryClient = useQueryClient();
 
   const updateStreamingContent = (content: string) => {
-    // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-    queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+    queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
       if (!old) return old;
       return {
         ...old,
@@ -433,10 +445,9 @@ export function useStreamingBlock(blockId: number) {
     });
   };
 
-  // biome-ignore lint/suspicious/noExplicitAny: Event type from streaming
-  const appendStreamingEvent = (event: any) => {
-    // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-    queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+  // Event type from streaming is JSON string
+  const appendStreamingEvent = (event: string) => {
+    queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
       if (!old) return old;
       return {
         ...old,
@@ -446,10 +457,9 @@ export function useStreamingBlock(blockId: number) {
     });
   };
 
-  // biome-ignore lint/suspicious/noExplicitAny: SessionStats optional
-  const completeStreaming = (finalContent: string, sessionStats?: any) => {
-    // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-    queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+  // SessionStats is optional JSON string
+  const completeStreaming = (finalContent: string, sessionStats?: string) => {
+    queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
       if (!old) return old;
       return {
         ...old,
@@ -462,8 +472,7 @@ export function useStreamingBlock(blockId: number) {
   };
 
   const markStreamingError = (errorMessage: string) => {
-    // biome-ignore lint/suspicious/noExplicitAny: React Query cache update callback
-    queryClient.setQueryData(blockKeys.detail(blockId), (old: any) => {
+    queryClient.setQueryData(blockKeys.detail(blockId), (old: Block | undefined) => {
       if (!old) return old;
       return {
         ...old,
@@ -646,4 +655,41 @@ export function useBlocksWithFallback(
     shouldFallback,
     refetch: query.refetch, // Expose refetch function for manual refresh after streaming
   };
+}
+
+// ============================================================================
+// FORK BLOCK (Branching Support)
+// ============================================================================
+
+/**
+ * Hook to fork a block, creating a new branch
+ *
+ * @param blockId - The parent block ID to fork from
+ * @param reason - Optional reason for forking
+ * @param replaceUserInputs - Optional new user inputs to replace inherited ones (for message editing)
+ * @returns Mutation with forked block data
+ */
+export function useForkBlock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ blockId, reason, replaceUserInputs }: { blockId: bigint; reason?: string; replaceUserInputs?: UserInput[] }) => {
+      const response = await aiServiceClient.forkBlock({
+        id: blockId,
+        reason,
+        replaceUserInputs,
+      });
+      return response;
+    },
+    onSuccess: (newBlock, _variables) => {
+      // Add the new forked block to cache
+      const conversationId = Number(newBlock.conversationId);
+      queryClient.setQueryData(blockKeys.detail(Number(newBlock.id)), newBlock);
+
+      // Invalidate the block list to show the new branch
+      queryClient.invalidateQueries({
+        queryKey: blockKeys.list(conversationId),
+      });
+    },
+  });
 }

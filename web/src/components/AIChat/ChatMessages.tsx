@@ -1,14 +1,18 @@
+import { create } from "@bufbuild/protobuf";
 import { memo, ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import TypingCursor from "@/components/AIChat/TypingCursor";
+import { useForkBlock } from "@/hooks/useBlockQueries";
 import { cn } from "@/lib/utils";
 import { type AIMode, ChatItem, ConversationMessage, isContextSeparator, MessageRole } from "@/types/aichat";
 // Phase 4: Import Block types
 import type { Block as AIBlock } from "@/types/block";
-import { BLOCK_STATUS, blockModeToParrotAgentType, EVENT_TYPE, getBlockModeName } from "@/types/block";
+import { blockModeToParrotAgentType, EVENT_TYPE, getBlockModeName, isErrorStatus, isStreamingStatus } from "@/types/block";
 import type { BlockSummary } from "@/types/parrot";
 import { PARROT_THEMES, ParrotAgentType } from "@/types/parrot";
-import { BlockType } from "@/types/proto/api/v1/ai_service_pb";
+import { BlockType, UserInputSchema } from "@/types/proto/api/v1/ai_service_pb";
+// BlockEditDialog for editing user inputs
+import { BlockEditDialog, useBlockEditDialog } from "./BlockEditDialog";
 import { UnifiedMessageBlock } from "./UnifiedMessageBlock";
 // Event transformation utilities
 import { extractThinkingSteps, extractToolCalls, normalizeTimestamp, type ThinkingStep } from "./utils/eventTransformers";
@@ -22,7 +26,7 @@ function useStreamingStatus(blocks: AIBlock[] | undefined, isStreaming: boolean)
   return useMemo(() => {
     if (blocks && blocks.length > 0) {
       const lastAIBlock = blocks[blocks.length - 1];
-      return String(lastAIBlock.status) === String(BLOCK_STATUS.STREAMING);
+      return isStreamingStatus(lastAIBlock.status);
     }
     return isStreaming;
   }, [blocks, isStreaming]);
@@ -50,6 +54,8 @@ interface ChatMessagesProps {
   onCopyMessage?: (content: string) => void;
   onRegenerate?: () => void;
   onDeleteMessage?: (index: number) => void;
+  /** @deprecated Kept for potential future use */
+  _onSendProp?: (messageContent?: string) => void;
   children?: ReactNode;
   className?: string;
   amazingInsightCard?: ReactNode;
@@ -60,6 +66,8 @@ interface ChatMessagesProps {
   blockSummary?: BlockSummary;
   /** Phase 4: Block data support */
   blocks?: AIBlock[];
+  /** Conversation ID for Block API operations (e.g., fork) */
+  conversationId?: number;
 }
 
 const SCROLL_THRESHOLD = 150;
@@ -72,9 +80,10 @@ const SCROLL_THROTTLE_MS = 50;
 interface MessageBlock {
   id: string;
   userMessage: ConversationMessage;
+  additionalUserInputs?: ConversationMessage[];
   assistantMessage?: ConversationMessage;
   isLatest: boolean;
-  /** Session summary attached to this block (only for last block) */
+  /** Whether to attach block summary to this block */
   attachBlockSummary?: boolean;
 }
 
@@ -120,21 +129,32 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: bool
       continue;
     }
 
-    // Combine all user inputs into a single message
-    const userContent = block.userInputs
-      .map((ui) => ui.content)
-      .filter(Boolean)
-      .join("\n");
+    // Split userInputs: first as userMessage, rest as additionalUserInputs
+    const firstInput = block.userInputs[0];
+    const restInputs = block.userInputs.slice(1);
 
     const userMessage: ConversationMessage = {
       id: `block-${block.id}`,
       role: "user" as MessageRole,
-      content: userContent,
-      timestamp: normalizeTimestamp(block.createdTs),
+      content: firstInput?.content || "",
+      timestamp: normalizeTimestamp(firstInput?.timestamp || block.createdTs),
       metadata: {
         mode: getBlockModeName(block.mode) as AIMode,
       },
     };
+
+    // Build additional user inputs (appended messages)
+    const additionalUserInputs: ConversationMessage[] = restInputs
+      .filter((ui) => ui.content)
+      .map((ui, idx) => ({
+        id: `block-${block.id}-additional-${idx}`,
+        role: "user" as MessageRole,
+        content: ui.content,
+        timestamp: normalizeTimestamp(ui.timestamp || block.createdTs),
+        metadata: {
+          mode: getBlockModeName(block.mode) as AIMode,
+        },
+      }));
 
     // Build assistant message from assistantContent and eventStream
     const rawThinkingSteps = extractThinkingSteps(block.eventStream);
@@ -143,7 +163,7 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: bool
       role: "assistant" as MessageRole,
       content: block.assistantContent || "",
       timestamp: normalizeTimestamp(block.updatedTs),
-      error: String(block.status) === String(BLOCK_STATUS.ERROR),
+      error: isErrorStatus(block.status),
       metadata: {
         mode: getBlockModeName(block.mode) as AIMode,
         // Parse eventStream to extract metadata for UI, translating i18n keys
@@ -158,6 +178,7 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: bool
     messageBlocks.push({
       id: String(block.id),
       userMessage,
+      additionalUserInputs: additionalUserInputs.length > 0 ? additionalUserInputs : undefined,
       assistantMessage,
       isLatest,
       attachBlockSummary,
@@ -270,13 +291,18 @@ const ChatMessages = memo(function ChatMessages({
   onCopyMessage,
   onRegenerate,
   onDeleteMessage,
+  _onSendProp,
   children,
   className,
   amazingInsightCard,
   isStreaming = false,
   streamingContent = "",
   blockSummary,
+  conversationId,
 }: ChatMessagesProps) {
+  // Suppress unused variable warning - prop kept for potential future use
+  void _onSendProp;
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const rafIdRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
@@ -398,6 +424,58 @@ const ChatMessages = memo(function ChatMessages({
   // Get translation function
   const { t } = useTranslation();
 
+  // Fork block mutation
+  const forkBlock = useForkBlock();
+
+  // Block edit dialog state management
+  const editDialog = useBlockEditDialog();
+
+  // Handle edit confirmation - call ForkBlock API with new user input
+  const handleEditConfirm = useCallback(
+    async (editedMessage: string, blockId: bigint, _convId: number) => {
+      try {
+        // Create new UserInput with edited message
+        // Fix: Use create() to properly construct protobuf message with $typeName
+        const newUserInput = create(UserInputSchema, {
+          content: editedMessage,
+          timestamp: BigInt(Date.now()),
+          metadata: "{}",
+        });
+
+        // Fork block with replaced user input
+        await forkBlock.mutateAsync({
+          blockId,
+          reason: `User edited message: "${editedMessage}"`,
+          replaceUserInputs: [newUserInput],
+        });
+
+        // The forked block will appear in the block list with the new user input
+        // User can continue the conversation by sending a new message
+        editDialog.closeDialog();
+      } catch (error) {
+        console.error("Failed to fork block:", error);
+      }
+    },
+    [forkBlock, editDialog],
+  );
+
+  // Handle edit button click - merge all user inputs for editing
+  const handleEdit = useCallback(
+    (blockId: bigint, block: MessageBlock) => {
+      if (!conversationId) return;
+
+      // Merge all user inputs (primary + additional) into a single message
+      const allInputs = [block.userMessage, ...(block.additionalUserInputs || [])];
+      const mergedMessage = allInputs
+        .map((msg) => msg.content)
+        .filter((content) => content)
+        .join("\n");
+
+      editDialog.openDialog(blockId, conversationId, mergedMessage);
+    },
+    [conversationId, editDialog],
+  );
+
   // Group messages into blocks
   // Phase 4: Use blocks if provided, otherwise fall back to items (backward compatibility)
   const messageBlocks = useMemo(() => {
@@ -468,7 +546,7 @@ const ChatMessages = memo(function ChatMessages({
       ref={scrollRef}
       onScroll={handleScrollThrottled}
       className={cn("flex-1 overflow-y-auto px-3 md:px-6 py-4 overscroll-contain", className)}
-      style={{ overflowAnchor: "auto", scrollbarGutter: "stable", contain: "layout style paint" }}
+      style={{ overflowAnchor: "auto", scrollbarGutter: "auto", contain: "layout style paint" }}
     >
       {children}
 
@@ -500,10 +578,17 @@ const ChatMessages = memo(function ChatMessages({
               }
             }
 
+            // Get blockId for edit functionality (when using blocks prop)
+            const blockId = blocks && blocks.length > 0 && index < blocks.length ? blocks[index].id : undefined;
+
+            // Get branchPath from block (if available)
+            const branchPath = blocks && blocks.length > 0 && index < blocks.length ? blocks[index].branchPath : undefined;
+
             return (
               <UnifiedMessageBlock
-                key={block.id}
+                key={`${block.id}-${index}`}
                 userMessage={block.userMessage}
+                additionalUserInputs={block.additionalUserInputs}
                 assistantMessage={block.assistantMessage}
                 blockSummary={block.attachBlockSummary ? blockSummary : undefined}
                 parrotId={blockParrotId}
@@ -513,6 +598,9 @@ const ChatMessages = memo(function ChatMessages({
                 onCopy={onCopyMessage}
                 onRegenerate={block.isLatest ? onRegenerate : undefined}
                 onDelete={block.isLatest && onDeleteMessage ? () => onDeleteMessage(0) : undefined}
+                onEdit={blockId ? () => handleEdit(blockId, block) : undefined}
+                blockId={blockId}
+                branchPath={branchPath}
               >
                 {/* Typing cursor for streaming messages */}
                 {block.isLatest && isTyping && !block.assistantMessage?.error && (
@@ -543,6 +631,16 @@ const ChatMessages = memo(function ChatMessages({
 
       {/* Scroll anchor */}
       <div ref={endRef} className="h-px" />
+
+      {/* Block Edit Dialog */}
+      <BlockEditDialog
+        originalMessage={editDialog.originalMessage}
+        blockId={editDialog.blockId}
+        conversationId={editDialog.conversationId}
+        open={editDialog.open}
+        onOpenChange={editDialog.setOpen}
+        onConfirm={handleEditConfirm}
+      />
     </div>
   );
 });

@@ -19,6 +19,7 @@ import { ChatInput } from "@/components/AIChat/ChatInput";
 import { ChatMessages } from "@/components/AIChat/ChatMessages";
 import { ParrotHub } from "@/components/AIChat/ParrotHub";
 import { PartnerGreeting } from "@/components/AIChat/PartnerGreeting";
+import { SessionBar } from "@/components/AIChat/SessionBar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useAIChat } from "@/contexts/AIChatContext";
 import { useChat } from "@/hooks/useAIQueries";
@@ -32,6 +33,8 @@ import { isActiveStatus } from "@/types/block";
 import { CapabilityStatus, CapabilityType, capabilityToParrotAgent } from "@/types/capability";
 import type { BlockSummary, MemoQueryResultData, ScheduleQueryResultData } from "@/types/parrot";
 import { ParrotAgentType } from "@/types/parrot";
+import type { SessionStats } from "@/types/proto/api/v1/ai_service_pb";
+import { BlockStatus } from "@/types/proto/api/v1/ai_service_pb";
 
 // ============================================================
 // UNIFIED CHAT VIEW - 单一对话视图
@@ -64,6 +67,8 @@ interface UnifiedChatViewProps {
   immersiveMode: boolean;
   onImmersiveModeToggle: (enabled: boolean) => void;
   isAdmin?: boolean;
+  /** Conversation ID for Block API operations (e.g., fork) */
+  conversationId?: number;
 }
 
 function UnifiedChatView({
@@ -92,6 +97,7 @@ function UnifiedChatView({
   onModeChange,
   immersiveMode,
   onImmersiveModeToggle,
+  conversationId,
 }: UnifiedChatViewProps) {
   const { t } = useTranslation();
 
@@ -135,7 +141,11 @@ function UnifiedChatView({
         currentMode={currentMode}
         immersiveMode={immersiveMode}
         onImmersiveModeToggle={onImmersiveModeToggle}
+        blocks={blocks}
       />
+
+      {/* SessionBar - mobile only (PC 端 SessionStats 已整合到 ChatHeader) */}
+      <SessionBar blocks={blocks} blockSummary={blockSummary} className="lg:hidden" />
 
       {/* Messages Area with Welcome */}
       <ChatMessages
@@ -145,12 +155,14 @@ function UnifiedChatView({
         currentParrotId={ParrotAgentType.AMAZING}
         onCopyMessage={handleCopyMessage}
         onDeleteMessage={handleDeleteMessage}
+        _onSendProp={onSend}
         amazingInsightCard={
           currentCapability === CapabilityType.AMAZING && (deferredMemoResults.length > 0 || deferredScheduleResults.length > 0) ? (
             <AmazingInsightCard memos={deferredMemoResults[0]?.memos ?? []} schedules={deferredScheduleResults[0]?.schedules ?? []} />
           ) : undefined
         }
         blockSummary={blockSummary}
+        conversationId={conversationId}
       >
         {/* Welcome message - 统一入口，示例提问直接发送 */}
         {(blocks?.length ?? 0) === 0 && items.length === 0 && (
@@ -729,6 +741,66 @@ const AIChat = () => {
   }, [currentConversation, handleClearContext, handleNewChat]);
 
   // ============================================================
+  // P2-#6: Restore blockSummary from persisted Block.sessionStats
+  // When blocks are loaded (e.g., after refresh), restore blockSummary
+  // from the latest block's sessionStats field
+  // ============================================================
+
+  /**
+   * Safely convert bigint to number with precision loss warning
+   * P1-#1: Add boundary check for large bigint values (> MAX_SAFE_INTEGER)
+   */
+  const safeBigIntToNumber = useCallback((value: bigint | undefined, fieldName: string): number | undefined => {
+    if (value === undefined) return undefined;
+    const num = Number(value);
+    // Check if value exceeds safe integer range (2^53 - 1)
+    if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      console.warn(`[BlockSummary] ${fieldName} (${value}) exceeds MAX_SAFE_INTEGER, precision may be lost`);
+    }
+    return num;
+  }, []);
+
+  useEffect(() => {
+    // Skip if we already have blockSummary from streaming
+    if (blockSummary) return;
+
+    // Skip if no blocks available
+    if (!blocks || blocks.length === 0) return;
+
+    // Find the latest completed block with sessionStats
+    const latestBlock = blocks
+      .filter((b) => b.status === BlockStatus.COMPLETED || b.status === BlockStatus.STREAMING)
+      .sort((a, b) => Number(b.roundNumber) - Number(a.roundNumber))[0];
+
+    if (!latestBlock?.sessionStats) return;
+
+    const sessionStats: SessionStats = latestBlock.sessionStats;
+
+    // Convert SessionStats to BlockSummary format (with safe bigint conversion)
+    const restoredSummary: BlockSummary = {
+      sessionId: sessionStats.sessionId || undefined,
+      totalDurationMs: safeBigIntToNumber(sessionStats.totalDurationMs, "totalDurationMs"),
+      thinkingDurationMs: safeBigIntToNumber(sessionStats.thinkingDurationMs, "thinkingDurationMs"),
+      toolDurationMs: safeBigIntToNumber(sessionStats.toolDurationMs, "toolDurationMs"),
+      generationDurationMs: safeBigIntToNumber(sessionStats.generationDurationMs, "generationDurationMs"),
+      totalInputTokens: sessionStats.inputTokens || undefined,
+      totalOutputTokens: sessionStats.outputTokens || undefined,
+      totalCacheWriteTokens: sessionStats.cacheWriteTokens || undefined,
+      totalCacheReadTokens: sessionStats.cacheReadTokens || undefined,
+      toolCallCount: sessionStats.toolCallCount || undefined,
+      toolsUsed: sessionStats.toolsUsed?.length ? sessionStats.toolsUsed : undefined,
+      filesModified: sessionStats.filesModified || undefined,
+      filePaths: sessionStats.filePaths?.length ? sessionStats.filePaths : undefined,
+      totalCostUSD: sessionStats.totalCostUsd || undefined,
+      status: sessionStats.isError ? "error" : sessionStats.updatedAt ? "success" : undefined,
+      errorMsg: sessionStats.errorMessage || undefined,
+    };
+
+    debugLog("[BlockSummary] Restored from sessionStats:", restoredSummary);
+    setBlockSummary(restoredSummary);
+  }, [blocks, blockSummary, setBlockSummary, safeBigIntToNumber]);
+
+  // ============================================================
   // RENDER
   // ============================================================
   return showCapabilityPanel ? (
@@ -767,6 +839,7 @@ const AIChat = () => {
       immersiveMode={immersiveMode}
       onImmersiveModeToggle={toggleImmersiveMode}
       isAdmin={true}
+      conversationId={currentConversationIdNum}
     />
   );
 };

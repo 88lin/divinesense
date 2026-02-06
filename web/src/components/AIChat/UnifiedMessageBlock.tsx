@@ -26,11 +26,12 @@ import {
   Brain,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Clock,
   Copy,
   Loader2,
-  Terminal,
+  Pencil,
   User,
   Wrench,
   Zap,
@@ -40,7 +41,6 @@ import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-// Import constants
 import {
   BADGE_WIDTH_OFFSET,
   HEADER_VISUAL_WIDTH,
@@ -51,8 +51,10 @@ import {
 import { ExpandedSessionSummary } from "@/components/AIChat/ExpandedSessionSummary";
 import { CodeBlock } from "@/components/MemoContent/CodeBlock";
 import { cn } from "@/lib/utils";
-import { ConversationMessage } from "@/types/aichat";
+import { type AIMode, ConversationMessage } from "@/types/aichat";
+import { type BlockBranch } from "@/types/block";
 import { BlockSummary, PARROT_THEMES, ParrotAgentType } from "@/types/parrot";
+import { BranchIndicator } from "./BranchIndicator";
 
 type CodeComponentProps = React.ComponentProps<"code"> & { inline?: boolean };
 
@@ -114,7 +116,16 @@ export interface UnifiedMessageBlockProps {
   /** Actions */
   onCopy?: (content: string) => void;
   onRegenerate?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
+  /** Block ID for edit/fork operations */
+  blockId?: bigint;
+  /** Branch-related props for tree conversation branching */
+  branches?: BlockBranch[];
+  /** Branch path (e.g., "A.1", "B.2.3") for display */
+  branchPath?: string;
+  isBranchActive?: boolean;
+  onBranchClick?: () => void;
   /** Additional children to render in block body */
   children?: ReactNode;
   className?: string;
@@ -285,6 +296,12 @@ interface BlockHeaderProps {
   isStreaming?: boolean;
   /** 追加的用户输入列表 (支持多个) */
   additionalUserInputs?: ConversationMessage[];
+  /** Branch-related props */
+  branches?: BlockBranch[];
+  /** Branch path (e.g., "A.1", "B.2.3") for display */
+  branchPath?: string;
+  isBranchActive?: boolean;
+  onBranchClick?: () => void;
 }
 
 function BlockHeader({
@@ -297,6 +314,10 @@ function BlockHeader({
   isCollapsed,
   isStreaming,
   additionalUserInputs = [],
+  branches,
+  branchPath,
+  isBranchActive,
+  onBranchClick,
 }: BlockHeaderProps) {
   const { t } = useTranslation();
   const userInitial = extractUserInitial(userMessage.content);
@@ -334,19 +355,51 @@ function BlockHeader({
     return "border-l-4 border-l-transparent";
   }, [isStreaming, assistantMessage]);
 
-  // Geek/Evolution Mode Summary Info
-  const geekSummary = useMemo(() => {
-    if (!blockSummary || (parrotId !== "GEEK" && parrotId !== "EVOLUTION")) return null;
+  // Mode-specific Session Summary Info
+  // 根据不同 Mode 展示差异化的统计信息
+  const modeSummary = useMemo(() => {
+    if (!blockSummary) return null;
 
-    const cost = blockSummary.totalCostUSD ? `$${blockSummary.totalCostUSD.toFixed(4)}` : "";
-    const tokens =
-      blockSummary.totalInputTokens && blockSummary.totalOutputTokens
-        ? `${((blockSummary.totalInputTokens + blockSummary.totalOutputTokens) / 1000).toFixed(1)}k token`
-        : "";
-    const time = blockSummary.totalDurationMs ? `${(blockSummary.totalDurationMs / 1000).toFixed(1)}s` : "";
+    // 获取当前模式：优先使用 userMessage.metadata.mode，其次根据 parrotId 推断
+    const currentMode: AIMode =
+      userMessage.metadata?.mode || (parrotId === "GEEK" ? "geek" : parrotId === "EVOLUTION" ? "evolution" : "normal");
 
-    return { cost, tokens, time };
-  }, [blockSummary, parrotId]);
+    // 通用格式化函数
+    const formatCost = (cost?: number) => (cost ? `$${cost.toFixed(4)}` : "");
+    const formatTokens = (input?: number, output?: number) => {
+      if (input && output) return `${((input + output) / 1000).toFixed(1)}k`;
+      return "";
+    };
+    const formatTime = (ms?: number) => (ms ? `${(ms / 1000).toFixed(1)}s` : "");
+
+    // 根据 mode 返回不同的统计信息
+    switch (currentMode) {
+      case "geek":
+        // Geek 模式：耗时 + 工具数（零 LLM 成本）
+        return {
+          primary: formatTime(blockSummary.totalDurationMs),
+          secondary: blockSummary.toolCallCount ? `${blockSummary.toolCallCount} 工具` : "",
+          icon: "clock",
+        };
+
+      case "evolution":
+        // Evolution 模式：耗时 + 变更文件数
+        return {
+          primary: formatTime(blockSummary.totalDurationMs),
+          secondary: blockSummary.filesModified ? `${blockSummary.filesModified} 文件` : "",
+          icon: "clock",
+        };
+
+      case "normal":
+      default:
+        // Normal 模式：Tokens + Cost（LLM 对话）
+        return {
+          primary: formatTokens(blockSummary.totalInputTokens, blockSummary.totalOutputTokens),
+          secondary: formatCost(blockSummary.totalCostUSD),
+          icon: "token",
+        };
+    }
+  }, [blockSummary, userMessage.metadata?.mode, parrotId]);
 
   return (
     <div
@@ -377,41 +430,63 @@ function BlockHeader({
         </div>
       </div>
 
-      {/* Right: Timestamp + Badge + Geek Summary + Toggle */}
+      {/* Right: Timestamp + Badge + Block Summary + Toggle */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-1 sm:ml-2">
-        {/* Geek/Evolution Summary stats - Compact View */}
-        {geekSummary && (
+        {/* Mode-specific Session Summary - 根据不同 Mode 展示差异化的统计信息 */}
+        {modeSummary && modeSummary.primary && (
           <>
             {/* Desktop: Full stats */}
             <div className="hidden lg:flex items-center gap-3 text-[11px] font-mono opacity-70 mr-1 bg-muted/50 px-2 py-1 rounded border border-border/50">
-              <span className="font-semibold text-muted-foreground/80 uppercase tracking-wider text-[11px]">
-                {t("ai.unified_block.session")}
-              </span>
-              {geekSummary.time && (
-                <span className="flex items-center gap-1" title={t("ai.unified_block.session_duration")}>
-                  <Clock className="w-3 h-3" /> {geekSummary.time}
-                </span>
+              {/* Normal 模式显示 Tokens + Cost */}
+              {(!userMessage.metadata?.mode || userMessage.metadata?.mode === "normal") && (
+                <>
+                  {modeSummary.primary && (
+                    <span className="flex items-center gap-1" title={t("ai.unified_block.session_tokens")}>
+                      <Brain className="w-3 h-3" /> {modeSummary.primary}
+                    </span>
+                  )}
+                  {modeSummary.secondary && (
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400" title={t("ai.unified_block.session_cost")}>
+                      <span className="font-bold">$</span> {modeSummary.secondary}
+                    </span>
+                  )}
+                </>
               )}
-              {geekSummary.tokens && (
-                <span className="flex items-center gap-1" title={t("ai.unified_block.session_tokens")}>
-                  <Brain className="w-3 h-3" /> {geekSummary.tokens}
-                </span>
-              )}
-              {geekSummary.cost && (
-                <span className="flex items-center gap-1 text-green-600 dark:text-green-400" title={t("ai.unified_block.session_cost")}>
-                  <span className="font-bold">$</span> {geekSummary.cost}
-                </span>
+              {/* Geek/Evolution 模式显示 耗时 + 工具数/文件数 */}
+              {(userMessage.metadata?.mode === "geek" || userMessage.metadata?.mode === "evolution") && (
+                <>
+                  {modeSummary.primary && (
+                    <span className="flex items-center gap-1" title={t("ai.unified_block.session_duration")}>
+                      <Clock className="w-3 h-3" /> {modeSummary.primary}
+                    </span>
+                  )}
+                  {modeSummary.secondary && (
+                    <span
+                      className="flex items-center gap-1"
+                      title={userMessage.metadata?.mode === "geek" ? t("ai.stats.tool_calls") : t("ai.stats.files_modified")}
+                    >
+                      <Wrench className="w-3 h-3" /> {modeSummary.secondary}
+                    </span>
+                  )}
+                </>
               )}
             </div>
-            {/* Mobile: Simplified cost indicator */}
+            {/* Mobile: Simplified indicator */}
             <div className="lg:hidden flex items-center gap-1 text-[10px] font-mono opacity-80">
-              {geekSummary.cost && (
+              {(!userMessage.metadata?.mode || userMessage.metadata?.mode === "normal") && modeSummary.secondary && (
                 <span className="flex items-center gap-0.5 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
                   <span className="font-bold">$</span>
-                  {geekSummary.cost}
+                  {modeSummary.secondary}
                 </span>
               )}
-              {!geekSummary.cost && geekSummary.tokens && <span className="text-muted-foreground">{geekSummary.tokens}</span>}
+              {(!userMessage.metadata?.mode || userMessage.metadata?.mode === "normal") &&
+                !modeSummary.secondary &&
+                modeSummary.primary && <span className="text-muted-foreground">{modeSummary.primary}</span>}
+              {(userMessage.metadata?.mode === "geek" || userMessage.metadata?.mode === "evolution") && modeSummary.primary && (
+                <span className="flex items-center gap-0.5 text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                  <Clock className="w-3 h-3" /> {modeSummary.primary}
+                </span>
+              )}
             </div>
           </>
         )}
@@ -425,6 +500,11 @@ function BlockHeader({
           <span className={cn("inline-flex px-2 py-0.5 rounded-full text-xs font-medium", theme.badgeBg, theme.badgeText)}>
             {parrotId === "GEEK" ? t("ai.mode.geek") : parrotId === "EVOLUTION" ? t("ai.mode.evolution") : t("ai.mode.normal")}
           </span>
+        )}
+
+        {/* Branch Indicator - shows branch path or branch count */}
+        {(branchPath || (branches && branches.length > 0)) && (
+          <BranchIndicator branches={branches} branchPath={branchPath} isActive={isBranchActive} onClick={onBranchClick} />
         )}
 
         <button
@@ -476,13 +556,20 @@ function UserInputsSection({ userMessage, additionalUserInputs = [], isCollapsed
 
   return (
     <div className="relative group">
-      {/* Timeline Node */}
-      <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-500 flex items-center justify-center shrink-0 z-10 transition-colors group-hover:bg-blue-200 dark:group-hover:bg-blue-900/60">
+      {/* Timeline Node - 统一使用 -left-[2rem] 确保与其他 section 对齐 */}
+      <div className="absolute -left-[2rem] top-1 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-500 flex items-center justify-center shrink-0 z-10 transition-colors group-hover:bg-blue-200 dark:group-hover:bg-blue-900/60">
         <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       </div>
 
       {/* Section Header */}
-      <div className="flex items-center justify-end mb-3">
+      <div className="flex items-center justify-between mb-3">
+        {/* Section Title */}
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <User className="w-3.5 h-3.5" />
+          <span>{t("ai.unified_block.user_inputs") || "用户输入"}</span>
+        </div>
+
+        {/* Expand/Collapse Button */}
         {(isLongContent || hasMultiple) && (
           <button
             type="button"
@@ -677,7 +764,7 @@ function BlockBody({
             <div className="relative group">
               <div
                 className={cn(
-                  "absolute -left-8 top-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 transition-colors",
+                  "absolute -left-[2rem] top-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 transition-colors",
                   streamingPhase === "thinking"
                     ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 ring-4 ring-blue-50 dark:ring-blue-900/10"
                     : "bg-muted text-muted-foreground group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-500",
@@ -745,7 +832,7 @@ function BlockBody({
                 {/* Timeline Node */}
                 <div
                   className={cn(
-                    "absolute -left-8 top-0 w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 border transition-all",
+                    "absolute -left-[2rem] top-0 w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 border transition-all",
                     calling
                       ? "bg-purple-100 dark:bg-purple-900/40 border-purple-500 animate-pulse"
                       : "bg-card border-border group-hover:border-purple-400/50",
@@ -759,64 +846,84 @@ function BlockBody({
                   )}
                 </div>
 
-                {/* Card Container */}
+                {/* Card Container - Compact Two-Line Design */}
                 <div
                   className={cn(
-                    "rounded-lg border overflow-hidden transition-all duration-200",
+                    "rounded-lg border px-3 py-2 transition-all duration-200",
                     "bg-card hover:shadow-sm",
                     isWriteOp ? "border-purple-200/50 dark:border-purple-800/30 bg-purple-50/10" : "border-border/50",
-                    // Write operations get subtle highlighting
                   )}
                 >
-                  {/* Tool Header */}
-                  <div className="flex items-center justify-between px-3 py-2 bg-muted/20 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("font-semibold", isWriteOp ? "text-purple-700 dark:text-purple-300" : "text-foreground")}>
+                  {/* Line 1: Tool Name + Status + Duration */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={cn("font-semibold text-sm", isWriteOp ? "text-purple-700 dark:text-purple-300" : "text-foreground")}>
                         {callName}
                       </span>
-                      {typeof call === "object" && call.duration && (
-                        <span className="text-[11px] text-muted-foreground bg-background/50 px-1.5 py-0.5 rounded">
-                          {call.duration > 1000 ? `${(call.duration / 1000).toFixed(1)}s` : `${call.duration}ms`}
+                      {/* Status Indicator */}
+                      {result ? (
+                        result.isError ? (
+                          <span className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400">
+                            <AlertCircle className="w-3 h-3" /> {t("ai.events.error")}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[11px] text-green-600 dark:text-green-400">
+                            <Check className="w-3 h-3" /> {t("ai.events.done")}
+                          </span>
+                        )
+                      ) : calling ? (
+                        <span className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400">
+                          <Loader2 className="w-3 h-3 animate-spin" /> {t("ai.events.running")}
                         </span>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">{t("ai.events.pending")}</span>
                       )}
                     </div>
-                    {typeof call === "object" && call.filePath && (
-                      <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[150px]" title={call.filePath}>
-                        {call.filePath}
+                    {/* Duration */}
+                    {typeof call === "object" && call.duration && (
+                      <span className="text-[11px] text-muted-foreground font-mono shrink-0">
+                        {call.duration > 1000 ? `${(call.duration / 1000).toFixed(1)}s` : `${call.duration}ms`}
                       </span>
                     )}
                   </div>
 
-                  {/* Tool Input Preview (Argument) */}
-                  {typeof call === "object" && call.inputSummary && (
-                    <div className="px-3 py-2 border-t border-border/30 bg-background/50">
-                      <div className="text-[11px] uppercase text-muted-foreground font-semibold mb-0.5">{t("ai.unified_block.input")}</div>
-                      <code className="text-xs text-muted-foreground/80 font-mono break-all line-clamp-2 hover:line-clamp-none transition-all">
+                  {/* Line 2: Function Call + Parameters (Compact) */}
+                  <div className="mt-1 flex items-center gap-2 min-w-0">
+                    {/* Function with params */}
+                    {typeof call === "object" && call.inputSummary ? (
+                      <code
+                        className={cn(
+                          "text-xs font-mono truncate block",
+                          isError ? "text-red-600/80 dark:text-red-400/80" : "text-muted-foreground/70",
+                        )}
+                        title={call.inputSummary}
+                      >
                         {call.inputSummary}
                       </code>
-                    </div>
-                  )}
+                    ) : typeof call === "object" && call.filePath ? (
+                      <code className="text-xs font-mono text-muted-foreground/70 truncate block" title={call.filePath}>
+                        {call.filePath}
+                      </code>
+                    ) : null}
+                  </div>
 
-                  {/* Tool Result (Output) */}
+                  {/* Expandable Output (only if has output) */}
                   {result && result.outputSummary && (
-                    <div className="px-3 py-2 border-t border-border/30 bg-muted/10">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="text-[11px] uppercase text-muted-foreground font-semibold flex items-center gap-1">
-                          <Terminal className="w-3 h-3" /> {t("ai.unified_block.output")}
-                        </div>
-                        {result.isError && (
-                          <span className="text-[11px] bg-red-100 text-red-600 px-1.5 rounded font-medium">{t("ai.events.error")}</span>
-                        )}
-                      </div>
+                    <details className="group/details mt-2">
+                      <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none flex items-center gap-1">
+                        <ChevronDown className="w-3 h-3 transition-transform group-open/details:rotate-0" />
+                        <ChevronRight className="w-3 h-3 transition-transform group-open/details:rotate-90" />
+                        {t("ai.unified_block.output")}
+                      </summary>
                       <pre
                         className={cn(
-                          "text-xs font-mono overflow-x-auto whitespace-pre-wrap break-words max-h-32 overflow-y-auto p-1.5 rounded bg-black/5 dark:bg-black/20 text-muted-foreground",
+                          "mt-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-words max-h-32 overflow-y-auto p-2 rounded bg-black/5 dark:bg-black/20 text-muted-foreground",
                           result.isError && "text-red-600/90 bg-red-50/50",
                         )}
                       >
                         {result.outputSummary}
                       </pre>
-                    </div>
+                    </details>
                   )}
                 </div>
               </div>
@@ -829,7 +936,7 @@ function BlockBody({
             <div className="relative pt-2">
               <div
                 className={cn(
-                  "absolute -left-8 top-3.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 transition-colors",
+                  "absolute -left-[2rem] top-3.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 transition-colors",
                   streamingPhase === "answer"
                     ? "bg-amber-100 dark:bg-amber-900/40 border border-amber-500 animate-pulse text-amber-600"
                     : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-amber-500",
@@ -847,21 +954,6 @@ function BlockBody({
                   themeColors.text,
                 )}
               >
-                {/* Floating Copy Button */}
-                <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => {
-                      if (assistantMessage) {
-                        navigator.clipboard.writeText(assistantMessage.content);
-                      }
-                    }}
-                    className="p-1.5 rounded-md bg-background/50 hover:bg-background border border-border/50 text-muted-foreground shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    title={t("common.copy")}
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
                 {/* Markdown content */}
                 <div ref={contentRef} className="px-5 py-4">
                   <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-normal font-sans text-[15px]">
@@ -939,7 +1031,7 @@ function BlockBody({
           {/* 4. Error Section */}
           {hasError && (
             <div className="relative group">
-              <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 border border-red-500 flex items-center justify-center shrink-0 z-10 transition-colors group-hover:bg-red-200 dark:group-hover:bg-red-900/50">
+              <div className="absolute -left-[2rem] top-1 w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 border border-red-500 flex items-center justify-center shrink-0 z-10 transition-colors group-hover:bg-red-200 dark:group-hover:bg-red-900/50">
                 <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
               </div>
               <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-sm">
@@ -953,7 +1045,7 @@ function BlockBody({
           {/* 5. Block Summary (Detailed view for all modes if present) */}
           {blockSummary && (
             <div className="relative">
-              <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-500 flex items-center justify-center shrink-0 z-10 transition-colors">
+              <div className="absolute -left-[2rem] top-1 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-500 flex items-center justify-center shrink-0 z-10 transition-colors">
                 <BarChart3 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
               </div>
               <div className="pl-0">
@@ -972,11 +1064,14 @@ interface BlockFooterProps {
   onToggle: () => void;
   onCopy: () => void;
   onRegenerate?: () => void;
+  onEdit?: () => void;
   onDelete?: () => void;
   theme: (typeof BLOCK_THEMES)[keyof typeof BLOCK_THEMES];
+  /** 是否正在流式输出 - 流式输出时禁用编辑 */
+  isStreaming?: boolean;
 }
 
-function BlockFooter({ isCollapsed, onToggle, onCopy, onRegenerate, onDelete, theme }: BlockFooterProps) {
+function BlockFooter({ isCollapsed, onToggle, onCopy, onRegenerate, onEdit, onDelete, theme, isStreaming }: BlockFooterProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1022,6 +1117,25 @@ function BlockFooter({ isCollapsed, onToggle, onCopy, onRegenerate, onDelete, th
 
       {/* Right: Action Buttons */}
       <div className="flex items-center gap-2">
+        {/* P0-A001: Edit Button - 创建分支并重新生成 */}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={isStreaming}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+              "hover:bg-black/10 dark:hover:bg-white/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              theme.badgeText,
+              isStreaming && "opacity-50 cursor-not-allowed",
+            )}
+            title={t("ai.unified_block.edit")}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">{t("ai.unified_block.edit")}</span>
+          </button>
+        )}
         {onRegenerate && (
           <button
             type="button"
@@ -1099,7 +1213,13 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
   streamingPhase = null,
   onCopy,
   onRegenerate,
+  onEdit,
   onDelete,
+  blockId: _blockId,
+  branches,
+  branchPath,
+  isBranchActive,
+  onBranchClick,
   children,
   className,
 }: UnifiedMessageBlockProps) {
@@ -1180,6 +1300,10 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
           isCollapsed={collapsed}
           isStreaming={isStreaming}
           additionalUserInputs={additionalUserInputs}
+          branches={branches}
+          branchPath={branchPath}
+          isBranchActive={isBranchActive}
+          onBranchClick={onBranchClick}
         />
       </div>
 
@@ -1205,8 +1329,10 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
           onToggle={toggleCollapse}
           onCopy={handleCopy}
           onRegenerate={onRegenerate}
+          onEdit={onEdit}
           onDelete={onDelete}
           theme={blockTheme}
+          isStreaming={isStreaming}
         />
       </div>
     </div>
