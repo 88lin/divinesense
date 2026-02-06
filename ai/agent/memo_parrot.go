@@ -260,7 +260,7 @@ func (p *MemoParrot) ExecuteWithCallback(
 			meta := &EventMeta{
 				ToolName:     toolCall,
 				Status:       "running",
-				InputSummary: fmt.Sprintf("%s", toolInput),
+				InputSummary: toolInput,
 			}
 			callbackSafe(EventTypeToolUse, &EventWithMeta{
 				EventType: EventTypeToolUse,
