@@ -1,4 +1,4 @@
-import { DollarSign } from "lucide-react";
+import { Coins } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,7 @@ export function BlockCostBadge({ costEstimate, className }: BlockCostBadgeProps)
       return `${costInCents.toFixed(2)}¢`;
     }
     // Show in dollars
-    return `$${usd.toFixed(4)}`;
+    return `${t("ai.session_stats.currency_symbol")}${usd.toFixed(4)}`;
   };
 
   const displayCost = formatCost(costInUSD);
@@ -63,9 +63,9 @@ export function BlockCostBadge({ costEstimate, className }: BlockCostBadgeProps)
         getCostColor(),
         className,
       )}
-      title={`${t("chat.block-summary.estimated-cost")}: $${costInUSD.toFixed(6)}`}
+      title={`${t("chat.block-summary.estimated-cost")}: ${t("ai.session_stats.currency_symbol")}${costInUSD.toFixed(6)}`}
     >
-      <DollarSign className="w-3.5 h-3.5" />
+      <Coins className="w-3.5 h-3.5" />
       <span>{displayCost}</span>
     </div>
   );

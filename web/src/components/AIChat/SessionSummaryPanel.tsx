@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Clock, DollarSign, FileEdit, Wrench, XCircle, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Coins, FileEdit, Wrench, XCircle, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { type Block } from "@/types/block";
@@ -144,7 +144,7 @@ export function SessionSummaryPanel({ summary, className }: SessionSummaryPanelP
         <>
           {(hasTiming || hasTokens) && <span className="text-border/50">•</span>}
           <div className="flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-green-500" />
+            <Coins className="w-3.5 h-3.5 text-green-500" />
             <span className="font-mono font-medium">
               {t("ai.session_stats.currency_symbol")}
               {summary.totalCostUSD!.toFixed(4)}

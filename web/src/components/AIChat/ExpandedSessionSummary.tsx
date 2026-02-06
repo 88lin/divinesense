@@ -1,4 +1,4 @@
-import { Brain, ChevronDown, ChevronUp, Clock, DollarSign, FileEdit, PenLine, Wrench } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Clock, Coins, FileEdit, PenLine, Wrench } from "lucide-react";
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -129,7 +129,7 @@ export const ExpandedSessionSummary = memo(function ExpandedSessionSummary({ sum
             )}
             {summary.totalCostUSD && summary.totalCostUSD > 0 && (
               <span className="flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-green-500" />
+                <Coins className="w-3.5 h-3.5 text-green-500" />
                 <span className="font-mono font-medium">
                   {t("ai.session_stats.currency_symbol")}
                   {summary.totalCostUSD.toFixed(4)}
@@ -304,7 +304,7 @@ export const ExpandedSessionSummary = memo(function ExpandedSessionSummary({ sum
                 <div className="p-3 rounded-lg bg-green-50/50 dark:bg-green-900/10 border border-green-200/50 dark:border-green-700/30">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-500" />
+                      <Coins className="w-4 h-4 text-green-500" />
                       <span className="text-xs font-medium text-muted-foreground">{t("ai.session_stats.total_cost")}</span>
                     </div>
                     <span className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
