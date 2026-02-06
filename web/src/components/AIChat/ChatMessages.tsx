@@ -10,6 +10,7 @@ import type { Block as AIBlock } from "@/types/block";
 import { blockModeToParrotAgentType, EVENT_TYPE, getBlockModeName, isErrorStatus, isStreamingStatus } from "@/types/block";
 import type { BlockSummary } from "@/types/parrot";
 import { PARROT_THEMES, ParrotAgentType } from "@/types/parrot";
+import type { SessionStats } from "@/types/proto/api/v1/ai_service_pb";
 import { BlockType, UserInputSchema } from "@/types/proto/api/v1/ai_service_pb";
 // BlockEditDialog for editing user inputs
 import { BlockEditDialog, useBlockEditDialog } from "./BlockEditDialog";
@@ -58,7 +59,6 @@ interface ChatMessagesProps {
   _onSendProp?: (messageContent?: string) => void;
   children?: ReactNode;
   className?: string;
-  amazingInsightCard?: ReactNode;
   /** Phase 2: 流式渲染支持 */
   isStreaming?: boolean;
   streamingContent?: string;
@@ -83,8 +83,8 @@ interface MessageBlock {
   additionalUserInputs?: ConversationMessage[];
   assistantMessage?: ConversationMessage;
   isLatest: boolean;
-  /** Whether to attach block summary to this block */
-  attachBlockSummary?: boolean;
+  /** Block summary for this specific block (from Block.sessionStats) */
+  blockSummary?: BlockSummary;
 }
 
 /**
@@ -106,6 +106,42 @@ function translateThinkingSteps(steps: ThinkingStep[], t: (key: string) => strin
 }
 
 /**
+ * Convert SessionStats from Block to BlockSummary format
+ * This enables 1:1 binding between Block and its summary
+ */
+function sessionStatsToBlockSummary(sessionStats: SessionStats): BlockSummary | undefined {
+  // Only create summary if we have meaningful data
+  if (!sessionStats) return undefined;
+
+  const hasStats =
+    (sessionStats.inputTokens || 0) > 0 ||
+    (sessionStats.outputTokens || 0) > 0 ||
+    (sessionStats.totalDurationMs || 0) > 0 ||
+    (sessionStats.toolCallCount || 0) > 0;
+
+  if (!hasStats) return undefined;
+
+  return {
+    sessionId: sessionStats.sessionId || undefined,
+    totalDurationMs: sessionStats.totalDurationMs ? Number(sessionStats.totalDurationMs) : undefined,
+    thinkingDurationMs: sessionStats.thinkingDurationMs ? Number(sessionStats.thinkingDurationMs) : undefined,
+    toolDurationMs: sessionStats.toolDurationMs ? Number(sessionStats.toolDurationMs) : undefined,
+    generationDurationMs: sessionStats.generationDurationMs ? Number(sessionStats.generationDurationMs) : undefined,
+    totalInputTokens: sessionStats.inputTokens || undefined,
+    totalOutputTokens: sessionStats.outputTokens || undefined,
+    totalCacheWriteTokens: sessionStats.cacheWriteTokens || undefined,
+    totalCacheReadTokens: sessionStats.cacheReadTokens || undefined,
+    toolCallCount: sessionStats.toolCallCount || undefined,
+    toolsUsed: sessionStats.toolsUsed?.length ? sessionStats.toolsUsed : undefined,
+    filesModified: sessionStats.filesModified || undefined,
+    filePaths: sessionStats.filePaths?.length ? sessionStats.filePaths : undefined,
+    totalCostUSD: sessionStats.totalCostUsd || undefined,
+    status: sessionStats.isError ? "error" : "success",
+    errorMsg: sessionStats.errorMessage || undefined,
+  };
+}
+
+/**
  * Convert AIBlock[] to MessageBlock[] format
  * Phase 4: New function to handle Block data structure
  *
@@ -116,11 +152,14 @@ function translateThinkingSteps(steps: ThinkingStep[], t: (key: string) => strin
  * - status: BlockStatus (pending/streaming/completed/error)
  * - eventStream: BlockEvent[] (thinking/tool_use/tool_result/answer events)
  * - sessionStats: SessionStats (for Geek/Evolution modes)
+ *
+ * IMPORTANT: BlockSummary is now 1:1 bound to each Block via its sessionStats
+ * This ensures proper persistence across page refreshes.
+ *
  * @param blocks - Array of AIBlock objects
- * @param hasBlockSummary - Whether block summary is available
  * @param t - Translation function for i18n keys
  */
-function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: boolean, t: (key: string) => string): MessageBlock[] {
+function convertAIBlocksToMessageBlocks(blocks: AIBlock[], _t: (key: string) => string): MessageBlock[] {
   const messageBlocks: MessageBlock[] = [];
 
   for (const block of blocks) {
@@ -167,13 +206,14 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: bool
       metadata: {
         mode: getBlockModeName(block.mode) as AIMode,
         // Parse eventStream to extract metadata for UI, translating i18n keys
-        thinkingSteps: translateThinkingSteps(rawThinkingSteps, t),
+        thinkingSteps: translateThinkingSteps(rawThinkingSteps, _t),
         toolCalls: extractToolCalls(block.eventStream),
       },
     };
 
     const isLatest = false; // Will be determined after loop
-    const attachBlockSummary = false; // Will be set for last block if blockSummary available
+    // Generate blockSummary from Block's sessionStats (1:1 binding)
+    const blockSummary = block.sessionStats ? sessionStatsToBlockSummary(block.sessionStats) : undefined;
 
     messageBlocks.push({
       id: String(block.id),
@@ -181,17 +221,14 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: bool
       additionalUserInputs: additionalUserInputs.length > 0 ? additionalUserInputs : undefined,
       assistantMessage,
       isLatest,
-      attachBlockSummary,
+      blockSummary,
     });
   }
 
-  // Mark last block as latest and attach block summary if available
+  // Mark last block as latest
   if (messageBlocks.length > 0) {
     const lastBlock = messageBlocks[messageBlocks.length - 1];
     lastBlock.isLatest = true;
-    if (hasBlockSummary && lastBlock.assistantMessage) {
-      lastBlock.attachBlockSummary = true;
-    }
   }
 
   return messageBlocks;
@@ -201,10 +238,9 @@ function convertAIBlocksToMessageBlocks(blocks: AIBlock[], hasBlockSummary: bool
  * Group messages into user-assistant pairs
  * Legacy function for ChatItem[] support (backward compatibility)
  * @param items - Array of ChatItem objects
- * @param hasBlockSummary - Whether block summary is available
- * @param t - Translation function for i18n keys
+ * @param _t - Translation function for i18n keys (unused, kept for interface consistency)
  */
-function groupMessagesIntoBlocks(items: ChatItem[], hasBlockSummary: boolean, _t: (key: string) => string): MessageBlock[] {
+function groupMessagesIntoBlocks(items: ChatItem[], _hasBlockSummary: boolean, _t: (key: string) => string): MessageBlock[] {
   const blocks: MessageBlock[] = [];
   let pendingUser: ConversationMessage | null = null;
 
@@ -270,14 +306,10 @@ function groupMessagesIntoBlocks(items: ChatItem[], hasBlockSummary: boolean, _t
     });
   }
 
-  // Mark last block as latest and attach block summary if available
+  // Mark last block as latest
   if (blocks.length > 0) {
     const lastBlock = blocks[blocks.length - 1];
     lastBlock.isLatest = true;
-    // Only attach session summary to the last block if it has an assistant message
-    if (hasBlockSummary && lastBlock.assistantMessage) {
-      lastBlock.attachBlockSummary = true;
-    }
   }
 
   return blocks;
@@ -294,14 +326,15 @@ const ChatMessages = memo(function ChatMessages({
   _onSendProp,
   children,
   className,
-  amazingInsightCard,
   isStreaming = false,
   streamingContent = "",
-  blockSummary,
+  // blockSummary prop deprecated - each Block now has its own summary via sessionStats
+  blockSummary: _deprecatedBlockSummary,
   conversationId,
 }: ChatMessagesProps) {
-  // Suppress unused variable warning - prop kept for potential future use
+  // Suppress unused variable warnings
   void _onSendProp;
+  void _deprecatedBlockSummary;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -480,12 +513,12 @@ const ChatMessages = memo(function ChatMessages({
   // Phase 4: Use blocks if provided, otherwise fall back to items (backward compatibility)
   const messageBlocks = useMemo(() => {
     if (blocks && blocks.length > 0) {
-      // Use new Block data structure
-      return convertAIBlocksToMessageBlocks(blocks, !!blockSummary, t);
+      // Use new Block data structure - each Block generates its own summary
+      return convertAIBlocksToMessageBlocks(blocks, t);
     }
-    // Legacy: use ChatItem[] structure
-    return groupMessagesIntoBlocks(items, !!blockSummary, t);
-  }, [blocks, items, blockSummary, t]);
+    // Legacy: use ChatItem[] structure - no summary available
+    return groupMessagesIntoBlocks(items, false, t);
+  }, [blocks, items, t]);
 
   // Phase 4: Check streaming status from either blocks or props (using extracted hook)
   const isLastStreaming = useStreamingStatus(blocks, isStreaming ?? false);
@@ -590,7 +623,7 @@ const ChatMessages = memo(function ChatMessages({
                 userMessage={block.userMessage}
                 additionalUserInputs={block.additionalUserInputs}
                 assistantMessage={block.assistantMessage}
-                blockSummary={block.attachBlockSummary ? blockSummary : undefined}
+                blockSummary={block.blockSummary}
                 parrotId={blockParrotId}
                 isLatest={block.isLatest}
                 isStreaming={isLastStreaming && block.isLatest}
@@ -610,11 +643,6 @@ const ChatMessages = memo(function ChatMessages({
             );
           })}
         </div>
-      )}
-
-      {/* Amazing Insight Card - rendered separately */}
-      {amazingInsightCard && !isTyping && messageBlocks.length > 0 && (
-        <div className="max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto mt-3">{amazingInsightCard}</div>
       )}
 
       {/* Typing indicator when no messages yet */}

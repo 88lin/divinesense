@@ -1,6 +1,5 @@
 import copy from "copy-to-clipboard";
-import { X } from "lucide-react";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -13,19 +12,16 @@ const debugLog = (...args: unknown[]) => {
   }
 };
 
-import { AmazingInsightCard } from "@/components/AIChat/AmazingInsightCard";
 import { ChatHeader } from "@/components/AIChat/ChatHeader";
 import { ChatInput } from "@/components/AIChat/ChatInput";
 import { ChatMessages } from "@/components/AIChat/ChatMessages";
-import { ParrotHub } from "@/components/AIChat/ParrotHub";
 import { PartnerGreeting } from "@/components/AIChat/PartnerGreeting";
-import { SessionBar } from "@/components/AIChat/SessionBar";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useAIChat } from "@/contexts/AIChatContext";
 import { useChat } from "@/hooks/useAIQueries";
 import { useBlocksWithFallback } from "@/hooks/useBlockQueries";
 import { useCapabilityRouter } from "@/hooks/useCapabilityRouter";
-import useMediaQuery from "@/hooks/useMediaQuery";
+// import useMediaQuery from "@/hooks/useMediaQuery"; // Unused import - kept for reference
 import { cn } from "@/lib/utils";
 import type { AIMode, ChatItem } from "@/types/aichat";
 import type { Block as AIBlock } from "@/types/block";
@@ -34,7 +30,7 @@ import { CapabilityStatus, CapabilityType, capabilityToParrotAgent } from "@/typ
 import type { BlockSummary, MemoQueryResultData, ScheduleQueryResultData } from "@/types/parrot";
 import { ParrotAgentType } from "@/types/parrot";
 import type { SessionStats } from "@/types/proto/api/v1/ai_service_pb";
-import { BlockStatus } from "@/types/proto/api/v1/ai_service_pb";
+import { BlockStatus as BlockStatusEnum } from "@/types/proto/api/v1/ai_service_pb";
 
 // ============================================================
 // UNIFIED CHAT VIEW - 单一对话视图
@@ -83,8 +79,8 @@ function UnifiedChatView({
   setClearDialogOpen,
   onClearChat,
   onClearContext,
-  memoQueryResults,
-  scheduleQueryResults,
+  memoQueryResults: _memoQueryResults, // Reserved for future query result display
+  scheduleQueryResults: _scheduleQueryResults, // Reserved for future query result display
   blockSummary,
   items,
   blocks,
@@ -101,10 +97,9 @@ function UnifiedChatView({
 }: UnifiedChatViewProps) {
   const { t } = useTranslation();
 
-  // P1-5: Concurrent rendering optimizations
-  // Defer non-critical UI updates (query results) to improve input responsiveness
-  const deferredMemoResults = useDeferredValue(memoQueryResults);
-  const deferredScheduleResults = useDeferredValue(scheduleQueryResults);
+  // P1-5: Concurrent rendering optimizations - deferred values available for future use
+  // const deferredMemoResults = useDeferredValue(memoQueryResults);
+  // const deferredScheduleResults = useDeferredValue(scheduleQueryResults);
 
   const handleInputChange = (value: string) => {
     setInput(value);
@@ -144,9 +139,6 @@ function UnifiedChatView({
         blocks={blocks}
       />
 
-      {/* SessionBar - mobile only (PC 端 SessionStats 已整合到 ChatHeader) */}
-      <SessionBar blocks={blocks} blockSummary={blockSummary} className="lg:hidden" />
-
       {/* Messages Area with Welcome */}
       <ChatMessages
         items={items}
@@ -156,11 +148,6 @@ function UnifiedChatView({
         onCopyMessage={handleCopyMessage}
         onDeleteMessage={handleDeleteMessage}
         _onSendProp={onSend}
-        amazingInsightCard={
-          currentCapability === CapabilityType.AMAZING && (deferredMemoResults.length > 0 || deferredScheduleResults.length > 0) ? (
-            <AmazingInsightCard memos={deferredMemoResults[0]?.memos ?? []} schedules={deferredScheduleResults[0]?.schedules ?? []} />
-          ) : undefined
-        }
         blockSummary={blockSummary}
         conversationId={conversationId}
       >
@@ -205,43 +192,6 @@ function UnifiedChatView({
 }
 
 // ============================================================
-// CAPABILITY PANEL VIEW - 能力面板视图
-// ============================================================
-interface CapabilityPanelViewProps {
-  currentCapability: CapabilityType;
-  capabilityStatus: CapabilityStatus;
-  onCapabilitySelect: (capability: CapabilityType) => void;
-  onBack: () => void;
-}
-
-function CapabilityPanelView({ currentCapability, capabilityStatus, onCapabilitySelect, onBack }: CapabilityPanelViewProps) {
-  const md = useMediaQuery("md");
-  const { t } = useTranslation();
-
-  return (
-    <div className="w-full h-full flex flex-col relative bg-background">
-      {/* Mobile Sub-Header */}
-      {!md && (
-        <header className="flex items-center justify-between px-3 py-2 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-          >
-            <X className="w-4 h-4" />
-            <span className="text-xs font-medium">{t("common.close") || "Close"}</span>
-          </button>
-          <span className="text-sm font-medium text-foreground">{t("ai.capability.title")}</span>
-          <div className="w-16" />
-        </header>
-      )}
-
-      {/* Capability Panel */}
-      <ParrotHub currentCapability={currentCapability} capabilityStatus={capabilityStatus} onCapabilitySelect={onCapabilitySelect} />
-    </div>
-  );
-}
-
-// ============================================================
 // MAIN AI CHAT PAGE - 重构为单一对话入口
 // ============================================================
 const AIChat = () => {
@@ -258,7 +208,6 @@ const AIChat = () => {
   const [memoQueryResults, setMemoQueryResults] = useState<MemoQueryResultData[]>([]);
   const [scheduleQueryResults, setScheduleQueryResults] = useState<ScheduleQueryResultData[]>([]);
   const [blockSummary, setBlockSummary] = useState<BlockSummary | undefined>();
-  const [showCapabilityPanel, setShowCapabilityPanel] = useState(false);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageIdRef = useRef(0);
@@ -494,13 +443,15 @@ const AIChat = () => {
                 content: streamingContentRef.current,
               });
             }
+            // Note: Block content is updated in useAIQueries.ts stream handler
+            // via optimistic cache updates, no need to duplicate here
           },
           onDone: () => {
             setIsTyping(false);
             setIsThinking(false);
             setCapabilityStatus("idle");
-            // IMPORTANT: Refetch blocks to get the complete assistant content
-            // This ensures the UI shows the final response instead of "initializing" state
+            // Refetch blocks to get the complete assistant content and session stats
+            // This ensures the UI shows the final response with all metadata
             refetchBlocks();
           },
           onError: (error) => {
@@ -523,7 +474,7 @@ const AIChat = () => {
         console.error("[Parrot Chat Error]", error);
       }
     },
-    [chatHook, updateMessage, addReferencedMemos, setCapabilityStatus, t],
+    [chatHook, updateMessage, addReferencedMemos, setCapabilityStatus, t, refetchBlocks, currentMode],
   );
 
   const handleSend = useCallback(
@@ -769,7 +720,7 @@ const AIChat = () => {
 
     // Find the latest completed block with sessionStats
     const latestBlock = blocks
-      .filter((b) => b.status === BlockStatus.COMPLETED || b.status === BlockStatus.STREAMING)
+      .filter((b) => b.status === BlockStatusEnum.COMPLETED || b.status === BlockStatusEnum.STREAMING)
       .sort((a, b) => Number(b.roundNumber) - Number(a.roundNumber))[0];
 
     if (!latestBlock?.sessionStats) return;
@@ -803,17 +754,7 @@ const AIChat = () => {
   // ============================================================
   // RENDER
   // ============================================================
-  return showCapabilityPanel ? (
-    <CapabilityPanelView
-      currentCapability={currentCapability}
-      capabilityStatus={capabilityStatus}
-      onCapabilitySelect={(cap) => {
-        setCurrentCapability(cap);
-        setShowCapabilityPanel(false);
-      }}
-      onBack={() => setShowCapabilityPanel(false)}
-    />
-  ) : (
+  return (
     <UnifiedChatView
       input={input}
       setInput={setInput}

@@ -442,7 +442,7 @@ function BlockHeader({
                 <>
                   {modeSummary.primary && (
                     <span className="flex items-center gap-1" title={t("ai.unified_block.session_tokens")}>
-                      <Brain className="w-3 h-3" /> {modeSummary.primary}
+                      <span className="text-amber-500">⚡</span> {modeSummary.primary}
                     </span>
                   )}
                   {modeSummary.secondary && (
@@ -564,8 +564,7 @@ function UserInputsSection({ userMessage, additionalUserInputs = [], isCollapsed
       {/* Section Header */}
       <div className="flex items-center justify-between mb-3">
         {/* Section Title */}
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <User className="w-3.5 h-3.5" />
+        <div className="text-sm font-medium text-muted-foreground">
           <span>{t("ai.unified_block.user_inputs") || "用户输入"}</span>
         </div>
 
@@ -785,10 +784,7 @@ function BlockBody({
                         <span className="text-blue-600 dark:text-blue-400">{getThinkingText()}</span>
                       </>
                     ) : (
-                      <>
-                        <Brain className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground">{t("ai.unified_block.thinking_process") || "思考过程"}</span>
-                      </>
+                      <span className="text-muted-foreground">{t("ai.unified_block.thinking_process") || "思考过程"}</span>
                     )}
                   </span>
                   <span className="ml-auto">

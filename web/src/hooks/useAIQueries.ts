@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { aiServiceClient } from "@/connect";
 import { ParrotAgentType, parrotToProtoAgentType } from "@/types/parrot";
+import type { Block } from "@/types/proto/api/v1/ai_service_pb";
 import {
+  BlockMode,
+  BlockStatus,
+  BlockType,
   ChatRequestSchema,
   DetectDuplicatesRequestSchema,
   GetKnowledgeGraphRequestSchema,
@@ -15,6 +19,16 @@ import {
 } from "@/types/proto/api/v1/ai_service_pb";
 // Phase 4: Import blockKeys for invalidating blocks on updates
 import { blockKeys } from "./useBlockQueries";
+
+/**
+ * Get BlockMode from mode flags
+ * Priority: Geek > Evolution > Normal
+ */
+function getBlockModeFromFlags(geekMode?: boolean, evolutionMode?: boolean): BlockMode {
+  if (geekMode) return BlockMode.GEEK;
+  if (evolutionMode) return BlockMode.EVOLUTION;
+  return BlockMode.NORMAL;
+}
 
 // Event metadata types for Geek/Evolution mode observability
 interface EventMetadata {
@@ -288,21 +302,74 @@ export function useChat() {
             });
           }
 
-          // Phase 4: Handle Block ID - invalidate blocks cache to trigger refetch
+          // Phase 4: Handle Block ID - create optimistic block immediately for instant UI feedback
           // When we receive a block_id, it means a new block was created/updated
-          // Invalidate the blocks query to fetch the latest data
+          // Instead of just invalidating, we create an optimistic block for instant rendering
           const blockId = response.blockId;
           if (blockId !== undefined && blockId !== 0n && params.conversationId) {
             if (import.meta.env.DEV) {
-              console.log("[AI Chat] Received block_id, invalidating blocks cache", {
+              console.log("[AI Chat] Received block_id, creating optimistic block", {
                 blockId: blockId.toString(),
                 conversationId: params.conversationId,
               });
             }
-            // Invalidate blocks cache for this conversation to trigger refetch
-            queryClient.invalidateQueries({
-              queryKey: blockKeys.list(params.conversationId),
+
+            // Create an optimistic block for instant UI feedback
+            const now = BigInt(Date.now());
+            const optimisticBlock: Block = {
+              $typeName: "memos.api.v1.Block" as const,
+              id: blockId,
+              uid: `optimistic-${blockId}`,
+              conversationId: params.conversationId, // number type
+              roundNumber: 0, // Will be updated by backend (number type)
+              mode: getBlockModeFromFlags(params.geekMode, params.evolutionMode),
+              blockType: BlockType.MESSAGE,
+              userInputs: [
+                {
+                  $typeName: "memos.api.v1.UserInput" as const,
+                  content: params.message,
+                  timestamp: now,
+                  metadata: "{}",
+                },
+              ],
+              assistantContent: "", // Will be filled during streaming
+              eventStream: [],
+              status: BlockStatus.STREAMING,
+              metadata: "{}",
+              createdTs: now,
+              updatedTs: now,
+              assistantTimestamp: now,
+              ccSessionId: "",
+              parentBlockId: BigInt(0),
+              branchPath: "",
+              costEstimate: BigInt(0),
+              modelVersion: "",
+              userFeedback: "",
+              regenerationCount: 0,
+              errorMessage: "",
+              archivedAt: BigInt(0),
+              sessionStats: undefined,
+            };
+
+            // Immediately update the block list cache with the optimistic block
+            // Use Map to ensure uniqueness and avoid race conditions
+            queryClient.setQueryData(blockKeys.list(params.conversationId), (old) => {
+              const existing = old as { blocks?: Block[]; totalCount?: number } | undefined;
+              const existingBlocks = existing?.blocks || [];
+
+              // Use Map for O(1) lookup and automatic deduplication
+              const blockMap = new Map(existingBlocks.map((b) => [b.id, b]));
+              blockMap.set(blockId, optimisticBlock); // Set will overwrite if exists, ensuring no duplicates
+
+              const newBlocks = Array.from(blockMap.values());
+              return {
+                blocks: newBlocks,
+                totalCount: newBlocks.length,
+              };
             });
+
+            // Also cache the individual block detail
+            queryClient.setQueryData(blockKeys.detail(Number(blockId)), optimisticBlock);
           }
 
           // Handle sources (sent in first response)

@@ -22,8 +22,23 @@ type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
 
 /**
  * 示例问题分类
+ * 扩展以支持 Geek/Evolution 模式的专属分类
  */
-type PromptCategory = "memo" | "schedule" | "create" | "amazing";
+type PromptCategory =
+  | "memo" // 笔记相关
+  | "schedule" // 日程相关
+  | "create" // 创建类操作
+  | "amazing" // 综合分析
+  | "game" // Geek: 游戏开发
+  | "tool" // Geek: 工具开发
+  | "viz" // Geek: 数据可视化
+  | "css" // Geek: CSS/样式效果
+  | "design" // Geek: 设计工具
+  | "media" // Geek: 多媒体处理
+  | "memory" // Evolution: 记忆模块
+  | "rag" // Evolution: RAG检索
+  | "integration" // Evolution: 功能集成
+  | "ainative"; // Evolution: AI原生功能
 
 /**
  * 获取时间段相关配置
@@ -88,65 +103,161 @@ interface SuggestedPrompt {
 }
 
 /**
- * 获取极客模式专属配置
+ * 获取极客模式专属配置（Playground - 实验性项目）
  */
-function getGeekModePrompts(t: (key: string) => string): SuggestedPrompt[] {
+function getGeekModePrompts(_t: (key: string) => string): SuggestedPrompt[] {
   return [
     {
-      icon: "⚡",
-      category: "amazing",
-      promptKey: "ai.parrot.geek.prompt-refactor",
-      prompt: t("ai.parrot.geek.prompt-refactor"),
+      icon: "🎮",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-2048",
+      prompt: "创建或优化2048游戏",
     },
     {
-      icon: "🧪",
-      category: "create",
-      promptKey: "ai.parrot.geek.prompt-test",
-      prompt: t("ai.parrot.geek.prompt-test"),
+      icon: "🧩",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-sudoku",
+      prompt: "创建或优化数独游戏",
     },
     {
-      icon: "🐛",
-      category: "memo",
-      promptKey: "ai.parrot.geek.prompt-fix",
-      prompt: t("ai.parrot.geek.prompt-fix"),
+      icon: "🎯",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-whack",
+      prompt: "创建或优化打地鼠游戏",
+    },
+    {
+      icon: "🏎️",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-racing",
+      prompt: "创建或优化赛车小游戏",
+    },
+    {
+      icon: "🎲",
+      category: "tool",
+      promptKey: "ai.parrot.geek.prompt-wheel",
+      prompt: "创建或优化轮盘抽奖工具",
     },
     {
       icon: "📊",
-      category: "amazing",
-      promptKey: "ai.parrot.geek.prompt-analyze",
-      prompt: t("ai.parrot.geek.prompt-analyze"),
+      category: "viz",
+      promptKey: "ai.parrot.geek.prompt-chart",
+      prompt: "创建或优化动态图表组件",
+    },
+    {
+      icon: "🎨",
+      category: "css",
+      promptKey: "ai.parrot.geek.prompt-3d",
+      prompt: "创建或优化CSS 3D效果",
+    },
+    {
+      icon: "🌈",
+      category: "design",
+      promptKey: "ai.parrot.geek.prompt-gradient",
+      prompt: "创建或优化渐变色生成器",
+    },
+    {
+      icon: "🎵",
+      category: "media",
+      promptKey: "ai.parrot.geek.prompt-audio",
+      prompt: "创建或优化音频可视化效果",
+    },
+    {
+      icon: "🍄",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-mario",
+      prompt: "创建或优化超级玛丽关卡",
+    },
+    {
+      icon: "✈️",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-shooter",
+      prompt: "创建或优化雷霆战机",
+    },
+    {
+      icon: "👊",
+      category: "game",
+      promptKey: "ai.parrot.geek.prompt-fighter",
+      prompt: "创建或优化拳皇风格格斗",
     },
   ];
 }
 
 /**
- * 获取进化模式专属配置
+ * 获取进化模式专属配置（系统自我进化调研 - 产出 GitHub Issue）
  */
-function getEvolutionModePrompts(t: (key: string) => string): SuggestedPrompt[] {
+function getEvolutionModePrompts(_t: (key: string) => string): SuggestedPrompt[] {
   return [
     {
-      icon: "🚀",
-      category: "create",
-      promptKey: "ai.parrot.evolution.prompt-feature",
-      prompt: t("ai.parrot.evolution.prompt-feature"),
+      icon: "🧠",
+      category: "memory",
+      promptKey: "ai.parrot.evolution.prompt-memory",
+      prompt: "调研记忆模块优化方案",
     },
     {
-      icon: "⚡",
-      category: "amazing",
-      promptKey: "ai.parrot.evolution.prompt-optimize",
-      prompt: t("ai.parrot.evolution.prompt-optimize"),
+      icon: "📚",
+      category: "rag",
+      promptKey: "ai.parrot.evolution.prompt-rag",
+      prompt: "分析RAG检索改进策略",
     },
     {
-      icon: "🐛",
-      category: "memo",
-      promptKey: "ai.parrot.evolution.prompt-fix",
-      prompt: t("ai.parrot.evolution.prompt-fix"),
+      icon: "🔗",
+      category: "integration",
+      promptKey: "ai.parrot.evolution.prompt-link",
+      prompt: "设计笔记日程联动功能",
     },
     {
-      icon: "🔧",
-      category: "schedule",
-      promptKey: "ai.parrot.evolution.prompt-refactor",
-      prompt: t("ai.parrot.evolution.prompt-refactor"),
+      icon: "🤖",
+      category: "ainative",
+      promptKey: "ai.parrot.evolution.prompt-ainative",
+      prompt: "探索AI Native新特性",
+    },
+    {
+      icon: "💾",
+      category: "rag",
+      promptKey: "ai.parrot.evolution.prompt-vector",
+      prompt: "评估向量检索优化",
+    },
+    {
+      icon: "🎯",
+      category: "memory",
+      promptKey: "ai.parrot.evolution.prompt-episodic",
+      prompt: "规划情景记忆升级",
+    },
+    {
+      icon: "📝",
+      category: "integration",
+      promptKey: "ai.parrot.evolution.prompt-reminder",
+      prompt: "设计智能提醒系统",
+    },
+    {
+      icon: "🔮",
+      category: "ainative",
+      promptKey: "ai.parrot.evolution.prompt-predictive",
+      prompt: "调研预测性AI功能",
+    },
+    {
+      icon: "🗂️",
+      category: "memory",
+      promptKey: "ai.parrot.evolution.prompt-knowledge",
+      prompt: "优化知识图谱构建",
+    },
+    {
+      icon: "🔍",
+      category: "rag",
+      promptKey: "ai.parrot.evolution.prompt-search",
+      prompt: "分析搜索体验改进",
+    },
+    {
+      icon: "📅",
+      category: "integration",
+      promptKey: "ai.parrot.evolution.prompt-schedule",
+      prompt: "设计自动排程功能",
+    },
+    {
+      icon: "🌐",
+      category: "ainative",
+      promptKey: "ai.parrot.evolution.prompt-multimodal",
+      prompt: "探索多模态AI应用",
     },
   ];
 }

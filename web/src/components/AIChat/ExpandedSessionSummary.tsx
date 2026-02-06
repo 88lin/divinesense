@@ -1,4 +1,4 @@
-import { Brain, ChevronDown, ChevronUp, Clock, DollarSign, FileEdit, PenLine, Wrench, Zap } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Clock, DollarSign, FileEdit, PenLine, Wrench } from "lucide-react";
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -123,7 +123,7 @@ export const ExpandedSessionSummary = memo(function ExpandedSessionSummary({ sum
             )}
             {totalTokens > 0 && (
               <span className="flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-amber-500">⚡</span>
                 <span className="font-mono font-medium">{formatNumber(totalTokens)}</span>
               </span>
             )}
@@ -242,7 +242,7 @@ export const ExpandedSessionSummary = memo(function ExpandedSessionSummary({ sum
               {(summary.totalInputTokens !== undefined || summary.totalOutputTokens !== undefined) && (
                 <div className="p-3 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30">
                   <div className="flex items-center gap-2 mb-2">
-                    <Zap className="w-4 h-4 text-amber-500" />
+                    <span className="text-amber-500">⚡</span>
                     <span className="text-xs font-medium text-muted-foreground">{t("ai.session_stats.tokens")}</span>
                   </div>
                   <div className="space-y-1">
