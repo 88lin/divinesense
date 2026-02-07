@@ -394,6 +394,23 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     }));
   }, []);
 
+  const generateConversationTitle = useCallback(async (id: string) => {
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) return null;
+
+    try {
+      const response = await aiServiceClient.generateConversationTitle({ id: numericId });
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => (c.id === id ? { ...c, title: response.title, updatedAt: Date.now() } : c)),
+      }));
+      return response.title;
+    } catch (error) {
+      console.error("Failed to generate conversation title:", error);
+      return null;
+    }
+  }, []);
+
   // Phase 4: Removed addMessage, updateMessage, deleteMessage - Block API handles this
   // Message actions
   const clearMessages = useCallback((conversationId: string) => {
@@ -712,6 +729,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     deleteConversation,
     selectConversation,
     updateConversationTitle,
+    generateConversationTitle,
     // Phase 4: Removed addMessage, updateMessage, deleteMessage - Block API handles this
     clearMessages,
     addContextSeparator,

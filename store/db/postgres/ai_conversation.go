@@ -16,16 +16,16 @@ func (d *DB) CreateAIConversation(ctx context.Context, create *store.AIConversat
 	var args []any
 
 	if create.ID != 0 {
-		fields = []string{"id", "uid", "creator_id", "title", "parrot_id", "pinned", "created_ts", "updated_ts"}
-		args = []any{create.ID, create.UID, create.CreatorID, create.Title, create.ParrotID, create.Pinned, create.CreatedTs, create.UpdatedTs}
+		fields = []string{"id", "uid", "creator_id", "title", "title_source", "parrot_id", "pinned", "created_ts", "updated_ts"}
+		args = []any{create.ID, create.UID, create.CreatorID, create.Title, create.TitleSource, create.ParrotID, create.Pinned, create.CreatedTs, create.UpdatedTs}
 		stmt := `INSERT INTO ai_conversation (` + strings.Join(fields, ", ") + `)
 			VALUES (` + placeholders(len(args)) + `)`
 		if _, err := d.db.ExecContext(ctx, stmt, args...); err != nil {
 			return nil, fmt.Errorf("failed to create ai_conversation with fixed id: %w", err)
 		}
 	} else {
-		fields = []string{"uid", "creator_id", "title", "parrot_id", "pinned", "created_ts", "updated_ts"}
-		args = []any{create.UID, create.CreatorID, create.Title, create.ParrotID, create.Pinned, create.CreatedTs, create.UpdatedTs}
+		fields = []string{"uid", "creator_id", "title", "title_source", "parrot_id", "pinned", "created_ts", "updated_ts"}
+		args = []any{create.UID, create.CreatorID, create.Title, create.TitleSource, create.ParrotID, create.Pinned, create.CreatedTs, create.UpdatedTs}
 		stmt := `INSERT INTO ai_conversation (` + strings.Join(fields, ", ") + `)
 			VALUES (` + placeholders(len(args)) + `)
 			RETURNING id`
@@ -57,12 +57,12 @@ func (d *DB) ListAIConversations(ctx context.Context, find *store.FindAIConversa
 	// Single query returns conversations with their block counts
 	query := `
 		SELECT
-			c.id, c.uid, c.creator_id, c.title, c.parrot_id, c.pinned, c.created_ts, c.updated_ts,
+			c.id, c.uid, c.creator_id, c.title, c.title_source, c.parrot_id, c.pinned, c.created_ts, c.updated_ts,
 			COALESCE(COUNT(b.id), 0) as block_count
 		FROM ai_conversation c
 		LEFT JOIN ai_block b ON b.conversation_id = c.id
 		WHERE ` + strings.Join(where, " AND ") + `
-		GROUP BY c.id, c.uid, c.creator_id, c.title, c.parrot_id, c.pinned, c.created_ts, c.updated_ts
+		GROUP BY c.id, c.uid, c.creator_id, c.title, c.title_source, c.parrot_id, c.pinned, c.created_ts, c.updated_ts
 		ORDER BY c.updated_ts DESC`
 
 	rows, err := d.db.QueryContext(ctx, query, args...)
@@ -74,7 +74,7 @@ func (d *DB) ListAIConversations(ctx context.Context, find *store.FindAIConversa
 	list := make([]*store.AIConversation, 0)
 	for rows.Next() {
 		c := &store.AIConversation{}
-		if err := rows.Scan(&c.ID, &c.UID, &c.CreatorID, &c.Title, &c.ParrotID, &c.Pinned, &c.CreatedTs, &c.UpdatedTs, &c.BlockCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.UID, &c.CreatorID, &c.Title, &c.TitleSource, &c.ParrotID, &c.Pinned, &c.CreatedTs, &c.UpdatedTs, &c.BlockCount); err != nil {
 			return nil, fmt.Errorf("failed to scan ai_conversation: %w", err)
 		}
 		list = append(list, c)
@@ -93,6 +93,9 @@ func (d *DB) UpdateAIConversation(ctx context.Context, update *store.UpdateAICon
 	if update.Title != nil {
 		set, args = append(set, "title = "+placeholder(len(args)+1)), append(args, *update.Title)
 	}
+	if update.TitleSource != nil {
+		set, args = append(set, "title_source = "+placeholder(len(args)+1)), append(args, *update.TitleSource)
+	}
 	if update.ParrotID != nil {
 		set, args = append(set, "parrot_id = "+placeholder(len(args)+1)), append(args, *update.ParrotID)
 	}
@@ -109,10 +112,10 @@ func (d *DB) UpdateAIConversation(ctx context.Context, update *store.UpdateAICon
 
 	args = append(args, update.ID)
 	// RETURNING all fields to avoid N+1 query
-	stmt := `UPDATE ai_conversation SET ` + strings.Join(set, ", ") + ` WHERE id = ` + placeholder(len(args)) + ` RETURNING id, uid, creator_id, title, parrot_id, pinned, created_ts, updated_ts`
+	stmt := `UPDATE ai_conversation SET ` + strings.Join(set, ", ") + ` WHERE id = ` + placeholder(len(args)) + ` RETURNING id, uid, creator_id, title, title_source, parrot_id, pinned, created_ts, updated_ts`
 	result := &store.AIConversation{}
 	err := d.db.QueryRowContext(ctx, stmt, args...).Scan(
-		&result.ID, &result.UID, &result.CreatorID, &result.Title, &result.ParrotID, &result.Pinned, &result.CreatedTs, &result.UpdatedTs,
+		&result.ID, &result.UID, &result.CreatorID, &result.Title, &result.TitleSource, &result.ParrotID, &result.Pinned, &result.CreatedTs, &result.UpdatedTs,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

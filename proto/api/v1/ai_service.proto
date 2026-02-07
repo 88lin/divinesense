@@ -122,6 +122,14 @@ service AIService {
     };
   }
 
+  // GenerateConversationTitle generates a meaningful title for a conversation using AI.
+  rpc GenerateConversationTitle(GenerateConversationTitleRequest) returns (GenerateConversationTitleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai/conversations/{id}/generate-title"
+      body: "*"
+    };
+  }
+
   // DeleteAIConversation deletes an AI conversation.
   rpc DeleteAIConversation(DeleteAIConversationRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/ai/conversations/{id}"};
@@ -363,6 +371,7 @@ message AIConversation {
   string uid = 2;
   int32 creator_id = 3;
   string title = 4;
+  string title_source = 11; // "default", "auto", or "user"
   AgentType parrot_id = 5;
   bool pinned = 6;
   int64 created_ts = 7;
@@ -393,6 +402,15 @@ message UpdateAIConversationRequest {
   int32 id = 1;
   optional string title = 2;
   optional bool pinned = 3;
+}
+
+message GenerateConversationTitleRequest {
+  int32 id = 1; // Conversation ID
+}
+
+message GenerateConversationTitleResponse {
+  string title = 1; // Generated title
+  string title_source = 2; // "auto" for AI-generated titles
 }
 
 message DeleteAIConversationRequest {

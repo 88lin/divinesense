@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	titlegen "github.com/hrygo/divinesense/ai"
 	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
 	"github.com/hrygo/divinesense/store"
 )
@@ -134,6 +135,87 @@ func (s *AIService) UpdateAIConversation(ctx context.Context, req *v1pb.UpdateAI
 	return convertAIConversationFromStore(updated), nil
 }
 
+func (s *AIService) GenerateConversationTitle(ctx context.Context, req *v1pb.GenerateConversationTitleRequest) (*v1pb.GenerateConversationTitleResponse, error) {
+	user, err := getCurrentUser(ctx, s.Store)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	// Check ownership
+	conversations, err := s.Store.ListAIConversations(ctx, &store.FindAIConversation{
+		ID:        &req.Id,
+		CreatorID: &user.ID,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get conversation: %v", err)
+	}
+	if len(conversations) == 0 {
+		return nil, status.Errorf(codes.NotFound, "conversation not found")
+	}
+
+	// Fetch blocks to get conversation content
+	blocks, err := s.Store.ListAIBlocks(ctx, &store.FindAIBlock{
+		ConversationID: &req.Id,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list blocks: %v", err)
+	}
+
+	if len(blocks) == 0 {
+		return nil, status.Errorf(codes.FailedPrecondition, "conversation has no content yet")
+	}
+
+	// Check if title generator is available
+	if s.TitleGenerator == nil {
+		return nil, status.Errorf(codes.Internal, "title generator not available")
+	}
+
+	// Convert blocks to simplified format for title generation
+	blockContents := make([]titlegen.BlockContent, 0, len(blocks))
+	for _, b := range blocks {
+		blockContents = append(blockContents, titlegen.BlockContent{
+			UserInput:        getUserInputsText(b),
+			AssistantContent: b.AssistantContent,
+		})
+	}
+
+	title, err := s.TitleGenerator.GenerateTitleFromBlocks(ctx, blockContents)
+	if err != nil {
+		slog.Error("failed to generate title",
+			"conversation_id", req.Id,
+			"error", err)
+		return nil, status.Errorf(codes.Internal, "failed to generate title: %v", err)
+	}
+
+	// Update conversation with generated title
+	now := time.Now().Unix()
+	autoSource := store.TitleSourceAuto
+	updated, err := s.Store.UpdateAIConversation(ctx, &store.UpdateAIConversation{
+		ID:          req.Id,
+		Title:       &title,
+		TitleSource: &autoSource,
+		UpdatedTs:   &now,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update conversation title: %v", err)
+	}
+
+	return &v1pb.GenerateConversationTitleResponse{
+		Title:       updated.Title,
+		TitleSource: string(store.TitleSourceAuto),
+	}, nil
+}
+
+// getUserInputsText extracts the user input text from a block's UserInputs slice.
+func getUserInputsText(block *store.AIBlock) string {
+	if len(block.UserInputs) == 0 {
+		return ""
+	}
+
+	// Return the first user input's content
+	return block.UserInputs[0].Content
+}
+
 func (s *AIService) DeleteAIConversation(ctx context.Context, req *v1pb.DeleteAIConversationRequest) (*emptypb.Empty, error) {
 	user, err := getCurrentUser(ctx, s.Store)
 	if err != nil {
@@ -251,14 +333,15 @@ func convertAIConversationFromStore(c *store.AIConversation) *v1pb.AIConversatio
 	}
 
 	return &v1pb.AIConversation{
-		Id:        c.ID,
-		Uid:       c.UID,
-		CreatorId: c.CreatorID,
-		Title:     c.Title,
-		ParrotId:  v1pb.AgentType(parrotId),
-		Pinned:    c.Pinned,
-		CreatedTs: c.CreatedTs,
-		UpdatedTs: c.UpdatedTs,
+		Id:          c.ID,
+		Uid:         c.UID,
+		CreatorId:   c.CreatorID,
+		Title:       c.Title,
+		TitleSource: string(c.TitleSource),
+		ParrotId:    v1pb.AgentType(parrotId),
+		Pinned:      c.Pinned,
+		CreatedTs:   c.CreatedTs,
+		UpdatedTs:   c.UpdatedTs,
 	}
 }
 

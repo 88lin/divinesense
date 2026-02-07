@@ -37,6 +37,7 @@ const (
 	AIService_GetAIConversation_FullMethodName         = "/memos.api.v1.AIService/GetAIConversation"
 	AIService_CreateAIConversation_FullMethodName      = "/memos.api.v1.AIService/CreateAIConversation"
 	AIService_UpdateAIConversation_FullMethodName      = "/memos.api.v1.AIService/UpdateAIConversation"
+	AIService_GenerateConversationTitle_FullMethodName = "/memos.api.v1.AIService/GenerateConversationTitle"
 	AIService_DeleteAIConversation_FullMethodName      = "/memos.api.v1.AIService/DeleteAIConversation"
 	AIService_AddContextSeparator_FullMethodName       = "/memos.api.v1.AIService/AddContextSeparator"
 	AIService_ClearConversationMessages_FullMethodName = "/memos.api.v1.AIService/ClearConversationMessages"
@@ -99,6 +100,8 @@ type AIServiceClient interface {
 	CreateAIConversation(ctx context.Context, in *CreateAIConversationRequest, opts ...grpc.CallOption) (*AIConversation, error)
 	// UpdateAIConversation updates an AI conversation.
 	UpdateAIConversation(ctx context.Context, in *UpdateAIConversationRequest, opts ...grpc.CallOption) (*AIConversation, error)
+	// GenerateConversationTitle generates a meaningful title for a conversation using AI.
+	GenerateConversationTitle(ctx context.Context, in *GenerateConversationTitleRequest, opts ...grpc.CallOption) (*GenerateConversationTitleResponse, error)
 	// DeleteAIConversation deletes an AI conversation.
 	DeleteAIConversation(ctx context.Context, in *DeleteAIConversationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// AddContextSeparator adds a context separator marker to a conversation.
@@ -327,6 +330,16 @@ func (c *aIServiceClient) UpdateAIConversation(ctx context.Context, in *UpdateAI
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AIConversation)
 	err := c.cc.Invoke(ctx, AIService_UpdateAIConversation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aIServiceClient) GenerateConversationTitle(ctx context.Context, in *GenerateConversationTitleRequest, opts ...grpc.CallOption) (*GenerateConversationTitleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateConversationTitleResponse)
+	err := c.cc.Invoke(ctx, AIService_GenerateConversationTitle_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -573,6 +586,8 @@ type AIServiceServer interface {
 	CreateAIConversation(context.Context, *CreateAIConversationRequest) (*AIConversation, error)
 	// UpdateAIConversation updates an AI conversation.
 	UpdateAIConversation(context.Context, *UpdateAIConversationRequest) (*AIConversation, error)
+	// GenerateConversationTitle generates a meaningful title for a conversation using AI.
+	GenerateConversationTitle(context.Context, *GenerateConversationTitleRequest) (*GenerateConversationTitleResponse, error)
 	// DeleteAIConversation deletes an AI conversation.
 	DeleteAIConversation(context.Context, *DeleteAIConversationRequest) (*emptypb.Empty, error)
 	// AddContextSeparator adds a context separator marker to a conversation.
@@ -678,6 +693,9 @@ func (UnimplementedAIServiceServer) CreateAIConversation(context.Context, *Creat
 }
 func (UnimplementedAIServiceServer) UpdateAIConversation(context.Context, *UpdateAIConversationRequest) (*AIConversation, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateAIConversation not implemented")
+}
+func (UnimplementedAIServiceServer) GenerateConversationTitle(context.Context, *GenerateConversationTitleRequest) (*GenerateConversationTitleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GenerateConversationTitle not implemented")
 }
 func (UnimplementedAIServiceServer) DeleteAIConversation(context.Context, *DeleteAIConversationRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAIConversation not implemented")
@@ -1055,6 +1073,24 @@ func _AIService_UpdateAIConversation_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AIServiceServer).UpdateAIConversation(ctx, req.(*UpdateAIConversationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AIService_GenerateConversationTitle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateConversationTitleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIServiceServer).GenerateConversationTitle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIService_GenerateConversationTitle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIServiceServer).GenerateConversationTitle(ctx, req.(*GenerateConversationTitleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1489,6 +1525,10 @@ var AIService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateAIConversation",
 			Handler:    _AIService_UpdateAIConversation_Handler,
+		},
+		{
+			MethodName: "GenerateConversationTitle",
+			Handler:    _AIService_GenerateConversationTitle_Handler,
 		},
 		{
 			MethodName: "DeleteAIConversation",

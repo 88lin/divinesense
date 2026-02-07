@@ -223,7 +223,7 @@ func (s *AIService) createChatHandler() aichat.Handler {
 	)
 	// Phase 5: Create BlockManager for Unified Block Model support
 	blockManager := aichat.NewBlockManager(s.Store)
-	parrotHandler := aichat.NewParrotHandler(factory, s.LLMService, s.persister, blockManager)
+	parrotHandler := aichat.NewParrotHandler(factory, s.LLMService, s.persister, blockManager, s.TitleGenerator)
 
 	// Configure chat router for auto-routing.
 	// routerSvc provides three-layer routing (cache → rule → history → LLM).

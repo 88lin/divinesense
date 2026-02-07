@@ -32,26 +32,107 @@ type ChatStream interface {
 
 // ParrotHandler handles all parrot agent requests (DEFAULT, MEMO, SCHEDULE, AMAZING, CREATIVE).
 type ParrotHandler struct {
-	factory      *AgentFactory
-	llm          ai.LLMService
-	chatRouter   *agentpkg.ChatRouter
-	persister    *aistats.Persister // session stats persister
-	blockManager *BlockManager      // Phase 5: Unified Block Model support
+	factory        *AgentFactory
+	llm            ai.LLMService
+	chatRouter     *agentpkg.ChatRouter
+	persister      *aistats.Persister // session stats persister
+	blockManager   *BlockManager      // Phase 5: Unified Block Model support
+	titleGenerator *ai.TitleGenerator // Title generator for auto-naming conversations
 }
 
 // NewParrotHandler creates a new parrot handler.
-func NewParrotHandler(factory *AgentFactory, llm ai.LLMService, persister *aistats.Persister, blockManager *BlockManager) *ParrotHandler {
+func NewParrotHandler(factory *AgentFactory, llm ai.LLMService, persister *aistats.Persister, blockManager *BlockManager, titleGenerator *ai.TitleGenerator) *ParrotHandler {
 	return &ParrotHandler{
-		factory:      factory,
-		llm:          llm,
-		persister:    persister,
-		blockManager: blockManager, // Phase 5
+		factory:        factory,
+		llm:            llm,
+		persister:      persister,
+		blockManager:   blockManager, // Phase 5
+		titleGenerator: titleGenerator,
 	}
 }
 
 // SetChatRouter configures the intelligent chat router for auto-routing.
 func (h *ParrotHandler) SetChatRouter(router *agentpkg.ChatRouter) {
 	h.chatRouter = router
+}
+
+// maybeGenerateConversationTitle auto-generates a conversation title after the first block.
+// Only generates if title_source is "default" (never been auto-generated or user-edited).
+func (h *ParrotHandler) maybeGenerateConversationTitle(ctx context.Context, conversationID int32, completedBlock *store.AIBlock) {
+	// Check if this is the first completed block for this conversation
+	blocks, err := h.factory.store.ListAIBlocks(ctx, &store.FindAIBlock{
+		ConversationID: &conversationID,
+	})
+	if err != nil {
+		slog.Warn("Failed to list blocks for title generation",
+			"conversation_id", conversationID,
+			"error", err.Error(),
+		)
+		return
+	}
+
+	// Only generate title for the first completed block
+	if len(blocks) != 1 {
+		return
+	}
+
+	// Check conversation title_source
+	conversations, err := h.factory.store.ListAIConversations(ctx, &store.FindAIConversation{
+		ID: &conversationID,
+	})
+	if err != nil || len(conversations) == 0 {
+		slog.Warn("Failed to get conversation for title generation",
+			"conversation_id", conversationID,
+			"error", err.Error(),
+		)
+		return
+	}
+
+	conv := conversations[0]
+	// Only generate if title_source is "default" (never been auto-generated or user-edited)
+	if conv.TitleSource != store.TitleSourceDefault {
+		return
+	}
+
+	// Generate title from block content
+	userMessage := ""
+	if len(completedBlock.UserInputs) > 0 {
+		userMessage = completedBlock.UserInputs[0].Content
+	}
+	aiResponse := completedBlock.AssistantContent
+
+	title, err := h.titleGenerator.Generate(ctx, userMessage, aiResponse)
+	if err != nil {
+		slog.Warn("Failed to generate conversation title",
+			"conversation_id", conversationID,
+			"error", err.Error(),
+		)
+		return
+	}
+
+	// Update conversation with generated title
+	_, err = h.factory.store.UpdateAIConversation(ctx, &store.UpdateAIConversation{
+		ID:          conversationID,
+		Title:       &title,
+		TitleSource: storePtr(store.TitleSourceAuto),
+	})
+	if err != nil {
+		slog.Warn("Failed to update conversation title",
+			"conversation_id", conversationID,
+			"error", err.Error(),
+		)
+		return
+	}
+
+	slog.Info("Auto-generated conversation title",
+		"conversation_id", conversationID,
+		"title", title,
+	)
+}
+
+// storePtr returns a pointer to the given value.
+func storePtr[T any](v T) *T {
+	return &v
 }
 
 // Handle implements Handler interface for parrot agent requests.
@@ -888,6 +969,12 @@ func (h *ParrotHandler) executeAgent(
 					slog.Int64("block_id", currentBlock.ID),
 					slog.Int("content_length", len(finalContent)),
 				)
+
+				// Auto-generate conversation title after first successful block
+				// Only if title_source is "default" (never been auto-generated or user-edited)
+				if h.titleGenerator != nil && currentBlock.ConversationID > 0 {
+					h.maybeGenerateConversationTitle(ctx, currentBlock.ConversationID, currentBlock)
+				}
 			}
 		}
 	}

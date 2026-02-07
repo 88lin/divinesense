@@ -1,20 +1,33 @@
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { ConversationSummary } from "@/types/aichat";
 import { PARROT_AGENTS, PARROT_ICONS, PARROT_THEMES } from "@/types/parrot";
+import { TitleEditDialog } from "./TitleEditDialog";
 
 interface ConversationItemProps {
   conversation: ConversationSummary;
   isActive: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onTitleChange?: (id: string, newTitle: string) => void;
   className?: string;
   isLoaded?: boolean; // Whether this conversation has been loaded with messages
 }
 
-export function ConversationItem({ conversation, isActive, onSelect, onDelete, className, isLoaded = false }: ConversationItemProps) {
+export function ConversationItem({
+  conversation,
+  isActive,
+  onSelect,
+  onDelete,
+  onTitleChange,
+  className,
+  isLoaded = false,
+}: ConversationItemProps) {
   const { t } = useTranslation();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
   const parrot = PARROT_AGENTS[conversation.parrotId];
   const parrotIcon = PARROT_ICONS[conversation.parrotId] || parrot?.icon || "🤖";
   const parrotTheme = PARROT_THEMES[conversation.parrotId] || PARROT_THEMES.AMAZING;
@@ -22,46 +35,85 @@ export function ConversationItem({ conversation, isActive, onSelect, onDelete, c
   // Display message count: show "..." if not loaded yet, 0 if truly empty
   const displayMessageCount = isLoaded ? conversation.messageCount : "...";
 
+  const handleTitleChange = (newTitle: string) => {
+    onTitleChange?.(conversation.id, newTitle);
+  };
+
   return (
-    <div className={cn("group relative rounded-lg transition-all", isActive ? "bg-accent" : "hover:bg-muted", className)}>
-      <button
-        onClick={() => onSelect(conversation.id)}
-        className="w-full text-left px-3 py-2.5 pr-12"
-        aria-label={`Select conversation: ${conversation.title}`}
-      >
-        <div className="flex items-start gap-3">
-          {/* Parrot Icon */}
-          <div
-            className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0",
-              !parrotIcon.startsWith("/") && parrotTheme.iconBg,
-            )}
-          >
-            {parrotIcon.startsWith("/") ? (
-              <img src={parrotIcon} alt={parrot?.displayName || ""} className="w-6 h-6 object-contain" />
-            ) : (
-              parrotIcon
-            )}
-          </div>
+    <>
+      <div className={cn("group relative rounded-lg transition-all", isActive ? "bg-accent" : "hover:bg-muted", className)}>
+        <button
+          onClick={() => onSelect(conversation.id)}
+          className="w-full text-left px-3 py-2.5 pr-20"
+          aria-label={`Select conversation: ${conversation.title}`}
+        >
+          <div className="flex items-start gap-3">
+            {/* Parrot Icon */}
+            <div
+              className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0",
+                !parrotIcon.startsWith("/") && parrotTheme.iconBg,
+              )}
+            >
+              {parrotIcon.startsWith("/") ? (
+                <img src={parrotIcon} alt={parrot?.displayName || ""} className="w-6 h-6 object-contain" />
+              ) : (
+                parrotIcon
+              )}
+            </div>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm text-foreground truncate">{conversation.title}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {displayMessageCount === "..."
-                ? t("ai.aichat.sidebar.message-count", { count: 0 })
-                : t("ai.aichat.sidebar.message-count", { count: displayMessageCount })}{" "}
-              · {formatTime(conversation.updatedAt, t)}
-            </p>
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                {conversation.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {displayMessageCount === "..."
+                  ? t("ai.aichat.sidebar.message-count", { count: 0 })
+                  : t("ai.aichat.sidebar.message-count", { count: displayMessageCount })}{" "}
+                · {formatTime(conversation.updatedAt, t)}
+              </p>
+            </div>
           </div>
+        </button>
+
+        {/* Action Buttons - Show on hover */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+          <EditButton onEdit={() => setEditDialogOpen(true)} />
+          <DeleteButton conversationId={conversation.id} onDelete={onDelete} />
         </div>
-      </button>
-
-      {/* Delete Button - Show on hover */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <DeleteButton conversationId={conversation.id} onDelete={onDelete} />
       </div>
-    </div>
+
+      {/* Title Edit Dialog */}
+      <TitleEditDialog conversation={conversation} open={editDialogOpen} onOpenChange={setEditDialogOpen} onSuccess={handleTitleChange} />
+    </>
+  );
+}
+
+interface EditButtonProps {
+  onEdit: () => void;
+}
+
+function EditButton({ onEdit }: EditButtonProps) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onEdit();
+      }}
+      className={cn(
+        "flex items-center justify-center",
+        "w-8 h-8 rounded-lg",
+        "text-muted-foreground",
+        "hover:text-primary",
+        "hover:bg-primary/10",
+        "transition-all duration-200",
+      )}
+      aria-label="Edit title"
+      title="Edit title"
+    >
+      <Pencil className="w-4 h-4" />
+    </button>
   );
 }
 

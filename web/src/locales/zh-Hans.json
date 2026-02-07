@@ -16,6 +16,12 @@
       },
       "delete-conversation-confirm": "确定要删除这个会话吗？此操作无法撤销。",
       "delete-conversation-title": "删除会话",
+      "title-edit": {
+        "generate-tooltip": "使用 AI 生成标题",
+        "hint": "点击魔法棒图标，根据对话内容自动生成标题",
+        "placeholder": "输入会话标题",
+        "title": "编辑标题"
+      },
       "input-hint": "直接输入消息，我会自动理解你的意图",
       "memo-query": {
         "found-count": "找到 {{count}} 条相关笔记",

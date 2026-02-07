@@ -47,6 +47,7 @@ type AIService struct {
 	Store                    *store.Store
 	contextBuilder           *aichat.ContextBuilder
 	conversationSummarizer   *aichat.ConversationSummarizer
+	TitleGenerator           *pluginai.TitleGenerator // Conversation title generator
 	EmbeddingModel           string
 	persister                *aistats.Persister // session stats async persister
 	routerServiceMu          sync.RWMutex

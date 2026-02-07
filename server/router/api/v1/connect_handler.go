@@ -539,6 +539,17 @@ func (s *ConnectServiceHandler) UpdateAIConversation(ctx context.Context, req *c
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) GenerateConversationTitle(ctx context.Context, req *connect.Request[v1pb.GenerateConversationTitleRequest]) (*connect.Response[v1pb.GenerateConversationTitleResponse], error) {
+	if s.AIService == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))
+	}
+	resp, err := s.AIService.GenerateConversationTitle(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) DeleteAIConversation(ctx context.Context, req *connect.Request[v1pb.DeleteAIConversationRequest]) (*connect.Response[emptypb.Empty], error) {
 	if s.AIService == nil {
 		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("AI features are disabled"))

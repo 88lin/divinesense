@@ -223,6 +223,7 @@ CREATE TABLE ai_conversation (
   uid TEXT NOT NULL UNIQUE,
   creator_id INTEGER NOT NULL,
   title TEXT NOT NULL DEFAULT '',
+  title_source TEXT NOT NULL DEFAULT 'default',
   parrot_id TEXT NOT NULL DEFAULT '',
   pinned BOOLEAN NOT NULL DEFAULT FALSE,
   created_ts BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
@@ -233,11 +234,14 @@ CREATE TABLE ai_conversation (
     REFERENCES "user"(id)
     ON DELETE CASCADE,
   CONSTRAINT chk_ai_conversation_row_status
-    CHECK (row_status IN ('NORMAL', 'ARCHIVED'))
+    CHECK (row_status IN ('NORMAL', 'ARCHIVED')),
+  CONSTRAINT chk_ai_conversation_title_source
+    CHECK (title_source IN ('default', 'auto', 'user'))
 );
 
 CREATE INDEX idx_ai_conversation_creator ON ai_conversation(creator_id);
 CREATE INDEX idx_ai_conversation_updated ON ai_conversation(updated_ts DESC);
+CREATE INDEX idx_ai_conversation_title_source ON ai_conversation(title_source);
 
 -- ai_message
 CREATE TABLE ai_message (

@@ -80,6 +80,9 @@ const (
 	// AIServiceUpdateAIConversationProcedure is the fully-qualified name of the AIService's
 	// UpdateAIConversation RPC.
 	AIServiceUpdateAIConversationProcedure = "/memos.api.v1.AIService/UpdateAIConversation"
+	// AIServiceGenerateConversationTitleProcedure is the fully-qualified name of the AIService's
+	// GenerateConversationTitle RPC.
+	AIServiceGenerateConversationTitleProcedure = "/memos.api.v1.AIService/GenerateConversationTitle"
 	// AIServiceDeleteAIConversationProcedure is the fully-qualified name of the AIService's
 	// DeleteAIConversation RPC.
 	AIServiceDeleteAIConversationProcedure = "/memos.api.v1.AIService/DeleteAIConversation"
@@ -173,6 +176,8 @@ type AIServiceClient interface {
 	CreateAIConversation(context.Context, *connect.Request[v1.CreateAIConversationRequest]) (*connect.Response[v1.AIConversation], error)
 	// UpdateAIConversation updates an AI conversation.
 	UpdateAIConversation(context.Context, *connect.Request[v1.UpdateAIConversationRequest]) (*connect.Response[v1.AIConversation], error)
+	// GenerateConversationTitle generates a meaningful title for a conversation using AI.
+	GenerateConversationTitle(context.Context, *connect.Request[v1.GenerateConversationTitleRequest]) (*connect.Response[v1.GenerateConversationTitleResponse], error)
 	// DeleteAIConversation deletes an AI conversation.
 	DeleteAIConversation(context.Context, *connect.Request[v1.DeleteAIConversationRequest]) (*connect.Response[emptypb.Empty], error)
 	// AddContextSeparator adds a context separator marker to a conversation.
@@ -333,6 +338,12 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(aIServiceMethods.ByName("UpdateAIConversation")),
 			connect.WithClientOptions(opts...),
 		),
+		generateConversationTitle: connect.NewClient[v1.GenerateConversationTitleRequest, v1.GenerateConversationTitleResponse](
+			httpClient,
+			baseURL+AIServiceGenerateConversationTitleProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("GenerateConversationTitle")),
+			connect.WithClientOptions(opts...),
+		),
 		deleteAIConversation: connect.NewClient[v1.DeleteAIConversationRequest, emptypb.Empty](
 			httpClient,
 			baseURL+AIServiceDeleteAIConversationProcedure,
@@ -475,6 +486,7 @@ type aIServiceClient struct {
 	getAIConversation         *connect.Client[v1.GetAIConversationRequest, v1.AIConversation]
 	createAIConversation      *connect.Client[v1.CreateAIConversationRequest, v1.AIConversation]
 	updateAIConversation      *connect.Client[v1.UpdateAIConversationRequest, v1.AIConversation]
+	generateConversationTitle *connect.Client[v1.GenerateConversationTitleRequest, v1.GenerateConversationTitleResponse]
 	deleteAIConversation      *connect.Client[v1.DeleteAIConversationRequest, emptypb.Empty]
 	addContextSeparator       *connect.Client[v1.AddContextSeparatorRequest, emptypb.Empty]
 	clearConversationMessages *connect.Client[v1.ClearConversationMessagesRequest, emptypb.Empty]
@@ -580,6 +592,11 @@ func (c *aIServiceClient) CreateAIConversation(ctx context.Context, req *connect
 // UpdateAIConversation calls memos.api.v1.AIService.UpdateAIConversation.
 func (c *aIServiceClient) UpdateAIConversation(ctx context.Context, req *connect.Request[v1.UpdateAIConversationRequest]) (*connect.Response[v1.AIConversation], error) {
 	return c.updateAIConversation.CallUnary(ctx, req)
+}
+
+// GenerateConversationTitle calls memos.api.v1.AIService.GenerateConversationTitle.
+func (c *aIServiceClient) GenerateConversationTitle(ctx context.Context, req *connect.Request[v1.GenerateConversationTitleRequest]) (*connect.Response[v1.GenerateConversationTitleResponse], error) {
+	return c.generateConversationTitle.CallUnary(ctx, req)
 }
 
 // DeleteAIConversation calls memos.api.v1.AIService.DeleteAIConversation.
@@ -718,6 +735,8 @@ type AIServiceHandler interface {
 	CreateAIConversation(context.Context, *connect.Request[v1.CreateAIConversationRequest]) (*connect.Response[v1.AIConversation], error)
 	// UpdateAIConversation updates an AI conversation.
 	UpdateAIConversation(context.Context, *connect.Request[v1.UpdateAIConversationRequest]) (*connect.Response[v1.AIConversation], error)
+	// GenerateConversationTitle generates a meaningful title for a conversation using AI.
+	GenerateConversationTitle(context.Context, *connect.Request[v1.GenerateConversationTitleRequest]) (*connect.Response[v1.GenerateConversationTitleResponse], error)
 	// DeleteAIConversation deletes an AI conversation.
 	DeleteAIConversation(context.Context, *connect.Request[v1.DeleteAIConversationRequest]) (*connect.Response[emptypb.Empty], error)
 	// AddContextSeparator adds a context separator marker to a conversation.
@@ -872,6 +891,12 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 		AIServiceUpdateAIConversationProcedure,
 		svc.UpdateAIConversation,
 		connect.WithSchema(aIServiceMethods.ByName("UpdateAIConversation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aIServiceGenerateConversationTitleHandler := connect.NewUnaryHandler(
+		AIServiceGenerateConversationTitleProcedure,
+		svc.GenerateConversationTitle,
+		connect.WithSchema(aIServiceMethods.ByName("GenerateConversationTitle")),
 		connect.WithHandlerOptions(opts...),
 	)
 	aIServiceDeleteAIConversationHandler := connect.NewUnaryHandler(
@@ -1030,6 +1055,8 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 			aIServiceCreateAIConversationHandler.ServeHTTP(w, r)
 		case AIServiceUpdateAIConversationProcedure:
 			aIServiceUpdateAIConversationHandler.ServeHTTP(w, r)
+		case AIServiceGenerateConversationTitleProcedure:
+			aIServiceGenerateConversationTitleHandler.ServeHTTP(w, r)
 		case AIServiceDeleteAIConversationProcedure:
 			aIServiceDeleteAIConversationHandler.ServeHTTP(w, r)
 		case AIServiceAddContextSeparatorProcedure:
@@ -1145,6 +1172,10 @@ func (UnimplementedAIServiceHandler) CreateAIConversation(context.Context, *conn
 
 func (UnimplementedAIServiceHandler) UpdateAIConversation(context.Context, *connect.Request[v1.UpdateAIConversationRequest]) (*connect.Response[v1.AIConversation], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.UpdateAIConversation is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) GenerateConversationTitle(context.Context, *connect.Request[v1.GenerateConversationTitleRequest]) (*connect.Response[v1.GenerateConversationTitleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.GenerateConversationTitle is not implemented"))
 }
 
 func (UnimplementedAIServiceHandler) DeleteAIConversation(context.Context, *connect.Request[v1.DeleteAIConversationRequest]) (*connect.Response[emptypb.Empty], error) {
