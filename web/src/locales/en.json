@@ -18,9 +18,11 @@
       "delete-conversation-title": "Delete Conversation",
       "input-hint": "Just type a message, I'll automatically understand your intent",
       "title-edit": {
+        "generate-failed": "Failed to generate title. Please try again.",
         "generate-tooltip": "Generate title with AI",
         "hint": "Click the magic wand to generate a title automatically based on the conversation content",
         "placeholder": "Enter conversation title",
+        "save-failed": "Failed to save title. Please try again.",
         "title": "Edit Title"
       },
       "memo-query": {

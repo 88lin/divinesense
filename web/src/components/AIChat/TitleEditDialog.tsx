@@ -20,9 +20,11 @@ export function TitleEditDialog({ conversation, open, onOpenChange, onSuccess }:
   const [title, setTitle] = useState(conversation.title);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGenerateTitle = async () => {
     setIsGenerating(true);
+    setError(null);
     try {
       const response = await aiServiceClient.generateConversationTitle({
         id: Number(conversation.id),
@@ -30,6 +32,7 @@ export function TitleEditDialog({ conversation, open, onOpenChange, onSuccess }:
       setTitle(response.title);
     } catch (error) {
       console.error("Failed to generate title:", error);
+      setError(t("ai.aichat.title-edit.generate-failed"));
     } finally {
       setIsGenerating(false);
     }
@@ -37,6 +40,7 @@ export function TitleEditDialog({ conversation, open, onOpenChange, onSuccess }:
 
   const handleSave = async () => {
     setIsSaving(true);
+    setError(null);
     try {
       await aiServiceClient.updateAIConversation({
         id: Number(conversation.id),
@@ -46,6 +50,7 @@ export function TitleEditDialog({ conversation, open, onOpenChange, onSuccess }:
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to update title:", error);
+      setError(t("ai.aichat.title-edit.save-failed"));
     } finally {
       setIsSaving(false);
     }
@@ -79,12 +84,15 @@ export function TitleEditDialog({ conversation, open, onOpenChange, onSuccess }:
               variant="outline"
               size="icon"
               onClick={handleGenerateTitle}
-              disabled={isGenerating}
+              disabled={isGenerating || isSaving}
               title={t("ai.aichat.title-edit.generate-tooltip")}
             >
               <Wand2 className={cn("w-4 h-4", isGenerating && "animate-spin")} />
             </Button>
           </div>
+
+          {/* Error Message */}
+          {error && <p className="text-xs text-destructive">{error}</p>}
 
           {/* Hint Text */}
           <p className="text-xs text-muted-foreground">{t("ai.aichat.title-edit.hint")}</p>

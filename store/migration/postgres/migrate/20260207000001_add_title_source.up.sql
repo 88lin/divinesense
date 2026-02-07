@@ -18,9 +18,12 @@ CREATE INDEX idx_ai_conversation_title_source ON ai_conversation(title_source);
 -- - Empty titles -> 'default'
 -- - Non-empty titles that look like user edits -> 'user'
 -- - All others remain 'default'
+-- Note: Only update rows where title_source is still the default value
+-- to avoid overwriting existing auto-generated titles
 UPDATE ai_conversation
 SET title_source = CASE
     WHEN title = '' OR title IS NULL THEN 'default'
     WHEN title LIKE 'New Chat%' THEN 'default'
     ELSE 'user'
-END;
+END
+WHERE title_source = 'default';

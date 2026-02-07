@@ -510,9 +510,11 @@
       "delete-conversation-confirm": "確定要刪除這個會話嗎？此操作無法撤銷。",
       "delete-conversation-title": "刪除會話",
       "title-edit": {
+        "generate-failed": "生成標題失敗，請重試",
         "generate-tooltip": "使用 AI 生成標題",
         "hint": "點擊魔法棒圖標，根據對話內容自動生成標題",
         "placeholder": "輸入會話標題",
+        "save-failed": "保存標題失敗，請重試",
         "title": "編輯標題"
       }
     },

@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/lithammer/shortuuid/v4"
@@ -154,6 +155,8 @@ func (s *AIService) GenerateConversationTitle(ctx context.Context, req *v1pb.Gen
 	}
 
 	// Fetch blocks to get conversation content
+	// Optimization: Only fetch the first few blocks for title generation
+	// The first user-AI interaction is usually sufficient for a good title
 	blocks, err := s.Store.ListAIBlocks(ctx, &store.FindAIBlock{
 		ConversationID: &req.Id,
 	})
@@ -171,12 +174,32 @@ func (s *AIService) GenerateConversationTitle(ctx context.Context, req *v1pb.Gen
 	}
 
 	// Convert blocks to simplified format for title generation
-	blockContents := make([]titlegen.BlockContent, 0, len(blocks))
-	for _, b := range blocks {
+	// Optimization: Only use the first 3 blocks max for title generation
+	// More blocks don't significantly improve title quality but add latency
+	maxBlocks := 3
+	if len(blocks) < maxBlocks {
+		maxBlocks = len(blocks)
+	}
+	blockContents := make([]titlegen.BlockContent, 0, maxBlocks)
+	for i := 0; i < maxBlocks; i++ {
+		b := blocks[i]
 		blockContents = append(blockContents, titlegen.BlockContent{
 			UserInput:        getUserInputsText(b),
 			AssistantContent: b.AssistantContent,
 		})
+		// Early exit if we have enough context (both user input and AI response)
+		hasUserInput := getUserInputsText(b) != ""
+		hasAIResponse := b.AssistantContent != ""
+		if hasUserInput && hasAIResponse {
+			// Check if next block also has content for better context
+			if i+1 < maxBlocks && i+1 < len(blocks) {
+				nextBlock := blocks[i+1]
+				if getUserInputsText(nextBlock) != "" || nextBlock.AssistantContent != "" {
+					continue
+				}
+			}
+			break
+		}
 	}
 
 	title, err := s.TitleGenerator.GenerateTitleFromBlocks(ctx, blockContents)
@@ -184,7 +207,11 @@ func (s *AIService) GenerateConversationTitle(ctx context.Context, req *v1pb.Gen
 		slog.Error("failed to generate title",
 			"conversation_id", req.Id,
 			"error", err)
-		return nil, status.Errorf(codes.Internal, "failed to generate title: %v", err)
+		// Return Unavailable for LLM/API errors, Internal for other errors
+		if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "deadline") {
+			return nil, status.Errorf(codes.DeadlineExceeded, "title generation timeout")
+		}
+		return nil, status.Errorf(codes.Unavailable, "failed to generate title: %v", err)
 	}
 
 	// Update conversation with generated title

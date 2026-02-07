@@ -145,9 +145,11 @@ func (tg *TitleGenerator) parseResponse(content string) (*GeneratedTitle, error)
 		return nil, fmt.Errorf("empty title in response")
 	}
 
-	// Truncate to max length
-	if len(result.Title) > 50 {
-		result.Title = result.Title[:50]
+	// Truncate to max length (rune-aware for UTF-8)
+	// Use []rune to properly handle multi-byte characters (e.g., Chinese)
+	if len([]rune(result.Title)) > 50 {
+		runes := []rune(result.Title)
+		result.Title = string(runes[:50])
 	}
 
 	return &result, nil
