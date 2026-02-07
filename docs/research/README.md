@@ -10,3 +10,4 @@
 | 统一 Block 模型    | ✅ Issue Created | [unified-block-model-research.md](./unified-block-model-research.md)             |
 | 会话智能重命名     | ✅ Issue Created | [20260207-conversation-smart-rename.md](./20260207-conversation-smart-rename.md) |
 | 语音交互调研       | 🚧 In Progress   | [voice-interaction-research.md](./voice-interaction-research.md)                 |
+| AI 聊天消息排队    | ✅ Issue Created | [pending-queue-research.md](./pending-queue-research.md)                         |
