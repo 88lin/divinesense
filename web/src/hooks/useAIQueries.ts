@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { aiServiceClient } from "@/connect";
 import { ParrotAgentType, parrotToProtoAgentType } from "@/types/parrot";
 import type { Block } from "@/types/proto/api/v1/ai_service_pb";
@@ -168,6 +168,20 @@ export function useChat() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    };
+  }, []);
+
   return {
     /**
      * Stream chat with memos as context.
@@ -287,6 +301,87 @@ export function useChat() {
           // When we receive a block_id, it means a new block was created/updated
           // Instead of just invalidating, we create an optimistic block for instant rendering
           const blockId = response.blockId;
+
+          // Helper function to update optimistic block's eventStream during streaming
+          // This ensures UI shows real-time progress (thinking, tool_use, tool_result) instead of "black hole"
+          const updateBlockEventStream = (event: {
+            type: string;
+            content?: string;
+            toolName?: string;
+            toolId?: string;
+            inputSummary?: string;
+            outputSummary?: string;
+            filePath?: string;
+            duration?: number;
+            isError?: boolean;
+            timestamp: number;
+          }) => {
+            if (!blockId || blockId === 0n || !params.conversationId) return;
+
+            queryClient.setQueryData(blockKeys.list(params.conversationId), (old) => {
+              const existing = old as { blocks?: Block[]; totalCount?: number } | undefined;
+              const existingBlocks = existing?.blocks || [];
+
+              // Find and update the target block
+              const updatedBlocks = existingBlocks.map((b) => {
+                if (b.id !== blockId) return b;
+
+                // Append event to eventStream
+                const newEventStream = [
+                  ...(b.eventStream || []),
+                  {
+                    $typeName: "memos.api.v1.BlockEvent" as const,
+                    type: event.type,
+                    content: event.content || "",
+                    timestamp: BigInt(event.timestamp),
+                    metadata: JSON.stringify({
+                      toolName: event.toolName,
+                      toolId: event.toolId,
+                      inputSummary: event.inputSummary,
+                      outputSummary: event.outputSummary,
+                      filePath: event.filePath,
+                      duration: event.duration,
+                      isError: event.isError,
+                    }),
+                  },
+                ];
+
+                return { ...b, eventStream: newEventStream };
+              });
+
+              return {
+                blocks: updatedBlocks,
+                totalCount: updatedBlocks.length,
+              };
+            });
+
+            // Also update the individual block cache
+            queryClient.setQueryData(blockKeys.detail(Number(blockId)), (old: Block | undefined) => {
+              if (!old || old.id !== blockId) return old;
+
+              const newEventStream = [
+                ...(old.eventStream || []),
+                {
+                  $typeName: "memos.api.v1.BlockEvent" as const,
+                  type: event.type,
+                  content: event.content || "",
+                  timestamp: BigInt(event.timestamp),
+                  metadata: JSON.stringify({
+                    toolName: event.toolName,
+                    toolId: event.toolId,
+                    inputSummary: event.inputSummary,
+                    outputSummary: event.outputSummary,
+                    filePath: event.filePath,
+                    duration: event.duration,
+                    isError: event.isError,
+                  }),
+                },
+              ];
+
+              return { ...old, eventStream: newEventStream };
+            });
+          };
+
           if (blockId !== undefined && blockId !== 0n && params.conversationId) {
             // Create an optimistic block for instant UI feedback
             const now = BigInt(Date.now());
@@ -356,6 +451,32 @@ export function useChat() {
           if (response.content) {
             fullContent += response.content;
             callbacks?.onContent?.(response.content);
+
+            // CRITICAL: Update optimistic block's assistantContent during streaming
+            // This ensures the UI shows the streaming content in real-time
+            if (blockId !== undefined && blockId !== 0n && params.conversationId) {
+              queryClient.setQueryData(blockKeys.list(params.conversationId), (old) => {
+                const existing = old as { blocks?: Block[]; totalCount?: number } | undefined;
+                const existingBlocks = existing?.blocks || [];
+
+                // Find and update the target block's assistantContent
+                const updatedBlocks = existingBlocks.map((b) => {
+                  if (b.id !== blockId) return b;
+                  return { ...b, assistantContent: fullContent };
+                });
+
+                return {
+                  blocks: updatedBlocks,
+                  totalCount: updatedBlocks.length,
+                };
+              });
+
+              // Also update the individual block cache
+              queryClient.setQueryData(blockKeys.detail(Number(blockId)), (old: Block | undefined) => {
+                if (!old || old.id !== blockId) return old;
+                return { ...old, assistantContent: fullContent };
+              });
+            }
           }
 
           // Handle schedule creation intent (sent in final chunk)
@@ -392,6 +513,12 @@ export function useChat() {
             switch (response.eventType) {
               case "thinking":
                 callbacks?.onThinking?.(response.eventData);
+                // Update optimistic block's eventStream to show thinking in UI
+                updateBlockEventStream({
+                  type: "thinking",
+                  content: response.eventData,
+                  timestamp: Date.now(),
+                });
                 break;
               case "tool_use": {
                 // Convert proto EventMetadata (bigint fields) to local EventMetadata (number fields)
@@ -414,6 +541,16 @@ export function useChat() {
                     }
                   : undefined;
                 callbacks?.onToolUse?.(response.eventData, toolMeta);
+                // Update optimistic block's eventStream to show tool_use in UI
+                updateBlockEventStream({
+                  type: "tool_use",
+                  toolName: response.eventData,
+                  toolId: toolMeta?.toolId,
+                  inputSummary: toolMeta?.inputSummary,
+                  outputSummary: toolMeta?.outputSummary,
+                  filePath: toolMeta?.filePath,
+                  timestamp: Date.now(),
+                });
                 break;
               }
               case "tool_result": {
@@ -437,12 +574,46 @@ export function useChat() {
                     }
                   : undefined;
                 callbacks?.onToolResult?.(response.eventData, resultMeta);
+                // Update optimistic block's eventStream to show tool_result in UI
+                updateBlockEventStream({
+                  type: "tool_result",
+                  content: response.eventData,
+                  toolName: resultMeta?.toolName,
+                  toolId: resultMeta?.toolId,
+                  outputSummary: resultMeta?.outputSummary,
+                  duration: resultMeta?.durationMs,
+                  isError: !!resultMeta?.errorMsg,
+                  timestamp: Date.now(),
+                });
                 break;
               }
               case "answer":
                 // Handle final answer from agent (when no tool is used)
                 fullContent += response.eventData;
                 callbacks?.onContent?.(response.eventData);
+                // CRITICAL: Real-time update assistantContent for streaming UI
+                // This prevents "initializing..." state during answer streaming
+                if (blockId !== undefined && blockId !== 0n && params.conversationId) {
+                  queryClient.setQueryData(blockKeys.list(params.conversationId), (old) => {
+                    const existing = old as { blocks?: Block[]; totalCount?: number } | undefined;
+                    const existingBlocks = existing?.blocks || [];
+
+                    const updatedBlocks = existingBlocks.map((b) => {
+                      if (b.id !== blockId) return b;
+                      return {
+                        ...b,
+                        assistantContent: fullContent,
+                        status: BlockStatus.STREAMING,
+                        updatedTs: BigInt(Date.now()),
+                      };
+                    });
+
+                    return {
+                      blocks: updatedBlocks,
+                      totalCount: updatedBlocks.length,
+                    };
+                  });
+                }
                 break;
               case "memo_query_result":
                 try {
@@ -502,6 +673,41 @@ export function useChat() {
           // Handle completion
           if (response.done === true) {
             doneCalled = true;
+
+            // CRITICAL: Mark block as COMPLETED and update final content
+            if (blockId !== undefined && blockId !== 0n && params.conversationId) {
+              queryClient.setQueryData(blockKeys.list(params.conversationId), (old) => {
+                const existing = old as { blocks?: Block[]; totalCount?: number } | undefined;
+                const existingBlocks = existing?.blocks || [];
+
+                const updatedBlocks = existingBlocks.map((b) => {
+                  if (b.id !== blockId) return b;
+                  return {
+                    ...b,
+                    assistantContent: fullContent,
+                    status: BlockStatus.COMPLETED,
+                    updatedTs: BigInt(Date.now()),
+                  };
+                });
+
+                return {
+                  blocks: updatedBlocks,
+                  totalCount: updatedBlocks.length,
+                };
+              });
+
+              // Also update the individual block cache
+              queryClient.setQueryData(blockKeys.detail(Number(blockId)), (old: Block | undefined) => {
+                if (!old || old.id !== blockId) return old;
+                return {
+                  ...old,
+                  assistantContent: fullContent,
+                  status: BlockStatus.COMPLETED,
+                  updatedTs: BigInt(Date.now()),
+                };
+              });
+            }
+
             // Send block summary if available (Geek/Evolution modes)
             if (response.blockSummary) {
               // Convert proto BlockSummary (bigint fields) to local BlockSummary (number fields)
