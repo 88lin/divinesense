@@ -37,6 +37,8 @@ const (
 	EventAssistantResponse ChatEventType = "assistant_response"
 	// EventSeparator is fired when a separator (---) is sent.
 	EventSeparator ChatEventType = "separator"
+	// EventBlockCompleted is fired when a block is completed.
+	EventBlockCompleted ChatEventType = "block_completed"
 )
 
 // ChatEventListener is a function that processes chat events.
@@ -261,13 +263,14 @@ func (s *ConversationService) handleConversationStart(ctx context.Context, event
 func (s *ConversationService) createConversation(ctx context.Context, event *ChatEvent) (int32, error) {
 	title := s.generateTitle()
 	conversation, err := s.store.CreateAIConversation(ctx, &store.AIConversation{
-		UID:       shortuuid.New(),
-		CreatorID: event.UserID,
-		Title:     title,
-		ParrotID:  event.AgentType.String(),
-		CreatedTs: event.Timestamp,
-		UpdatedTs: event.Timestamp,
-		RowStatus: store.Normal,
+		UID:         shortuuid.New(),
+		CreatorID:   event.UserID,
+		Title:       title,
+		TitleSource: store.TitleSourceDefault, // Explicitly set default title source
+		ParrotID:    event.AgentType.String(),
+		CreatedTs:   event.Timestamp,
+		UpdatedTs:   event.Timestamp,
+		RowStatus:   store.Normal,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("create conversation: %w", err)
