@@ -8,6 +8,7 @@ import (
 
 	"github.com/hrygo/divinesense/ai/core/retrieval"
 	"github.com/hrygo/divinesense/ai/timeout"
+	"github.com/hrygo/divinesense/server/queryengine"
 )
 
 const (
@@ -55,6 +56,7 @@ func normalizeMemoJSONFields(inputJSON string) string {
 type MemoSearchTool struct {
 	retriever    *retrieval.AdaptiveRetriever
 	userIDGetter func(ctx context.Context) int32
+	classifier   *MemoQueryClassifier
 }
 
 // NewMemoSearchTool creates a new memo search tool.
@@ -73,6 +75,7 @@ func NewMemoSearchTool(
 	return &MemoSearchTool{
 		retriever:    retriever,
 		userIDGetter: userIDGetter,
+		classifier:   NewMemoQueryClassifier(),
 	}, nil
 }
 
@@ -89,7 +92,7 @@ func (t *MemoSearchTool) Description() string {
 
 INPUT FORMAT:
 {"query": "搜索词", "limit": 10, "min_score": 0.5}
-- query (required): search keywords
+- query (required): search keywords. Use "*" to search all memos. Empty query will search all.
 - limit (optional): max results, default 10
 - min_score (optional): min relevance 0-1, default 0.5
 
@@ -102,7 +105,8 @@ Found N memo(s) matching query: xxx
 2. [Score: 0.72] another memo...
    UID: yyyyy
 
-NO RESULTS: "No memos found matching query: xxx"`
+NO RESULTS: "No memos found matching query: xxx"
+`
 }
 
 // MemoSearchInput represents the input for memo search.
@@ -130,9 +134,9 @@ func (t *MemoSearchTool) Run(ctx context.Context, input string) (string, error) 
 		return "", fmt.Errorf("invalid JSON input: %w", err)
 	}
 
-	// Validate query
+	// Validate query - empty query is treated as "search all"
 	if strings.TrimSpace(searchInput.Query) == "" {
-		return "", fmt.Errorf("query cannot be empty")
+		searchInput.Query = "*" // Search all memos when query is empty
 	}
 
 	// Set defaults
@@ -149,10 +153,12 @@ func (t *MemoSearchTool) Run(ctx context.Context, input string) (string, error) 
 	// Get user ID
 	userID := t.userIDGetter(ctx)
 
-	// Set strategy (use memo_semantic_only for focused memo search)
+	// Smart strategy selection: classify query intent and route accordingly
+	// 智能策略选择：分类查询意图并路由到对应的检索策略
 	strategy := searchInput.Strategy
 	if strategy == "" {
-		strategy = "memo_semantic_only"
+		intent := t.classifier.Classify(searchInput.Query)
+		strategy = intent.ToStrategy()
 	}
 
 	// Execute search
@@ -164,8 +170,23 @@ func (t *MemoSearchTool) Run(ctx context.Context, input string) (string, error) 
 		MinScore: searchInput.MinScore,
 	}
 
+	// Add time range for filter queries
+	if strategy == "memo_filter_only" {
+		start, end, ok := t.classifier.ExtractTimeFilter(searchInput.Query)
+		if ok {
+			opts.TimeRange = &queryengine.TimeRange{
+				Start: start,
+				End:   end,
+			}
+		}
+	}
+
 	results, err := t.retriever.Retrieve(ctx, opts)
 	if err != nil {
+		// Check for timeout specifically
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("search timeout after %v", timeout.ToolExecutionTimeout)
+		}
 		return "", fmt.Errorf("search failed: %w", err)
 	}
 
@@ -231,9 +252,9 @@ func (t *MemoSearchTool) RunWithStructuredResult(ctx context.Context, input stri
 		return nil, fmt.Errorf("invalid JSON input: %w", err)
 	}
 
-	// Validate query
+	// Validate query - empty query is treated as "search all"
 	if strings.TrimSpace(searchInput.Query) == "" {
-		return nil, fmt.Errorf("query cannot be empty")
+		searchInput.Query = "*" // Search all memos when query is empty
 	}
 
 	// Set defaults using defined constants

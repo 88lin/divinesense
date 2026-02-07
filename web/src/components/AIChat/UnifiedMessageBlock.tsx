@@ -60,10 +60,9 @@ import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import { ROUND_TIMESTAMP_MULTIPLIER, TOOL_CALL_OFFSET_US, USER_INPUTS_EXPAND_THRESHOLD } from "@/components/AIChat/constants";
 import { ExpandedSessionSummary } from "@/components/AIChat/ExpandedSessionSummary";
-import { StreamingText } from "@/components/AIChat/StreamingText";
+import StreamingMarkdown from "@/components/AIChat/StreamingMarkdown";
 import { cn } from "@/lib/utils";
 import { type ConversationMessage } from "@/types/aichat";
-import { type BlockBranch } from "@/types/block";
 import { BlockSummary, PARROT_THEMES, ParrotAgentType } from "@/types/parrot";
 
 // Simple hash function for generating stable storage keys from strings.
@@ -153,8 +152,11 @@ function CompactToolCall({
       try {
         const stored = localStorage.getItem(storageKey);
         return stored === "true";
-      } catch {
-        // Ignore storage errors (e.g., quota exceeded, private browsing)
+      } catch (err) {
+        // Log storage errors in development for debugging
+        if (import.meta.env.DEV) {
+          console.warn("[CompactToolCall] Failed to read localStorage:", storageKey, err);
+        }
       }
     }
     return false;
@@ -165,8 +167,11 @@ function CompactToolCall({
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem(storageKey, String(isExpanded));
-      } catch {
-        // Ignore storage errors
+      } catch (err) {
+        // Log storage errors in development for debugging
+        if (import.meta.env.DEV) {
+          console.warn("[CompactToolCall] Failed to write localStorage:", storageKey, err);
+        }
       }
     }
   }, [storageKey, isExpanded]);
@@ -400,18 +405,13 @@ export interface UnifiedMessageBlockProps {
   /** Actions */
   onCopy?: (content: string) => void;
   onRegenerate?: () => void;
-  onEdit?: () => void;
   onDelete?: () => void;
   /** Cancel streaming callback (#113) */
   onCancel?: () => void;
   /** Block ID for edit/fork operations */
   blockId?: bigint;
-  /** Branch-related props for tree conversation branching */
-  branches?: BlockBranch[];
-  /** Branch path (e.g., "A.1", "B.2.3") for display */
-  branchPath?: string;
-  isBranchActive?: boolean;
-  onBranchClick?: () => void;
+  /** Block sequence number (1-based) for display */
+  blockNumber?: number;
   /** Additional children to render in block body */
   children?: ReactNode;
   className?: string;
@@ -588,7 +588,7 @@ interface BlockBodyProps {
   additionalUserInputs?: ConversationMessage[];
   assistantMessage?: ConversationMessage;
   blockSummary?: BlockSummary;
-  parrotId?: string;
+  parrotId?: ParrotAgentType;
   isCollapsed: boolean;
   themeColors: (typeof PARROT_THEMES)[keyof typeof PARROT_THEMES];
   streamingPhase?: "thinking" | "tools" | "answer" | null;
@@ -615,10 +615,10 @@ function BlockBody({
 
   // Helper: Get mode-specific thinking text
   const getThinkingText = useCallback(() => {
-    if (parrotId === "GEEK") {
+    if (parrotId === ParrotAgentType.GEEK) {
       return t("ai.geek_mode.thinking");
     }
-    if (parrotId === "EVOLUTION") {
+    if (parrotId === ParrotAgentType.EVOLUTION) {
       return t("ai.evolution_mode.thinking");
     }
     return t("ai.states.thinking");
@@ -634,12 +634,30 @@ function BlockBody({
 
   // 聚合 Thinking 内容
   const allThinkingContent = useMemo(() => {
-    const placeholderTexts = ["处理中...", "Thinking...", "...", "AI is thinking", "思考中"];
+    // Build placeholder list dynamically from i18n to catch translated placeholders
+    const placeholderTexts = [
+      "处理中...",
+      "Thinking...",
+      "...",
+      "AI is thinking",
+      "思考中",
+      // Translated placeholders from i18n
+      t("ai.geek_mode.thinking"),
+      t("ai.evolution_mode.thinking"),
+      t("ai.states.thinking"),
+      t("schedule.streaming-assistant.thinking"),
+    ].filter(Boolean); // Remove undefined values
+
     return thinkingSteps
       .map((s) => s.content?.trim() || "")
-      .filter((c) => c && !placeholderTexts.some((p) => c === p || c.startsWith(p)))
+      .filter((c) => {
+        if (!c) return false;
+        // Filter out placeholder texts (exact match or starts with)
+        const isPlaceholder = placeholderTexts.some((p) => p && (c === p || c.startsWith(p)));
+        return !isPlaceholder;
+      })
       .join("\n\n");
-  }, [thinkingSteps]);
+  }, [thinkingSteps, t]);
 
   // States for collapsible sections - Default expand thinking if it's the latest message
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(() => isLatest && allThinkingContent.length > 0);
@@ -709,7 +727,8 @@ function BlockBody({
           )}
 
           {/* 1. Thinking Section - 使用 TimelineNode 组件 */}
-          {allThinkingContent.length > 0 && (
+          {/* 显示条件: 有 thinkingSteps（即使只是占位符）或正在流式思考 */}
+          {(thinkingSteps.length > 0 || streamingPhase === "thinking") && (
             <div className="relative group">
               {/* Timeline Node - thinking 类型，流式时显示加载动画 */}
               <div className="absolute -left-[2rem] top-0.5">
@@ -724,7 +743,7 @@ function BlockBody({
 
               <div className="flex flex-col">
                 <button
-                  onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                  onClick={() => allThinkingContent.length > 0 && setIsThinkingExpanded(!isThinkingExpanded)}
                   className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
                   <span className="flex items-center gap-2">
@@ -740,20 +759,24 @@ function BlockBody({
                         {t("ai.unified_block.thinking_done") || "思考完成"}
                       </span>
                     ) : (
+                      // 只有占位符，没有真实思考内容
                       <span className="text-muted-foreground">{t("ai.unified_block.thinking_process") || "思考过程"}</span>
                     )}
                   </span>
-                  <span className="ml-auto">
-                    {isThinkingExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </span>
+                  {/* 只有在有真实内容时才显示展开/收起图标 */}
+                  {allThinkingContent.length > 0 && (
+                    <span className="ml-auto">
+                      {isThinkingExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </span>
+                  )}
                 </button>
 
-                {/* Expanded View */}
-                {isThinkingExpanded && (
+                {/* Expanded View - 只在有真实内容时显示 */}
+                {isThinkingExpanded && allThinkingContent.length > 0 && (
                   <div className="mt-2 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border/50 animate-in fade-in slide-in-from-top-1 duration-200 prose prose-xs dark:prose-invert max-w-none">
                     <ReactMarkdown>{allThinkingContent}</ReactMarkdown>
                   </div>
@@ -844,10 +867,11 @@ function BlockBody({
               >
                 {/* Markdown content with streaming effect */}
                 <div ref={contentRef} className="px-5 py-4">
-                  <StreamingText
+                  <StreamingMarkdown
                     content={assistantMessage.content || getThinkingText()}
                     isStreaming={isStreaming && streamingPhase === "answer"}
-                    enableTypingEffect={false}
+                    parrotId={parrotId ?? ParrotAgentType.AUTO}
+                    enableTypingCursor={true}
                     className="break-words leading-normal font-sans text-[15px]"
                   />
                   {children}
@@ -876,7 +900,10 @@ function BlockBody({
           {/* 4. Error Section - 使用 TimelineNode */}
           {hasError && (
             <div className="relative group">
-              <TimelineNode type="error" />
+              {/* Timeline Node - 与其他 Section 一致的位置规范 */}
+              <div className="absolute -left-[2rem] top-0">
+                <TimelineNode type="error" />
+              </div>
               <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-sm">
                 <p className="font-semibold text-red-700 dark:text-red-300 flex items-center gap-2">
                   {t("ai.unified_block.error_occurred")}
@@ -940,10 +967,7 @@ function BlockHeader({
   isCollapsed,
   isStreaming,
   additionalUserInputs = [],
-  branches,
-  branchPath,
-  isBranchActive,
-  onBranchClick,
+  blockNumber,
 }: BlockHeaderProps) {
   const headerTheme = themeToHeaderTheme(theme);
 
@@ -958,16 +982,13 @@ function BlockHeader({
       isCollapsed={isCollapsed}
       isStreaming={isStreaming}
       additionalUserInputs={additionalUserInputs}
-      branches={branches}
-      branchPath={branchPath}
-      isBranchActive={isBranchActive}
-      onBranchClick={onBranchClick}
+      blockNumber={blockNumber}
     />
   );
 }
 
 // 使用 ModularBlockFooter 替代内联实现
-function BlockFooter({ isCollapsed, onToggle, onCopy, onRegenerate, onEdit, onDelete, theme, isStreaming, onCancel }: BlockFooterProps) {
+function BlockFooter({ isCollapsed, onToggle, onCopy, onRegenerate, onDelete, theme, isStreaming, onCancel }: BlockFooterProps) {
   const footerTheme = themeToFooterTheme(theme);
 
   return (
@@ -976,7 +997,6 @@ function BlockFooter({ isCollapsed, onToggle, onCopy, onRegenerate, onEdit, onDe
       onToggle={onToggle}
       onCopy={onCopy}
       onRegenerate={onRegenerate}
-      onEdit={onEdit}
       onDelete={onDelete}
       theme={footerTheme}
       isStreaming={isStreaming}
@@ -1000,14 +1020,10 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
   streamingPhase = null,
   onCopy,
   onRegenerate,
-  onEdit,
   onDelete,
   onCancel,
   blockId: _blockId,
-  branches,
-  branchPath,
-  isBranchActive,
-  onBranchClick,
+  blockNumber,
   children,
   className,
 }: UnifiedMessageBlockProps) {
@@ -1070,8 +1086,8 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
       className={cn(
         "rounded-lg border overflow-hidden shadow-sm transition-all duration-300",
         blockTheme.border,
-        // Active/Streaming state: Breathing border + Ring
-        isLatest && isStreaming && `ring-2 ${blockTheme.ringColor} animate-block-pulse`,
+        // Active/Streaming state: Ring (no breathing animation to prevent visual flicker)
+        isLatest && isStreaming && `ring-2 ${blockTheme.ringColor}`,
         isLatest && !isStreaming && `ring-1 ${blockTheme.ringColor}`,
         className,
       )}
@@ -1088,10 +1104,7 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
           isCollapsed={collapsed}
           isStreaming={isStreaming}
           additionalUserInputs={additionalUserInputs}
-          branches={branches}
-          branchPath={branchPath}
-          isBranchActive={isBranchActive}
-          onBranchClick={onBranchClick}
+          blockNumber={blockNumber}
         />
       </div>
 
@@ -1118,7 +1131,6 @@ export const UnifiedMessageBlock = memo(function UnifiedMessageBlock({
           onToggle={toggleCollapse}
           onCopy={handleCopy}
           onRegenerate={onRegenerate}
-          onEdit={onEdit}
           onDelete={onDelete}
           theme={blockTheme}
           isStreaming={isStreaming}
