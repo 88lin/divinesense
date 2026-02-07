@@ -18,9 +18,9 @@ docs/
 │   └── UNEXPOSED_FEATURES.md    # 未暴露功能
 ├── deployment/                  # 部署文档
 │   └── BINARY_DEPLOYMENT.md     # 二进制部署指南
-├── research/                    # 研究文档
+├── research/                    # 研究文档 (活跃)
+│   ├── README.md                # 研究文档索引
 │   ├── BEST_PRACTICE_CLI_AGENT.md # CLI 最佳实践
-│   ├── cc-runner-async-upgrade.md # CC Runner 异步架构
 │   └── DEBUG_LESSONS.md         # 调试经验
 ├── specs/                       # 规格文档 (活跃)
 │   ├── INDEX.md                 # 规格总索引
@@ -32,11 +32,7 @@ docs/
 ├── images/                      # 图片资源
 └── archived/                    # 历史归档
     ├── specs/                   # 规格文档归档
-    │   ├── 20260207_archive/    # 2026-02-07 归档
-    │   └── phase-1-completed/   # Phase-1 已完成规格
     ├── research/                # 研究文档归档
-    │   ├── 20260207_archive/    # 2026-02-07 归档
-    │   └── 20260131_archive/    # 2026-01-31 归档
     ├── projects/                # 项目专题归档 (Parrot 等)
     ├── reviews/                 # 代码评审与审计
     ├── refactor-plans/          # 重构与集成计划

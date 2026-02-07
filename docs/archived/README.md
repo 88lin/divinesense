@@ -20,11 +20,11 @@
 
 ### 📂 [reviews/](./reviews/)
 代码评审报告、安全审计及架构评审记录。
-- 包含 RAG 评审、UI/UX 审计、代码修复计划等。
+- 包含 RAG 评审、UI/UX 审计、[NORMAL_MODE_ASSISTANT_ANALYSIS.md](./reviews/NORMAL_MODE_ASSISTANT_ANALYSIS.md) 等。
 
 ### 📂 [refactor-plans/](./refactor-plans/)
 核心架构的重构提案和子系统集成计划。
-- 包含 CC Runner 异步升级、统一搜索方案、Memos 重构计划等。
+- 包含 [cc-runner-async-upgrade.md](./refactor-plans/cc-runner-async-upgrade.md)、统一搜索方案、Memos 重构计划等。
 
 ### 📂 [misc/](./misc/)
 启动计划、ROI 分析、会议纪要等杂项文档。
