@@ -234,12 +234,27 @@ plugin/chat_apps/
 
 ## 🔒 Git Hooks 工作流
 
-DivineSense 使用 **pre-commit + pre-push** hooks 确保代码质量：
+> **保鲜状态**: ✅ 2026-02-07 | **智能检查策略**
 
-| Hook | 检查内容 | 速度 | 触发时机 |
-|:-----|:---------|:-----|:---------|
-| **pre-commit** | `go fmt` + `go vet` + `pnpm lint:fix` | ~5秒 | 每次 `git commit` |
-| **pre-push** | `golangci-lint` + `go test` + `pnpm build` | ~1分钟 | 每次 `git push` |
+DivineSense 使用 **智能 pre-commit + pre-push** hooks，根据修改内容自动选择检查项：
+
+### 检查策略矩阵
+
+| 修改类型 | pre-commit (~2-10s) | pre-push (~10-60s) |
+|:---------|:---------------------|:-------------------|
+| **仅后端** | `go fmt` + `go vet` | `go mod tidy` + `golangci-lint` + `go test` |
+| **仅前端** | `pnpm lint:fix` | `pnpm lint` + `pnpm build` |
+| **仅文档** | 跳过 | 跳过 |
+| **混合** | 按需检查 | 按需检查 |
+
+### 文件分类规则
+
+| 分类 | 匹配模式 |
+|:-----|:---------|
+| 后端 | `*.go`, `go.mod`, `go.sum` |
+| 前端 | `web/**`, `server/router/frontend/**` |
+| 文档 | `docs/**`, `*.md` (不匹配上述) |
+| Proto | `proto/**` |
 
 ### 安装与使用
 
@@ -247,7 +262,7 @@ DivineSense 使用 **pre-commit + pre-push** hooks 确保代码质量：
 # 安装 hooks
 make install-hooks
 
-# 本地 CI 检查（与 GitHub Actions 一致）
+# 本地 CI 检查（完整检查，不分类）
 make ci-check
 make ci-backend
 make ci-frontend
@@ -255,6 +270,26 @@ make ci-frontend
 # 跳过检查
 git commit --no-verify -m "WIP"
 git push --no-verify
+```
+
+### 示例输出
+
+```
+🔍 Pre-commit checks...
+
+📦 Backend changes detected:
+  → go.mod/go.sum tidy check...
+    ✓ go.mod/go.sum tidy
+  → go fmt...
+    ✓ go fmt
+  → go vet...
+    ✓ go vet
+
+🎨 Frontend changes detected:
+  → pnpm lint:fix...
+    ✓ pnpm lint:fix
+
+✅ Pre-commit checks passed!
 ```
 
 > **详细规范**：参见 [Git 工作流](../../.claude/rules/git-workflow.md)
@@ -364,6 +399,42 @@ ChatRouter 实现**四层**意图分类系统：
 - **意图分类独立模型**：使用轻量级 Qwen2.5-7B-Instruct（而非主对话 LLM），实现快速、低成本的分类
 - **成本优化**：意图分类 Token 限制为 50，Temperature 0（确定性输出）
 - **输出格式**：JSON Schema `{intent, confidence}` 确保结构化响应
+
+### DeepSeek 上下文缓存
+
+> **保鲜状态**: ✅ 已验证 (2026-02-07)
+
+DeepSeek API 提供自动上下文缓存（Prompt Caching），降低多轮对话成本。
+
+**缓存机制**：
+- **缓存粒度**：64 token 块
+- **工作原理**：相同会话前缀的后续请求自动命中缓存
+- **命中识别**：API 响应返回 `prompt_cache_hit_tokens` 字段
+
+**数据流**：
+```
+DeepSeek API Response
+    ↓ prompt_cache_hit_tokens
+go-openai 库映射
+    ↓ PromptTokensDetails.CachedTokens
+ai/llm.go:206
+    ↓ CacheReadTokens: resp.Usage.PromptTokensDetails.CachedTokens
+LLMCallStats.CacheReadTokens
+    ↓ SessionStats.CacheReadTokens
+数据库 ai_block.token_usage.cache_read_tokens
+```
+
+**成本优化效果**：
+| 轮次 | Prompt Tokens | Cache Hit | 缓存率 |
+|:-----|:--------------|:---------|:-------|
+| 第1轮 | ~5000 | 0 | 0% (冷启动) |
+| 第2轮 | ~6000 | ~5000 | ~83% |
+| 第3轮 | ~8000 | ~5760 | ~72% |
+
+**最佳实践**：
+- 保持系统提示词稳定，提升缓存命中率
+- 避免频繁修改会话前缀
+- 监控 `cache_write_tokens` 与 `cache_read_tokens` 比例
 
 ### 代理工具
 
