@@ -2,7 +2,7 @@
 
 > DivineSense 项目开发纲领 — Claude Code 辅助开发的核心指导文档
 >
-> **保鲜状态**: ✅ 2026-02-07 v0.93.1 | **架构**: Go + React 单二进制 | **AI**: 五位鹦鹉代理
+> **保鲜状态**: ✅ 2026-02-08 v0.93.2 | **架构**: Go + React 单二进制 | **AI**: 五位鹦鹉代理
 
 ---
 
@@ -16,6 +16,37 @@
 技术本质：Go 后端 + React 前端的单二进制分发应用
 架构核心：五位「鹦鹉」AI 代理 + 统一块模型 (Unified Block Model)
 ```
+
+---
+
+## 🔑 Critical Context
+
+> **快速参考** - 避免常见陷阱的关键信息
+
+### 项目结构
+
+| 目录 | 说明 | 关键点 |
+|:-----|:-----|:-------|
+| `web/` | 前端根目录 | **始终从此处运行前端命令** |
+| `ai/` | AI 核心模块 | Go 代码，一级模块 |
+| `server/` | HTTP/gRPC 服务器 | 路由、服务层 |
+| `store/` | 数据访问层 | PostgreSQL/SQLite |
+| `proto/` | Protobuf 定义 | 修改后需重新生成 |
+
+### 关键配置
+
+| 配置 | 值 | 注意 |
+|:-----|:---|:-----|
+| **PostgreSQL 容器名** | `divinesense-postgres-dev` | **不是** `divinesense-postgres` |
+| **前端端口** | 25173 | 开发环境 |
+| **后端端口** | 28081 | API 服务 |
+| **数据库端口** | 25432 | 开发环境 |
+
+### i18n 完整性陷阱
+
+> ⚠️ `make check-i18n` **检查 en.json 和 zh-Hans.json 的同步**
+
+**注意路径差异**：组件 `ProgressIndicator.tsx` 使用 `ai.progress.phases.*`，确保所有语言文件在正确路径下有翻译。
 
 ---
 
@@ -152,6 +183,27 @@ pending → in_progress → completed
 | **CI** | `make ci-check` | 模拟 CI 环境 |
 | **测试** | `make test-ai` | AI 相关测试 |
 
+### 服务重启规范
+
+> **⚠️ 关键规则：修改后端代码后，需要通知用户手动重启服务**
+>
+> **禁止直接执行** `make stop`、`make start`、`make run` 等服务启停命令。
+
+**需要重启服务的场景**：
+| 修改类型 | 是否需要重启 | 说明 |
+|:---------|:-------------|:-----|
+| **后端 Go 代码** | ✅ 是 | 任何 `*.go` 文件修改 |
+| **前端代码** | ✅ 否 | Vite HMR 自动更新 |
+| **数据库迁移** | ✅ 是 | 新增/修改 SQL 文件 |
+| **配置文件** | ✅ 是 | `.env` 或系统配置 |
+| **文档** | ❌ 否 | 不影响运行状态 |
+
+**正确操作流程**：
+1. 完成代码修改和构建
+2. **通知用户**："后端代码已修改，请手动重启服务：`make restart`"
+3. 等待用户确认重启
+4. 继续后续工作
+
 ### 提交流程
 ```
 1. make check-all 通过
@@ -194,6 +246,57 @@ type routerIntentLLMClient struct{ apiKey, baseURL, model string }
 | `snake_case.go` | `PascalCase.tsx` | ❌ `max-w-md` → ✅ `max-w-[24rem]` |
 | `log/slog` | `use` 前缀 | 显式值避免~16px解析错误 |
 | 始终检查错误 | `t("key")` 国际化 | |
+
+### 语言特定注意事项
+
+#### TypeScript/React
+- **Streaming UI**: 组件必须主动消费 `eventStream` - 优化 React Query 缓存前先验证数据流
+- **State updates**: 使用 React 18 自动批处理，而非 `queryClient.batch`（不存在）
+- **Block rendering**: "initializing" 卡住状态？检查流式内容是否实时更新 `assistantContent`
+
+#### Go Backend
+- **Error definitions**: 跨服务共享 - 删除前检查所有引用
+- **Database queries**: 优化延迟时注意 N+1 模式
+- **Migrations**: 确保所有表存在（参见 @docs/research/DEBUG_LESSONS.md → "7 个缺失表曾导致冷启动延迟"）
+
+#### Go Lint 常见陷阱 (golangci-lint)
+
+> ⚠️ **必须遵守的模式** - 这些问题在 pre-push 时会被拦截
+
+| 问题 | ❌ 错误写法 | ✅ 正确写法 |
+|:-----|:-----------|:-----------|
+| **类型断言** | `v := x.(T)` | `v, ok := x.(T)` (comma-ok) |
+| **defer 错误** | `defer resp.Body.Close()` | `defer func() { if err := resp.Body.Close(); err != nil { slog.Error(...) } }()` |
+| **错误比较** | `err != expectedErr` | `errors.Is(err, expectedErr)` |
+| **HTTP nil body** | `NewRequest("GET", url, nil)` | `NewRequest("GET", url, http.NoBody)` |
+| **error 变量名** | `var testErr` | `var errTest` (以 `err` 开头) |
+| **正则简化** | `[^\s]*` | `\S*` |
+| **sync.Pool** | `pool.Put(slice)` | ❌ 不放 slice，只放指针 |
+
+**核心原则**：
+1. **所有错误返回值必须检查** - 不能用 `_` 忽略
+2. **类型断言用 comma-ok** - 避免 panic
+3. **defer 也要检查错误** - 即使是 Close()
+
+---
+
+## 🚫 Code Change Boundaries
+
+> **边界约束** - 避免破坏性变更的规则
+
+| 约束 | 说明 |
+|:-----|:-----|
+| **避免过度删除** | 删除代码前验证错误定义、类型导出、共享工具的所有使用 |
+| **测试后提交** | 推送前从 `web/` 运行 `npm test` - pre-push 会捕获缺失依赖 |
+| **Proto/Schema 变更** | Proto 定义变更后始终重新生成前后端绑定 |
+| **批量重构** | 跨多文件变更 API 时，分阶段提交而非一次性大改 |
+
+### Critical Workflow Patterns
+
+1. **结构性变更前**：检查文件是否存在于多个位置（如 `web/src` vs `src`）避免目录错误
+2. **删除代码时**：验证没有关键错误定义或类型依赖，先进行死代码分析
+3. **流式/实时特性**：确保组件实际消费 `eventStream` 和 `data` - React Query 缓存问题常被误诊
+4. **优化方法**：优先简单方案（CSS 移除、标志切换）而非架构变更
 
 ---
 

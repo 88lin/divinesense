@@ -179,7 +179,9 @@ export function extractToolCalls(eventStream: BlockEvent[] | undefined): ToolCal
   }
 
   // Return tool calls sorted by occurrence (if available) or insertion order
-  return Array.from(toolCallsMap.values())
+  const result = Array.from(toolCallsMap.values())
     .sort((a, b) => a.occurrence - b.occurrence)
     .map((item) => item.toolCall);
+
+  return result;
 }
