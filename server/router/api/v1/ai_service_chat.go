@@ -216,11 +216,9 @@ func (s *AIService) Chat(req *v1pb.ChatRequest, stream v1pb.AIService_ChatServer
 
 // createChatHandler creates the chat handler.
 func (s *AIService) createChatHandler() aichat.Handler {
-	factory := aichat.NewAgentFactory(
-		s.LLMService,
-		s.AdaptiveRetriever,
-		s.Store,
-	)
+	// Get cached agent factory (initializes on first use)
+	factory := s.getAgentFactory()
+
 	// Phase 5: Create BlockManager for Unified Block Model support
 	blockManager := aichat.NewBlockManager(s.Store)
 	parrotHandler := aichat.NewParrotHandler(factory, s.LLMService, s.persister, blockManager, s.TitleGenerator)

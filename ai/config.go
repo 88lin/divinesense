@@ -12,6 +12,7 @@ type Config struct {
 	Reranker         RerankerConfig
 	IntentClassifier IntentClassifierConfig
 	LLM              LLMConfig
+	UniversalParrot  UniversalParrotConfig // Phase 2: Configuration-driven parrots
 	Enabled          bool
 }
 
@@ -50,6 +51,13 @@ type IntentClassifierConfig struct {
 	APIKey  string
 	BaseURL string
 	Enabled bool
+}
+
+// UniversalParrotConfig represents configuration for UniversalParrot (configuration-driven parrots).
+type UniversalParrotConfig struct {
+	Enabled      bool   // Enable UniversalParrot for creating parrots from YAML configs
+	ConfigDir    string // Path to parrot YAML configs (default: ./config/parrots)
+	FallbackMode string // "legacy" | "error" when config load fails (default: legacy)
 }
 
 // NewConfigFromProfile creates AI config from profile.
@@ -116,6 +124,14 @@ func NewConfigFromProfile(p *profile.Profile) *Config {
 		Model:   "Qwen/Qwen2.5-7B-Instruct",
 		APIKey:  p.AISiliconFlowAPIKey,
 		BaseURL: p.AISiliconFlowBaseURL,
+	}
+
+	// UniversalParrot configuration
+	// Enable configuration-driven parrot system by default when AI is enabled
+	cfg.UniversalParrot = UniversalParrotConfig{
+		Enabled:      true,
+		ConfigDir:    "./config/parrots",
+		FallbackMode: "legacy",
 	}
 
 	return cfg
