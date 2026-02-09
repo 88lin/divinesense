@@ -728,6 +728,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     selectConversation,
     updateConversationTitle,
     generateConversationTitle,
+    refreshConversations, // For syncing auto-generated titles from backend
     // Phase 4: Removed addMessage, updateMessage, deleteMessage - Block API handles this
     clearMessages,
     addContextSeparator,

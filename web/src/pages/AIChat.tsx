@@ -234,6 +234,8 @@ const AIChat = () => {
     // Phase 4: Block methods
     appendUserInput,
     loadBlocks,
+    // Title management
+    refreshConversations,
   } = aiChat;
 
   const currentCapability = state.currentCapability || CapabilityType.AUTO;
@@ -339,6 +341,11 @@ const AIChat = () => {
             streamingContentRef.current = "";
             // No need to refetch - the streaming handler has already updated the block
             // with complete content via optimistic updates. Refetching would cause flicker.
+            // Refresh conversations to get auto-generated title from backend
+            // Backend generates title asynchronously after first block completes
+            if (_conversationIdNum > 0) {
+              refreshConversations();
+            }
           },
           onError: (error) => {
             setIsTyping(false);
@@ -356,7 +363,7 @@ const AIChat = () => {
         console.error("[Parrot Chat Error]", error);
       }
     },
-    [chatHook, addReferencedMemos, setCapabilityStatus, refetchBlocks, currentMode],
+    [chatHook, addReferencedMemos, setCapabilityStatus, refetchBlocks, currentMode, refreshConversations],
   );
 
   const handleSend = useCallback(

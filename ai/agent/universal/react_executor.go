@@ -3,27 +3,43 @@ package universal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/hrygo/divinesense/ai"
 	"github.com/hrygo/divinesense/ai/agent"
 )
 
-// ReActExecutor implements the reasoning-acting loop pattern.
-// It uses a loop where the LLM generates thoughts and tool calls
-// until a final answer is reached.
+/*
+ReActExecutor - ReAct Loop with Tool Calling
+
+POSITIONING:
+
+	ReActExecutor combines streaming output with tool calling for scenarios that
+	require reasoning before/after tool use. The LLM can both stream content and
+	call tools in the same response.
+
+ALGORITHM:
+ 1. LLM streams content while optionally calling tools (via ChatWithTools)
+ 2. If tool call detected in response:
+    a. Execute tool, stream result to user
+    b. Add result to messages and continue to next iteration
+ 3. If no tool call = final answer, return
+
+DIFFERENCE FROM DirectExecutor:
+  - Direct: Optimized for simple one-shot tool calls
+  - ReAct: Designed for multi-turn reasoning with tool use
+*/
 type ReActExecutor struct {
 	maxIterations int
 }
 
-// NewReActExecutor creates a new ReActExecutor with streaming enabled.
+// NewReActExecutor creates a new ReActExecutor.
 func NewReActExecutor(maxIterations int) *ReActExecutor {
 	if maxIterations <= 0 {
-		maxIterations = 10 // Default safety limit
+		maxIterations = 10
 	}
 	return &ReActExecutor{
 		maxIterations: maxIterations,
@@ -53,6 +69,22 @@ func (e *ReActExecutor) Execute(
 	// Build messages from history + current input
 	messages := BuildMessagesWithInput(history, input)
 
+	// Build tool descriptors for LLM
+	toolDescriptors := make([]ai.ToolDescriptor, len(tools))
+	for i, tool := range tools {
+		paramsJSON := tool.Parameters()
+		paramsBytes, err := json.Marshal(paramsJSON)
+		if err != nil {
+			slog.Error("Failed to marshal tool parameters", "tool", tool.Name(), "error", err)
+			return "", stats, fmt.Errorf("marshal tool parameters for tool %s: %w", tool.Name(), err)
+		}
+		toolDescriptors[i] = ai.ToolDescriptor{
+			Name:        tool.Name(),
+			Description: tool.Description(),
+			Parameters:  string(paramsBytes),
+		}
+	}
+
 	// Safe callback for non-critical events
 	safeCallback := agent.SafeCallback(callback)
 
@@ -65,7 +97,7 @@ func (e *ReActExecutor) Execute(
 		default:
 		}
 
-		// Send thinking event with iteration info
+		// Send thinking event with iteration info (metadata-only, no content)
 		safeCallback(agent.EventTypeThinking, &agent.EventWithMeta{
 			EventType: agent.EventTypeThinking,
 			Meta: &agent.EventMeta{
@@ -75,106 +107,115 @@ func (e *ReActExecutor) Execute(
 			},
 		})
 
-		// Use ChatStream for streaming LLM response
-		contentChan, statsChan, errChan := llm.ChatStream(ctx, messages)
-
-		// Collect all streaming data
-		streamResult := CollectChatStream(ctx, contentChan, statsChan, errChan, callback)
-		if streamResult.Error != nil {
-			return "", stats, fmt.Errorf("LLM streaming failed: %w", streamResult.Error)
-		}
-		if streamResult.Stats != nil {
-			stats.AccumulateLLM(streamResult.Stats)
-		}
-		response := streamResult.Content
-
-		// Parse tool call from response
-		toolName, toolInput, cleanText := parseToolCall(response)
-
-		// No tool call = final answer
-		if toolName == "" {
-			// Stream the final answer
-			streamAnswer(response, callback)
-			return response, stats, nil
-		}
-
-		// Send clean text (pleasantries before tool call)
-		if cleanText != "" {
-			safeCallback(agent.EventTypeAnswer, cleanText)
-		}
-
-		// Execute tool with events
-		toolResult, _, err := ExecuteToolWithEvents(ctx, tools, toolName, toolInput, callback, stats, startTime)
-
-		// Check context cancellation after tool execution
-		select {
-		case <-ctx.Done():
-			return "", stats, ctx.Err()
-		default:
-		}
-
+		// Use ChatWithTools for streaming LLM response with tool support
+		response, llmStats, err := llm.ChatWithTools(ctx, messages, toolDescriptors)
 		if err != nil {
-			slog.Warn("tool execution failed", "tool", toolName, "error", err)
+			return "", stats, fmt.Errorf("LLM chat with tools failed: %w", err)
+		}
+		stats.AccumulateLLM(llmStats)
+
+		slog.Info("react: LLM response",
+			"iteration", iteration+1,
+			"tool_calls", len(response.ToolCalls),
+			"content_length", len(response.Content))
+
+		// Check if LLM wants to call tools
+		hasStructuredToolCalls := len(response.ToolCalls) > 0
+
+		// No tool calls = final answer (stream and return)
+		if !hasStructuredToolCalls {
+			if response.Content != "" {
+				streamAnswer(response.Content, callback)
+			}
+			slog.Info("react: no tool calls, returning final answer",
+				"content_length", len(response.Content))
+			return response.Content, stats, nil
 		}
 
-		// Append assistant message and tool result to conversation
-		messages = append(messages,
-			ai.Message{Role: "assistant", Content: response},
-			ai.Message{Role: "user", Content: fmt.Sprintf("工具结果: %s", toolResult)},
-		)
+		// Has structured tool calls - stream thinking content first, then execute tools
+		if response.Content != "" {
+			streamAnswer(response.Content, callback)
+		}
+
+		// Execute tools
+		for _, tc := range response.ToolCalls {
+			toolName := tc.Function.Name
+			toolInput := tc.Function.Arguments
+
+			// Notify callback with structured EventWithMeta
+			if callback != nil {
+				meta := &agent.EventMeta{
+					ToolName:     toolName,
+					Status:       "running",
+					InputSummary: toolInput,
+				}
+				safeCallback(agent.EventTypeToolUse, &agent.EventWithMeta{
+					EventType: agent.EventTypeToolUse,
+					EventData: toolInput,
+					Meta:      meta,
+				})
+			}
+
+			toolStart := time.Now()
+
+			// Execute the tool
+			toolResult, toolErr := executeTool(ctx, tools, toolName, toolInput)
+			status := "success"
+			if toolErr != nil {
+				status = "error"
+				toolResult = fmt.Sprintf("Error: %v", toolErr)
+			}
+
+			slog.Info("react: tool execution completed",
+				"tool", toolName,
+				"status", status,
+				"duration_ms", time.Since(toolStart).Milliseconds(),
+			)
+
+			// Notify callback of result with structured EventWithMeta
+			if callback != nil {
+				meta := &agent.EventMeta{
+					ToolName:      toolName,
+					Status:        status,
+					OutputSummary: toolResult,
+					DurationMs:    time.Since(toolStart).Milliseconds(),
+				}
+				safeCallback(agent.EventTypeToolResult, &agent.EventWithMeta{
+					EventType: agent.EventTypeToolResult,
+					EventData: toolResult,
+					Meta:      meta,
+				})
+			}
+
+			// Add tool result as a user message
+			// Note: Only add non-empty assistant message to avoid API rejection
+			messages = append(messages,
+				ai.Message{Role: "user", Content: fmt.Sprintf("[Result from %s]: %s", toolName, toolResult)},
+			)
+			if response.Content != "" {
+				// Insert assistant message before user message if there was thinking content
+				messages = append(messages[:len(messages)-1],
+					ai.Message{Role: "assistant", Content: response.Content},
+					messages[len(messages)-1],
+				)
+			}
+		}
 	}
 
 	return "", stats, fmt.Errorf("max iterations (%d) exceeded", e.maxIterations)
 }
 
-// StreamingSupported returns true - ReAct executor supports streaming with step-by-step output.
+// StreamingSupported returns true - ReAct executor supports streaming.
 func (e *ReActExecutor) StreamingSupported() bool {
 	return true
 }
 
-// parseToolCall extracts tool call information from LLM response.
-// It looks for the pattern: "TOOL: tool_name" followed by "INPUT: {json}".
-func parseToolCall(response string) (toolName, toolInput, cleanText string) {
-	lines := strings.Split(response, "\n")
-
-	var toolNameStr, toolInputStr string
-	var cleanTextBuilder strings.Builder
-	inToolCall := false
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-
-		if strings.HasPrefix(line, "TOOL:") || strings.HasPrefix(line, "Tool:") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				toolNameStr = strings.TrimSpace(parts[1])
-				inToolCall = true
-			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "INPUT:") || strings.HasPrefix(line, "Input:") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				toolInputStr = strings.TrimSpace(parts[1])
-			}
-			continue
-		}
-
-		if !inToolCall && line != "" {
-			if cleanTextBuilder.Len() > 0 {
-				cleanTextBuilder.WriteString(" ")
-			}
-			cleanTextBuilder.WriteString(line)
+// executeTool finds and executes a tool by name.
+func executeTool(ctx context.Context, tools []agent.ToolWithSchema, name, input string) (string, error) {
+	for _, tool := range tools {
+		if tool.Name() == name {
+			return tool.Run(ctx, input)
 		}
 	}
-
-	cleanText = strings.TrimSpace(cleanTextBuilder.String())
-	// If clean text is too long, truncate it at UTF-8 rune boundary
-	if utf8.RuneCountInString(cleanText) > 200 {
-		runes := []rune(cleanText)
-		cleanText = string(runes[:200]) + "..."
-	}
-
-	return toolNameStr, toolInputStr, cleanText
+	return "", fmt.Errorf("unknown tool: %s", name)
 }

@@ -5,9 +5,9 @@ name: schedule
 display_name: Schedule Parrot
 emoji: "📅"
 
-# Execution strategy: Direct native tool calling
-strategy: direct
-max_iterations: 5
+# Execution strategy: ReAct loop for reasoning before action
+strategy: react
+max_iterations: 10
 
 # Available tools
 tools:

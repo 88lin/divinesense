@@ -253,6 +253,16 @@ func (a *Agent) RunWithCallback(ctx context.Context, input string, callback Call
 
 		// Case 1: No tool calls at all = final answer
 		if !hasStructuredToolCalls && !hasTextToolCalls {
+			preview := resp.Content
+			if len(preview) > 100 {
+				preview = preview[:100]
+			}
+			slog.Info("agent: no tool calls, sending final answer",
+				"agent", a.config.Name,
+				"iteration", iteration+1,
+				"content_length", len(resp.Content),
+				"content_preview", preview)
+
 			if callback != nil && resp.Content != "" {
 				callback(EventAnswer, resp.Content)
 			}
@@ -368,6 +378,17 @@ func (a *Agent) RunWithCallback(ctx context.Context, input string, callback Call
 		// Case 3: Structured tool calls - existing logic
 		// Send thinking/content to callback (without tool call syntax)
 		// IMPORTANT: Tool call syntax is ONLY for message history, not sent to frontend
+		preview := resp.Content
+		if len(preview) > 100 {
+			preview = preview[:100]
+		}
+		slog.Info("agent: structured tool calls, sending content before tools",
+			"agent", a.config.Name,
+			"iteration", iteration+1,
+			"content_length", len(resp.Content),
+			"tool_calls", len(resp.ToolCalls),
+			"content_preview", preview)
+
 		if callback != nil && resp.Content != "" {
 			callback(EventAnswer, resp.Content)
 		}
