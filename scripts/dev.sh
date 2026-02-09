@@ -222,6 +222,51 @@ start_backend() {
     fi
 }
 
+start_backend_force_rebuild() {
+    local status=$(backend_status)
+
+    case $status in
+        running)
+            log_info "后端已在运行 (PID: $(cat $BACKEND_PID_FILE))"
+            return 0
+            ;;
+    esac
+
+    log_info "启动后端（强制重新编译）..."
+
+    # 确保日志目录存在
+    mkdir -p "$(dirname "$BACKEND_LOG")"
+
+    # 加载环境变量
+    load_env
+
+    # 启动后端（后台运行）
+    nohup go run -tags=noui ./cmd/divinesense --mode dev --port $BACKEND_PORT \
+        > "$BACKEND_LOG" 2>&1 &
+
+    local shell_pid=$!
+    echo $shell_pid > "$BACKEND_PID_FILE"
+
+    # 等待后端启动
+    echo -n "等待后端启动"
+    if wait_for_port $BACKEND_PORT "后端" 30; then
+        # 获取实际监听端口的进程 PID（go run 可能产生子进程）
+        local actual_pid=$(lsof -ti ":$BACKEND_PORT" -sTCP:LISTEN 2>/dev/null | head -1)
+        if [ -n "$actual_pid" ]; then
+            echo $actual_pid > "$BACKEND_PID_FILE"
+            log_success "后端已启动 (PID: $actual_pid, http://localhost:$BACKEND_PORT)"
+        else
+            # 如果找不到监听进程，保留 shell PID
+            log_success "后端已启动 (PID: $shell_pid, http://localhost:$BACKEND_PORT)"
+        fi
+        return 0
+    else
+        log_error "后端启动失败，查看日志: $BACKEND_LOG"
+        rm -f "$BACKEND_PID_FILE"
+        return 1
+    fi
+}
+
 start_frontend() {
     local status=$(frontend_status)
 
@@ -306,7 +351,12 @@ verify_backend_process() {
 
     # 策略 1: 严格匹配 - CWD 匹配且命令行包含特征
     if [ -n "$cmdline" ] && [ "$cwd" = "$ROOT_DIR" ]; then
-        if echo "$cmdline" | grep -qE "(go run.*cmd/divinesense|divinesense.*--mode dev|divinesense.*--port $BACKEND_PORT)"; then
+        # 匹配 go run ./cmd/divinesense (允许中间有 -tags 等参数)
+        if echo "$cmdline" | grep -qE "go run.*\./cmd/divinesense"; then
+            return 0
+        fi
+        # 匹配直接运行的 divinesense 二进制
+        if echo "$cmdline" | grep -qE "divinesense.*--mode dev|divinesense.*--port $BACKEND_PORT"; then
             return 0
         fi
     fi
@@ -325,6 +375,11 @@ verify_backend_process() {
         # (覆盖二进制文件名不含 divinesense 但参数完全匹配的情况)
         if echo "$cmdline" | grep -q "\-\-port $BACKEND_PORT" && echo "$cmdline" | grep -q "\-\-mode dev"; then
              return 0
+        fi
+
+        # 特征 C: go run 命令本身 (匹配 go run ... cmd/divinesense)
+        if echo "$cmdline" | grep -qE "go run.*cmd/divinesense"; then
+            return 0
         fi
     fi
 
@@ -652,8 +707,8 @@ cmd_restart() {
     start_postgres || exit 1
     sleep 2
 
-    # 重启应用服务
-    start_backend || exit 1
+    # 重启应用服务（go run -a 强制重新编译）
+    start_backend_force_rebuild || exit 1
     sleep 1
     start_frontend || exit 1
 
