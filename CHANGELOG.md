@@ -2,7 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范：
+- **Major (主版本号)**：不兼容的 API 变更
+- **Minor (次版本号)**：向下兼容的新功能
+- **Patch (补丁号)**：向下兼容的问题修复
+
+---
+
+## [Unreleased]
+
+### Added
+- （待添加）
+
+### Changed
+- （待添加）
+
+### Fixed
+- （待添加）
+
+---
+
+## [v0.97.0] - 2026-02-10
+
+### Added
+- 项目文档更新和重构
+- 版本徽章添加到 README
+- 对比表格展示项目优势
+
+### Changed
+- 优化 README 结构，添加功能特性详细说明
+- 更新技术栈描述，补充 AI 模型信息
+- 修正 Docker 镜像名称为 `ghcr.io/hrygo/divinesense:stable`
+
+### Documentation
+- 重构贡献指南 (CONTRIBUTING.md)
+- 优化部署指南 (BINARY_DEPLOYMENT.md)
+- 优化用户指南 (CHAT_APPS.md)
+- 添加常见问题章节
+
+---
+
 ## [v0.93.0] - 2026-02-04
+
+### Added
+- 添加 `session_stats` 事件类型用于会话完成统计
+- 实现 `result` 消息的统计提取（耗时、成本、token）
+
+### Changed
+- **agent_session_stats** 表：Token 使用、成本追踪、工具调用、文件操作
+- **异步持久化队列**：后台队列 (size: 100)，优雅关闭
+- **成本统计**：日成本聚合、最高消费会话、趋势分析
+- Vite 生产构建自动移除 console.log (terser drop_console)
+
+### Fixed
+- 修复 goroutine 泄漏和竞态条件 (cc_runner)
+- 优化日志输出，移除冗余日志
+- 修复 SessionID 显示 (使用真实 UUID 而非 conv_N 格式)
 
 ### 📚 规格说明书完善 (cc_runner_async_arch.md v1.3)
 
