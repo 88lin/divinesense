@@ -16,6 +16,9 @@ import (
 /*
 ReflexionExecutor - Self-Reflection and Refinement
 
+⚠️ EXPERIMENTAL: This strategy is under active development and may change.
+Not yet enabled in production parrot configurations.
+
 POSITIONING:
 
 ReflexionExecutor implements the Reflexion pattern for high-quality responses.
@@ -36,6 +39,17 @@ TRADEOFFS:
   - Higher latency (2-3x initial response time)
   - Higher token cost (additional LLM calls)
   - Better output quality
+
+ENABLING IN PRODUCTION:
+
+To enable reflexion strategy for a parrot, set in config/parrots/*.yaml:
+  strategy: reflexion
+  max_iterations: 3
+
+Recommended use cases:
+  - amazing: For complex multi-tool queries requiring high accuracy
+  - memo: For critical research tasks
+  - schedule: For complex scheduling with conflicts
 */
 
 const (
@@ -67,12 +81,13 @@ func NewReflexionExecutor(maxIterations int) *ReflexionExecutor {
 	if maxIterations <= 0 {
 		maxIterations = defaultMaxRefinements + 1 // 1 initial + N refinements
 	}
+	// Use same maxIterations for underlying ReAct strategy
 	return &ReflexionExecutor{
 		maxIterations:      maxIterations,
 		qualityThreshold:   defaultQualityThreshold,
 		reflectionPrompt:   defaultReflectionPrompt,
 		refinePrompt:       defaultRefinePrompt,
-		underlyingStrategy: NewReActExecutor(5), // Use ReAct for initial
+		underlyingStrategy: NewReActExecutor(maxIterations), // Share maxIterations
 	}
 }
 
@@ -227,13 +242,15 @@ func (e *ReflexionExecutor) reflect(
 	var report ReflectionReport
 	jsonStr := e.extractJSON(response)
 	if err := json.Unmarshal([]byte(jsonStr), &report); err != nil {
-		slog.Warn("Failed to parse reflection JSON, using defaults", "error", err)
-		// Default to acceptable quality
+		slog.Error("Failed to parse reflection JSON", "error", err, "response", response)
+		// Default to low quality to force refinement when JSON parsing fails
 		return &ReflectionReport{
-			Accuracy:        0.7,
-			Completeness:    0.7,
-			Clarity:         0.7,
-			NeedsRefinement: false,
+			Accuracy:        0.5,
+			Completeness:    0.5,
+			Clarity:         0.5,
+			Issues:          []string{"Failed to parse reflection output"},
+			Suggestions:     []string{"Please review and improve the response"},
+			NeedsRefinement: true, // Force refinement on parse error
 		}, nil
 	}
 
@@ -280,12 +297,60 @@ func (e *ReflexionExecutor) calculateOverallQuality(r *ReflectionReport) float64
 }
 
 // extractJSON extracts JSON from a response that may contain other text.
+// It looks for the first complete JSON object and validates basic structure.
 func (e *ReflexionExecutor) extractJSON(response string) string {
-	start := strings.Index(response, "{")
-	end := strings.LastIndex(response, "}")
-	if start >= 0 && end > start {
-		return response[start : end+1]
+	trimmed := strings.TrimSpace(response)
+
+	// If response is already valid JSON, return as-is
+	var temp interface{}
+	if json.Unmarshal([]byte(trimmed), &temp) == nil {
+		return trimmed
 	}
+
+	// Find JSON object boundaries
+	start := strings.Index(trimmed, "{")
+	if start < 0 {
+		return response // No JSON found, return original
+	}
+
+	// Count braces to find matching closing brace
+	braceCount := 0
+	inString := false
+	escaped := false
+
+	for i := start; i < len(trimmed); i++ {
+		c := trimmed[i]
+
+		if escaped {
+			escaped = false
+			continue
+		}
+
+		switch c {
+		case '\\':
+			escaped = true
+		case '"':
+			inString = !inString
+		case '{':
+			if !inString {
+				braceCount++
+			}
+		case '}':
+			if !inString {
+				braceCount--
+				if braceCount == 0 {
+					// Found matching closing brace
+					candidate := trimmed[start : i+1]
+					// Validate it's actually valid JSON
+					if json.Unmarshal([]byte(candidate), &temp) == nil {
+						return candidate
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback: return original response
 	return response
 }
 

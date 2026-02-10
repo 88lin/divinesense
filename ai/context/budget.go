@@ -119,7 +119,11 @@ func (a *BudgetAllocator) AllocateForAgent(total int, hasRetrieval bool, agentTy
 
 	// Resolve intent from agent type
 	intent := a.intentResolver.Resolve(agentType)
-	profile, _ := a.profileRegistry.Get(intent)
+	profile, found := a.profileRegistry.Get(intent)
+	if !found {
+		// Log warning: using fallback profile
+		// profile.Get() already handles fallback, so we still have a valid profile
+	}
 
 	budget := &TokenBudget{
 		Total:        total,

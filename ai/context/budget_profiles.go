@@ -99,6 +99,7 @@ func NewProfileRegistry() *ProfileRegistry {
 }
 
 // Get returns a profile by name (thread-safe).
+// Returns the profile and whether it was found directly (not using fallback).
 func (r *ProfileRegistry) Get(name string) (*BudgetProfile, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -118,6 +119,8 @@ func (r *ProfileRegistry) Get(name string) (*BudgetProfile, bool) {
 				UserPrefsRatio: 0.10,
 			}
 		}
+		// Return false to indicate fallback was used
+		return profile, false
 	}
 	return profile, true
 }
