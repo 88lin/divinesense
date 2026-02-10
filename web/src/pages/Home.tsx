@@ -1,13 +1,31 @@
-import { MemoRenderContext } from "@/components/MasonryView";
-import MemoView from "@/components/MemoView/MemoView";
-import PagedMemoList from "@/components/PagedMemoList";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { HeroSection, MemoList } from "@/components/Memo";
+import { FixedEditor } from "@/components/Memo/FixedEditor";
+import { useMemoFilterContext } from "@/contexts/MemoFilterContext";
 import { useMemoFilters, useMemoSorting } from "@/hooks";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 
 const Home = () => {
+  const { t } = useTranslation();
   const user = useCurrentUser();
+  const navigate = useNavigate();
+  const { addFilter, removeFiltersByFactor } = useMemoFilterContext();
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Sync search query with MemoFilterContext
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      addFilter({ factor: "contentSearch", value: searchQuery.trim() });
+    } else {
+      removeFiltersByFactor("contentSearch");
+    }
+  }, [searchQuery, addFilter, removeFiltersByFactor]);
 
   // Build filter using unified hook
   const memoFilter = useMemoFilters({
@@ -17,21 +35,33 @@ const Home = () => {
   });
 
   // Get sorting logic using unified hook
-  const { listSort, orderBy } = useMemoSorting({
+  const { orderBy } = useMemoSorting({
     pinnedFirst: true,
     state: State.NORMAL,
   });
 
+  // Handle memo edit
+  const handleEdit = useCallback(
+    (memo: Memo) => {
+      const memoId = memo.name.split("/").pop() || memo.name;
+      navigate(`/m/${memoId}`);
+    },
+    [navigate],
+  );
+
   return (
-    <div className="w-full min-h-full bg-background text-foreground relative">
-      <PagedMemoList
-        renderer={(memo: Memo, context?: MemoRenderContext) => (
-          <MemoView key={`${memo.name}-${memo.displayTime}`} memo={memo} showVisibility showPinned compact={context?.compact} />
-        )}
-        listSort={listSort}
-        orderBy={orderBy}
-        filter={memoFilter}
-      />
+    <div className="w-full min-h-full bg-background text-foreground">
+      {/* Unified width container for all sections - matches AIChat responsive width */}
+      <div className="mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-4 sm:px-6 pb-8">
+        {/* Hero Section with inline search */}
+        <HeroSection onSearchChange={setSearchQuery} />
+
+        {/* Memo List - filtered by search query */}
+        <MemoList orderBy={orderBy} filter={memoFilter} onEdit={handleEdit} />
+      </div>
+
+      {/* Fixed Editor - outside container to handle its own width */}
+      <FixedEditor placeholder={t("editor.any-thoughts") || t("editor.placeholder")} />
     </div>
   );
 };

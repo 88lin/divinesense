@@ -63,8 +63,8 @@ const MemoDetail = () => {
   };
 
   return (
-    <section className="@container w-full max-w-[100rem] min-h-full flex flex-col justify-start items-center sm:pt-3 md:pt-6 pb-8">
-      <div className={cn("w-full flex flex-row justify-start items-start px-4 sm:px-6 gap-4")}>
+    <>
+      <div className={cn("w-full flex flex-row justify-start items-start gap-4")}>
         <div className={cn("w-full md:w-[calc(100%-15rem)]")}>
           {parentMemo && (
             <div className="w-auto inline-block mb-2">
@@ -81,7 +81,7 @@ const MemoDetail = () => {
           )}
           <MemoView
             key={`${memo.name}-${memo.displayTime}`}
-            className="shadow hover:shadow-md transition-all"
+            className="shadow hover:shadow-sm transition-all"
             memo={memo}
             compact={false}
             parentPage={locationState?.from}
@@ -151,7 +151,7 @@ const MemoDetail = () => {
           </div>
         )}
       </div>
-    </section>
+    </>
   );
 };
 

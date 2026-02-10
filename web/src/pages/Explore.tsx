@@ -1,18 +1,19 @@
-import { MemoRenderContext } from "@/components/MasonryView";
-import MemoView from "@/components/MemoView/MemoView";
-import PagedMemoList from "@/components/PagedMemoList";
+import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { MemoList } from "@/components/Memo";
 import { useMemoFilters, useMemoSorting } from "@/hooks";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { Memo, Visibility } from "@/types/proto/api/v1/memo_service_pb";
+import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 
 const Explore = () => {
   const currentUser = useCurrentUser();
+  const navigate = useNavigate();
 
   // Determine visibility filter based on authentication status
   // - Logged-in users: Can see PUBLIC and PROTECTED memos
   // - Visitors: Can only see PUBLIC memos
-  // Note: The backend is responsible for filtering stats based on visibility permissions.
   const visibilities = currentUser ? [Visibility.PUBLIC, Visibility.PROTECTED] : [Visibility.PUBLIC];
 
   // Build filter using unified hook (no creator scoping for Explore)
@@ -23,21 +24,27 @@ const Explore = () => {
   });
 
   // Get sorting logic using unified hook (no pinned sorting)
-  const { listSort, orderBy } = useMemoSorting({
+  const { orderBy } = useMemoSorting({
     pinnedFirst: false,
     state: State.NORMAL,
   });
 
+  // Handle memo edit - other actions are handled by MemoBlock
+  const handleEdit = useCallback(
+    (memo: Memo) => {
+      const memoId = memo.name.split("/").pop() || memo.name;
+      navigate(`/m/${memoId}`);
+    },
+    [navigate],
+  );
+
   return (
-    <PagedMemoList
-      renderer={(memo: Memo, context?: MemoRenderContext) => (
-        <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showCreator showVisibility compact={context?.compact} />
-      )}
-      listSort={listSort}
-      orderBy={orderBy}
-      filter={memoFilter}
-      showCreator
-    />
+    <div className="w-full min-h-full bg-background text-foreground">
+      {/* Unified width container - matches AIChat responsive width */}
+      <div className="mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-4 sm:px-6 pb-8">
+        <MemoList state={State.NORMAL} orderBy={orderBy} filter={memoFilter} showCreator onEdit={handleEdit} />
+      </div>
+    </div>
   );
 };
 
