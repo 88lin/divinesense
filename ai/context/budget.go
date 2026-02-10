@@ -2,11 +2,20 @@
 package context
 
 // Default token budget values.
+//
+// Token allocation strategy (with retrieval):
+// - System Prompt: 500 tokens (fixed)
+// - User Preferences: 10%
+// - Short-term Memory: 40%
+// - Long-term Memory: 15%
+// - Retrieval Results: 45%
+//
+// Reference: docs/agent-engineering/AGENT_PROMPT_BEST_PRACTICES.md
 const (
 	DefaultMaxTokens      = 4096
 	DefaultSystemPrompt   = 500
 	DefaultUserPrefsRatio = 0.10
-	DefaultRetrievalRatio = 0.35
+	DefaultRetrievalRatio = 0.45 // Updated per best practices
 	MinSegmentTokens      = 100
 )
 

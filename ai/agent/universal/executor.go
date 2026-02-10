@@ -102,6 +102,11 @@ const (
 	// First, the LLM plans which tools to use. Then, tools are executed
 	// concurrently. Finally, the LLM synthesizes the results.
 	StrategyPlanning StrategyType = "planning"
+
+	// StrategyReflexion uses self-reflection and refinement.
+	// The LLM generates an initial response, reflects on quality,
+	// and refines if needed. Ideal for high-quality requirements.
+	StrategyReflexion StrategyType = "reflexion"
 )
 
 // Resolver creates an ExecutionStrategy from a StrategyType.
@@ -133,6 +138,8 @@ func (r *DefaultResolver) Resolve(strategyType StrategyType) (ExecutionStrategy,
 		return NewDirectExecutor(r.MaxIterations), nil
 	case StrategyPlanning:
 		return NewPlanningExecutor(r.MaxIterations), nil
+	case StrategyReflexion:
+		return NewReflexionExecutor(r.MaxIterations), nil
 	default:
 		return nil, &UnsupportedStrategyError{Strategy: string(strategyType)}
 	}
