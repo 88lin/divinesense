@@ -85,10 +85,10 @@ make deps-all && make start
 | [系统架构](docs/dev-guides/ARCHITECTURE.md) | AI 代理、数据流、项目结构                   |
 | [后端开发](docs/dev-guides/BACKEND_DB.md)   | API、数据库、环境配置                       |
 | [前端开发](docs/dev-guides/FRONTEND.md)     | 布局、组件、Tailwind 4                      |
-| [Chat Apps 指南](docs/guides/CHAT_APPS.md)   | Telegram/钉钉机器人接入指南                 |
+| [Chat Apps 指南](docs/user-guides/CHAT_APPS.md)   | Telegram/钉钉机器人接入指南                 |
 | [Git 工作流](.claude/rules/git-workflow.md) | 分支管理、PR 规范                           |
-| [AI 重构报告](docs/research/ai-core-refactor-summary.md) | AI 模块提升重构总结 (v6.0)               |
-| [CC Runner 优化](docs/specs/cc-runner-optimization-plan.md) | 会话统计与成本追踪规划                   |
+| [AI 重构报告](docs/archived/research/20260207_archive/ai-core-refactor-summary.md) | AI 模块提升重构总结 (v6.0)               |
+| [CC Runner 优化](docs/archived/specs/20260207_archive/cc-runner-optimization-plan.md) | 会话统计与成本追踪规划                   |
 | [贡献指南](CONTRIBUTING.md)                 | **入门必读**：环境搭建、开发规范、Checklist |
 
 ---
