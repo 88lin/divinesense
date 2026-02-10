@@ -224,8 +224,7 @@ plugin/chat_apps/
 
 **详细文档**：
 - [用户指南](../user-guides/CHAT_APPS.md)
-- [开发者指南](../guides/CHAT_APPS.md)
-- [技术规格](../specs/chat-apps-integration.md)
+- [技术规格](../archived/specs/20260207_archive/chat-apps-integration.md)
 
 4. **后台运行器** (`server/runner/`):
    - 异步生成笔记 Embedding
@@ -558,7 +557,7 @@ LLMCallStats.CacheReadTokens
 
 ## CC Runner 异步架构 (Geek Mode 核心)
 
-**规格文档**：[CC Runner 异步架构说明书](../specs/cc_runner_async_arch.md) (v1.2)
+**规格文档**：[CC Runner 异步架构说明书](../archived/specs/20260207_archive/cc_runner_async_arch.md) (v1.2)
 
 **概述**：Geek Mode 从一次性执行（One-shot）升级为**全双工持久化**（Full-Duplex Persistent）架构。
 

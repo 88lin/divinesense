@@ -16,7 +16,7 @@
 - [Phase 2: 智能进化](#phase-2-智能进化-sprint-3-4) ⚠️ 已完成规格已归档
 - [Phase 3: 极致体验](#phase-3-极致体验-sprint-5-6) ⚠️ 已完成规格已归档
 
-> **注**: 整体路线图和研究文档已归档至 [`archived/research_20250202/`](../archived/research_20250202/)
+> **注**: 整体路线图和研究文档已归档至 [`archived/research/20260207_archive/`](../archived/research/20260207_archive/)
 
 ---
 
@@ -386,6 +386,6 @@ Phase 3 (Sprint 5-6) - 极致体验
 
 ---
 
-> **纲领来源**: [00-master-roadmap.md](../archived/research_20250202/00-master-roadmap.md) (已归档)
+> **纲领来源**: [00-master-roadmap.md](../archived/research/20260207_archive/00-master-roadmap.md) (已归档)
 > **版本**: v1.2
 > **更新时间**: 2026-02-04

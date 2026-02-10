@@ -586,8 +586,8 @@ func TestMemoryServiceContract(t *testing.T) {
 
 ### A. 参考资料
 
-- [主路线图](../../archived/research_20250202/00-master-roadmap.md)
-- [智能助理调研](../../archived/research_20250202/assistant-research.md)
+- ~~主路线图~~（已归档）
+- ~~智能助理调研~~（已归档）
 
 ### B. 变更记录
 

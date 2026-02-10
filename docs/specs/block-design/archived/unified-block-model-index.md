@@ -109,9 +109,9 @@ Phase 2           Phase 3          Phase 5
 ## 参考资料
 
 - [主规格文档](./unified-block-model.md)
-- [调研报告](../../research/unified-block-model-research.md)
+- [调研报告](../../archived/research/20260207_archive/unified-block-model-research.md)
 - [Issue #69: Warp Block UI](https://github.com/hrygo/divinesense/issues/69)
-- [CC Runner 异步架构](../cc_runner_async_arch.md)
+- [CC Runner 异步架构](../../archived/specs/20260207_archive/cc_runner_async_arch.md)
 
 ---
 

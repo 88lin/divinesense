@@ -4,7 +4,7 @@
 >
 > **目标**: 三鹦鹉统一架构，差异仅在 Prompt 和工具链
 >
-> **关联**: [Issue #125](https://github.com/hrygo/divinesense/issues/125) | [Agent 设计调研](../research/agent-design-patterns-2026.md)
+> **关联**: [Issue #125](https://github.com/hrygo/divinesense/issues/125) | [Agent 设计调研](../research/agent-design-patterns-2026.md)（如存在）
 
 ---
 

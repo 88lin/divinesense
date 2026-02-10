@@ -848,5 +848,5 @@ func (a *Auditor) LogSecurityEvent(ctx context.Context, event *SecurityEvent) er
 ---
 
 **相关文档**:
-- [CCRunner 异步架构说明书](../specs/cc_runner_async_arch.md)
+- [CCRunner 异步架构说明书](./cc_runner_async_arch.md)
 - [CCRunner 消息处理机制调研](../research/cc-runner-message-handling-research.md)

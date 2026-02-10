@@ -364,7 +364,7 @@ export function RelatedList({ memoName }: RelatedListProps) {
 
 ### A. 参考资料
 
-- [笔记增强路线图](../../research/memo-roadmap.md)
+- ~~笔记增强路线图~~（已归档）
 
 ### B. 变更记录
 

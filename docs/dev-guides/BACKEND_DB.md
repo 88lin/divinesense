@@ -522,7 +522,7 @@ CREATE UNIQUE INDEX idx_chat_app_credential_unique ON chat_app_credential(creato
   - 钉钉：HMAC-SHA256 签名 + 时间戳验证（5分钟窗口，防重放攻击）
   - Telegram：Bot Token 匹配验证
   - WhatsApp：桥接服务连接状态检查
-- 详见：[Chat Apps 用户指南](../guides/CHAT_APPS.md#安全说明)
+- 详见：[Chat Apps 用户指南](../user-guides/CHAT_APPS.md#安全建议)
 
 ---
 

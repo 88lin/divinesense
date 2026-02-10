@@ -384,7 +384,7 @@ import ChatAppsSection from "@/components/Settings/ChatAppsSection";
 - `api.chatApp.registerCredential()` - 注册新凭证
 - `api.chatApp.deleteCredential()` - 删除凭证
 
-**详见**：[Chat Apps 用户指南](../guides/CHAT_APPS.md)
+**详见**：[Chat Apps 用户指南](../user-guides/CHAT_APPS.md)
 
 ---
 

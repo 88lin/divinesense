@@ -126,4 +126,4 @@ UI 更新
 - [Issue #24](https://github.com/hrygo/divinesense/issues/24)
 - [Issue #15](https://github.com/hrygo/divinesense/issues/15) - CCRunner 异步架构
 - [PR #23](https://github.com/hrygo/divinesense/pull/23) - 后端实现
-- [架构规格](../specs/cc_runner_async_arch.md)
+- [架构规格](../archived/specs/20260207_archive/cc_runner_async_arch.md)

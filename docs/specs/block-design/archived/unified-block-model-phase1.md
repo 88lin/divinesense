@@ -5,7 +5,7 @@
 > **投入**: 5人天
 > **Sprint**: Sprint 1
 > **关联 Issue**: [#71](https://github.com/hrygo/divinesense/issues/71)
-> **依赖调研**: [unified-block-model-research.md](../../research/unified-block-model-research.md)
+> **依赖调研**: [unified-block-model-research.md](../../archived/research/20260207_archive/unified-block-model-research.md)
 
 ---
 
@@ -493,7 +493,7 @@ type AIBlockStore interface {
 
 ### A. 参考资料
 
-- [调研报告](../../research/unified-block-model-research.md)
+- [调研报告](../../archived/research/20260207_archive/unified-block-model-research.md)
 - [Issue #71](https://github.com/hrygo/divinesense/issues/71)
 - [后端开发指南](../../dev-guides/BACKEND_DB.md)
 
