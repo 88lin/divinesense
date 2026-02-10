@@ -378,7 +378,69 @@ git rebase -i HEAD~n
 
 ---
 
-## 9. 最佳实践
+## 9. 发布流程
+
+> **单一版本来源**：`git tag` 是项目版本的唯一真实来源
+
+### 9.1 发布前准备
+
+```bash
+# 1. 确保代码已合并到 main
+git checkout main
+git pull origin main
+
+# 2. 确认 CHANGELOG.md 已更新
+vim CHANGELOG.md
+```
+
+### 9.2 创建 Git Tag（必须）
+
+```bash
+# 获取最新版本号
+git tag -l | sort -V | tail -1 | sed 's/^v//'
+
+# 创建新版本 tag (必须先于 GitHub Release)
+git tag -a v0.XX.0 -m "Release v0.XX.0"
+
+# 推送 tag 到远程
+git push origin v0.XX.0
+```
+
+**Tag 命名规范**：
+- 格式：`v{major}.{minor}.{patch}`
+- 示例：`v0.97.0`, `v1.0.0`
+- 必须以 `v` 开头
+- 遵循语义化版本规范
+
+### 9.3 创建 GitHub Release
+
+```bash
+# 创建 Release (必须先有 git tag)
+gh release create v0.XX.0 \
+  --title "v0.XX.0" \
+  --notes "Release notes from CHANGELOG.md"
+```
+
+**发布顺序（严格遵守）**：
+1. 合并所有 PR 到 `main`
+2. 更新 `CHANGELOG.md`
+3. **创建 git tag** ← 单一版本来源
+4. 推送 git tag
+5. 创建 GitHub Release
+
+### 9.4 验证版本
+
+```bash
+# 获取当前版本
+git describe --tags --always
+
+# 或获取最新 tag
+git tag -l | sort -V | tail -1
+```
+
+---
+
+## 10. 最佳实践
 
 1. **小步快跑**：每个 PR 只做一件事，保持改动范围小
 2. **频繁提交**：本地频繁 commit，PR 中可 squash
@@ -388,4 +450,4 @@ git rebase -i HEAD~n
 
 ---
 
-*更新于 2025-01-31*
+*更新于 2026-02-10 | v0.97.0*
