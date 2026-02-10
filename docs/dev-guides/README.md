@@ -124,9 +124,9 @@ docs/
 | STATS_SYSTEM.md | ✅ 已完成 | v0.97.0 |
 | TRACING_SYSTEM.md | ✅ 已完成 | v0.97.0 |
 | PRELOAD_SYSTEM.md | ✅ 已完成 | v0.97.0 |
-| UNEXPOSED_FEATURES.md | ⚠️ 需更新 | v6.0 |
-| AGENT_TESTING.md | ⚠️ 需更新 | v6.0 |
-| COMMON_TASKS.md | ⚠️ 需更新 | v6.0 |
+| UNEXPOSED_FEATURES.md | ✅ 已验证 | v0.97.0 |
+| AGENT_TESTING.md | ✅ 已验证 | v0.97.0 |
+| COMMON_TASKS.md | ✅ 已验证 | v0.97.0 |
 
 ---
 
