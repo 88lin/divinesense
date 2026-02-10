@@ -1,6 +1,8 @@
 // Package context provides context building for LLM prompts.
 package context
 
+import "log/slog"
+
 // Default token budget values.
 //
 // Token allocation strategy (with retrieval):
@@ -121,8 +123,9 @@ func (a *BudgetAllocator) AllocateForAgent(total int, hasRetrieval bool, agentTy
 	intent := a.intentResolver.Resolve(agentType)
 	profile, found := a.profileRegistry.Get(intent)
 	if !found {
-		// Log warning: using fallback profile
-		// profile.Get() already handles fallback, so we still have a valid profile
+		// Unknown profile requested - using fallback profile
+		// This is expected for new agent types that don't have custom budgets
+		slog.Debug("Using fallback budget profile", "intent", intent, "fallback_profile", profile.Name, "agent_type", agentType)
 	}
 
 	budget := &TokenBudget{

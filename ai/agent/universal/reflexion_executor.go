@@ -82,12 +82,15 @@ func NewReflexionExecutor(maxIterations int) *ReflexionExecutor {
 		maxIterations = defaultMaxRefinements + 1 // 1 initial + N refinements
 	}
 	// Use same maxIterations for underlying ReAct strategy
+	// Note: Reflexion loop controls refinement iterations (initial + N refinements)
+	//       ReAct strategy controls reasoning iterations per response generation
+	//       These are independent budgets - both can use up to maxIterations
 	return &ReflexionExecutor{
 		maxIterations:      maxIterations,
 		qualityThreshold:   defaultQualityThreshold,
 		reflectionPrompt:   defaultReflectionPrompt,
 		refinePrompt:       defaultRefinePrompt,
-		underlyingStrategy: NewReActExecutor(maxIterations), // Share maxIterations
+		underlyingStrategy: NewReActExecutor(maxIterations),
 	}
 }
 
