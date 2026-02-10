@@ -1,0 +1,89 @@
+name: Integration Tests
+
+# L2 集成测试 - 仅手动触发
+# - 运行带 //go:build integration 标签的测试
+# - 矩阵测试：SQLite + PostgreSQL
+# - 使用方法: GitHub Actions 页面 → Integration Tests → Run workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      database:
+        description: "Database driver to test"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - sqlite
+          - postgres
+      test_package:
+        description: "Specific test package (empty for all)"
+        required: false
+        default: ""
+        type: string
+      reason:
+        description: "Reason for running integration tests"
+        required: false
+        default: ""
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.25"
+
+jobs:
+  integration-tests:
+    name: Integration Tests (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database:
+          - sqlite
+          - postgres
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Start PostgreSQL
+        if: matrix.database == 'postgres' || inputs.database == 'all' || inputs.database == 'postgres'
+        run: |
+          docker run -d \
+            --name divinesense-postgres-test \
+            -e POSTGRES_USER=divinesense \
+            -e POSTGRES_PASSWORD=divinesense \
+            -e POSTGRES_DB=divinesense \
+            -p 25432:5432 \
+            pgvector/pgvector:pg16 \
+            -c max_connections=200
+          timeout 60 bash -c 'until docker exec divinesense-postgres-test pg_isready -U divinesense; do sleep 1; done'
+
+      - name: Run integration tests - ${{ matrix.database }}
+        env:
+          DIVINESENSE_DRIVER: ${{ matrix.database == 'postgres' && 'postgres' || 'sqlite' }}
+          DIVINESENSE_DSN: ${{ matrix.database == 'postgres' && 'postgres://divinesense:divinesense@localhost:25432/divinesense?sslmode=disable' || ':memory:' }}
+        run: |
+          # 构建测试包列表
+          if [[ -n "${{ inputs.test_package }}" ]]; then
+            test_packages="${{ inputs.test_package }}"
+          else
+            test_packages=$(go list -tags=integration ./... | grep -E "(integration_test|plugin/scheduler|ai/router|server/queryengine|ai/agent)" | tr '\n' ' ')
+          fi
+
+          echo "Running integration tests for: $test_packages"
+          go test -v -tags=integration,noui -timeout=10m $test_packages
+
+      - name: Cleanup PostgreSQL
+        if: always() && (matrix.database == 'postgres' || inputs.database == 'all' || inputs.database == 'postgres')
+        run: |
+          docker stop divinesense-postgres-test || true
+          docker rm divinesense-postgres-test || true
