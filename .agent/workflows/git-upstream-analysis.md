@@ -1,3 +1,7 @@
+---
+description: Git Upstream Alignment Analysis Workflow (Updated)
+---
+
 # Git Upstream Alignment Analysis Workflow (Updated)
 
 This workflow helps you scientifically analyze, triage, and plan the synchronization of your local codebase with the upstream repository (`https://github.com/usememos/memos`). 

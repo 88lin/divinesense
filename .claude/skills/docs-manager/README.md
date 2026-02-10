@@ -67,9 +67,18 @@ SCAN ──▶ ANALYZE ──▶ COMPARE ──▶ REPORT ──▶ UPDATE
 ```markdown
 ## 功能描述
 
-> **保鲜状态**: ✅ 已验证 (2025-02-02)
-> **覆盖范围**: `server/router/api/v1/ai.go`
-> **最后检查**: v6.0
+> **保鲜状态**: ✅ 已验证 (YYYY-MM-DD)
+> **覆盖范围**: `path/to/code.go`
+> **最后检查**: vX.Y.Z
+```
+
+**获取项目版本** (执行时动态获取):
+```bash
+# 从 CHANGELOG.md 提取最新版本
+grep "^## \[v" CHANGELOG.md | head -1 | sed 's/.*\[v//;s/\].*//'
+
+# 或从 README.md 提取
+grep "version-v" README.md | head -1 | sed 's/.*version-v//;s/"//'
 ```
 
 ## 📚 相关文档
@@ -81,4 +90,6 @@ SCAN ──▶ ANALYZE ──▶ COMPARE ──▶ REPORT ──▶ UPDATE
 
 ---
 
-> **版本**: v6.0 | **新增**: 文档保鲜 | **设计哲学**: 状态机驱动 + 元认知自检
+> **Skill 版本**: v6.0 | **新增**: 文档保鲜 | **设计哲学**: 状态机驱动 + 元认知自检
+>
+> **注意**: Skill 版本与项目版本独立。文档保鲜标记应使用动态获取的项目版本。
