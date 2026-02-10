@@ -30,15 +30,30 @@ const CONVERSATION_CREATE_TIMEOUT = 10000;
 const generateId = () => `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 // Helper function to get default conversation title based on parrot type.
-// Note: This returns a fallback English title. The actual display titles are
-// localized by the backend using title keys (e.g., "chat.default.title").
+// Returns i18n key format to enable backend detection and auto-title generation.
+// The frontend will translate these keys for display using t().
 function getDefaultTitle(parrotId: ParrotAgentType): string {
   const titles: Record<string, string> = {
-    [ParrotAgentType.MEMO]: "Chat with Memo",
-    [ParrotAgentType.SCHEDULE]: "Chat with Schedule",
-    [ParrotAgentType.AMAZING]: "Chat with Amazing",
+    [ParrotAgentType.MEMO]: "chat.default.memo",
+    [ParrotAgentType.SCHEDULE]: "chat.default.schedule",
+    [ParrotAgentType.AMAZING]: "chat.default.amazing",
+    [ParrotAgentType.GEEK]: "chat.default.geek",
+    [ParrotAgentType.EVOLUTION]: "chat.default.evolution",
   };
-  return titles[parrotId] || "AI Chat";
+  return titles[parrotId] || "chat.default.auto";
+}
+
+// Checks if a title is a default i18n key (should trigger auto-generation)
+export function isDefaultTitle(title: string): boolean {
+  return title.startsWith("chat.default.") || title === "chat.new" || title.startsWith("chat.");
+}
+
+// Translates a title: if it's an i18n key, translates it; otherwise returns as-is.
+export function translateTitle(title: string, t: (key: string) => string): string {
+  if (isDefaultTitle(title)) {
+    return t(title);
+  }
+  return title;
 }
 
 const DEFAULT_STATE: AIChatState = {
@@ -398,9 +413,19 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
 
     try {
       const response = await aiServiceClient.generateConversationTitle({ id: numericId });
+
       setState((prev) => ({
         ...prev,
-        conversations: prev.conversations.map((c) => (c.id === id ? { ...c, title: response.title, updatedAt: Date.now() } : c)),
+        conversations: prev.conversations.map((c) => {
+          if (c.id === id) {
+            return {
+              ...c,
+              title: response.title,
+              updatedAt: Date.now(),
+            };
+          }
+          return c;
+        }),
       }));
       return response.title;
     } catch (error) {
@@ -615,6 +640,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
   /**
    * Load blocks for a conversation from the backend
    * Uses React Query for caching and optimistic updates
+   * Also updates the messageCount in conversations list
    */
   const loadBlocks = useCallback(async (conversationId: string) => {
     const numericId = parseInt(conversationId);
@@ -632,6 +658,8 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
           ...prev.blocksByConversation,
           [conversationId]: blocks,
         },
+        // Update messageCount in conversations list
+        conversations: prev.conversations.map((c) => (c.id === conversationId ? { ...c, messageCount: blocks.length } : c)),
       }));
     } catch (e) {
       console.error("Failed to load blocks:", e);
@@ -674,6 +702,17 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
   );
 
   /**
+   * Increment message count for a conversation (optimistic update)
+   * Called when a new block is created/completed
+   */
+  const incrementMessageCount = useCallback((conversationId: string) => {
+    setState((prev) => ({
+      ...prev,
+      conversations: prev.conversations.map((c) => (c.id === conversationId ? { ...c, messageCount: (c.messageCount || 0) + 1 } : c)),
+    }));
+  }, []);
+
+  /**
    * Update block status locally (optimistic update)
    * Used during streaming to show real-time status changes
    */
@@ -711,12 +750,6 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load from storage on mount (only once)
-  useEffect(() => {
-    loadFromStorage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const contextValue: AIChatContextValue = {
     state,
     currentConversation,
@@ -728,7 +761,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     selectConversation,
     updateConversationTitle,
     generateConversationTitle,
-    refreshConversations, // For syncing auto-generated titles from backend
+    refreshConversations,
     // Phase 4: Removed addMessage, updateMessage, deleteMessage - Block API handles this
     clearMessages,
     addContextSeparator,
@@ -747,6 +780,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
     loadBlocks,
     appendUserInput,
     updateBlockStatus,
+    incrementMessageCount,
     saveToStorage,
     loadFromStorage,
     clearStorage,

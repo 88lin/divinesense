@@ -200,6 +200,7 @@ export interface AIChatContextValue {
   loadBlocks: (conversationId: string) => Promise<void>;
   appendUserInput: (blockId: number, content: string, conversationId: number) => Promise<void>;
   updateBlockStatus: (blockId: number, status: "pending" | "streaming" | "completed" | "error") => void;
+  incrementMessageCount: (conversationId: string) => void;
 
   // Persistence
   saveToStorage: () => void;

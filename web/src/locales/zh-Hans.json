@@ -591,6 +591,15 @@
   },
   "chat": {
     "new": "新对话",
+    "default": {
+      "title": "AI 对话",
+      "auto": "AI 对话",
+      "memo": "笔记对话",
+      "schedule": "日程对话",
+      "amazing": "综合助理",
+      "geek": "极客模式",
+      "evolution": "进化模式"
+    },
     "block-number": "第 {{number}} 块",
     "block-summary": {
       "tokens": "令牌",
@@ -685,6 +694,7 @@
     "relations": "关系图",
     "restore": "恢复",
     "retry": "重试",
+    "refresh": "刷新",
     "role": "身份",
     "save": "保存",
     "saving": "保存中...",

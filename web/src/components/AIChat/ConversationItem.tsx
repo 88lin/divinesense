@@ -1,9 +1,9 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { translateTitle } from "@/contexts/AIChatContext";
 import { cn } from "@/lib/utils";
-import { ConversationSummary } from "@/types/aichat";
-import { PARROT_AGENTS, PARROT_ICONS, PARROT_THEMES } from "@/types/parrot";
+import type { ConversationSummary } from "@/types/aichat";
 import { TitleEditDialog } from "./TitleEditDialog";
 
 interface ConversationItemProps {
@@ -11,9 +11,11 @@ interface ConversationItemProps {
   isActive: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onRefresh?: (id: string) => void;
   onTitleChange?: (id: string, newTitle: string) => void;
   className?: string;
   isLoaded?: boolean; // Whether this conversation has been loaded with messages
+  isRefreshing?: boolean; // Whether this conversation is currently being refreshed
 }
 
 export function ConversationItem({
@@ -21,16 +23,14 @@ export function ConversationItem({
   isActive,
   onSelect,
   onDelete,
+  onRefresh,
   onTitleChange,
   className,
   isLoaded = false,
+  isRefreshing = false,
 }: ConversationItemProps) {
   const { t } = useTranslation();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-
-  const parrot = PARROT_AGENTS[conversation.parrotId];
-  const parrotIcon = PARROT_ICONS[conversation.parrotId] || parrot?.icon || "🤖";
-  const parrotTheme = PARROT_THEMES[conversation.parrotId] || PARROT_THEMES.AMAZING;
 
   // Display message count: show "..." if not loaded yet, 0 if truly empty
   const displayMessageCount = isLoaded ? conversation.messageCount : "...";
@@ -45,40 +45,24 @@ export function ConversationItem({
         <button
           onClick={() => onSelect(conversation.id)}
           className="w-full text-left px-3 py-2.5 pr-20"
-          aria-label={`Select conversation: ${conversation.title}`}
+          aria-label={`Select conversation: ${translateTitle(conversation.title, t)}`}
         >
-          <div className="flex items-start gap-3">
-            {/* Parrot Icon */}
-            <div
-              className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0",
-                !parrotIcon.startsWith("/") && parrotTheme.iconBg,
-              )}
-            >
-              {parrotIcon.startsWith("/") ? (
-                <img src={parrotIcon} alt={parrot?.displayName || ""} className="w-6 h-6 object-contain" />
-              ) : (
-                parrotIcon
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
-                {conversation.title}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {displayMessageCount === "..."
-                  ? t("ai.aichat.sidebar.message-count", { count: 0 })
-                  : t("ai.aichat.sidebar.message-count", { count: displayMessageCount })}{" "}
-                · {formatTime(conversation.updatedAt, t)}
-              </p>
-            </div>
+          <div className="flex flex-col min-w-0">
+            <h3 className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+              {translateTitle(conversation.title, t)}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {displayMessageCount === "..."
+                ? t("ai.aichat.sidebar.message-count", { count: 0 })
+                : t("ai.aichat.sidebar.message-count", { count: displayMessageCount })}{" "}
+              · {formatTime(conversation.updatedAt, t)}
+            </p>
           </div>
         </button>
 
         {/* Action Buttons - Show on hover */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+          <RefreshButton conversationId={conversation.id} onRefresh={onRefresh} isRefreshing={isRefreshing} />
           <EditButton onEdit={() => setEditDialogOpen(true)} />
           <DeleteButton conversationId={conversation.id} onDelete={onDelete} />
         </div>
@@ -92,6 +76,42 @@ export function ConversationItem({
 
 interface EditButtonProps {
   onEdit: () => void;
+}
+
+interface RefreshButtonProps {
+  conversationId: string;
+  onRefresh?: ((id: string) => void) | undefined;
+  isRefreshing?: boolean;
+}
+
+function RefreshButton({ conversationId, onRefresh, isRefreshing = false }: RefreshButtonProps) {
+  const { t } = useTranslation();
+
+  if (!onRefresh) return null;
+
+  const handleRefresh = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await onRefresh(conversationId);
+  };
+
+  return (
+    <button
+      onClick={handleRefresh}
+      disabled={isRefreshing}
+      className={cn(
+        "flex items-center justify-center",
+        "w-8 h-8 rounded-lg",
+        "text-muted-foreground",
+        "hover:text-primary",
+        "hover:bg-primary/10",
+        "transition-all duration-200",
+      )}
+      aria-label={t("common.refresh")}
+      title={t("common.refresh")}
+    >
+      <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+    </button>
+  );
 }
 
 function EditButton({ onEdit }: EditButtonProps) {
