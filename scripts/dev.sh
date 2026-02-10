@@ -195,53 +195,23 @@ start_backend() {
     # 加载环境变量
     load_env
 
-    # 启动后端（后台运行）
-    nohup go run -tags=noui ./cmd/divinesense --mode dev --port $BACKEND_PORT \
-        > "$BACKEND_LOG" 2>&1 &
+    # 检测是否启用 AI 模式或 sqlite-vec
+    local ai_tags="noui"
+    local use_sqlite_vec=false
 
-    local shell_pid=$!
-    echo $shell_pid > "$BACKEND_PID_FILE"
-
-    # 等待后端启动
-    echo -n "等待后端启动"
-    if wait_for_port $BACKEND_PORT "后端" 30; then
-        # 获取实际监听端口的进程 PID（go run 可能产生子进程）
-        local actual_pid=$(lsof -ti ":$BACKEND_PORT" -sTCP:LISTEN 2>/dev/null | head -1)
-        if [ -n "$actual_pid" ]; then
-            echo $actual_pid > "$BACKEND_PID_FILE"
-            log_success "后端已启动 (PID: $actual_pid, http://localhost:$BACKEND_PORT)"
-        else
-            # 如果找不到监听进程，保留 shell PID
-            log_success "后端已启动 (PID: $shell_pid, http://localhost:$BACKEND_PORT)"
-        fi
-        return 0
-    else
-        log_error "后端启动失败，查看日志: $BACKEND_LOG"
-        rm -f "$BACKEND_PID_FILE"
-        return 1
+    if [ "$SQLITE_VEC" = "true" ]; then
+        log_info "📦 SQLite + sqlite-vec 模式已启用"
+        ai_tags="sqlite_vec"
+        use_sqlite_vec=true
+        export DIVINESENSE_DRIVER="sqlite"
+        export DIVINESENSE_DSN="divinesense.db?_loc=auto&_allow_load_extension=1"
+    elif [ "$DIVINESENSE_AI_MODE" = "true" ] || [ "$AI_MODE" = "true" ]; then
+        log_info "🤖 AI 模式已启用 (PostgreSQL)"
+        ai_tags="sqlite_vec"
     fi
-}
-
-start_backend_force_rebuild() {
-    local status=$(backend_status)
-
-    case $status in
-        running)
-            log_info "后端已在运行 (PID: $(cat $BACKEND_PID_FILE))"
-            return 0
-            ;;
-    esac
-
-    log_info "启动后端（强制重新编译）..."
-
-    # 确保日志目录存在
-    mkdir -p "$(dirname "$BACKEND_LOG")"
-
-    # 加载环境变量
-    load_env
 
     # 启动后端（后台运行）
-    nohup go run -tags=noui ./cmd/divinesense --mode dev --port $BACKEND_PORT \
+    nohup go run -tags="$ai_tags" ./cmd/divinesense --mode dev --port $BACKEND_PORT \
         > "$BACKEND_LOG" 2>&1 &
 
     local shell_pid=$!
@@ -250,14 +220,9 @@ start_backend_force_rebuild() {
     # 等待后端启动
     echo -n "等待后端启动"
     if wait_for_port $BACKEND_PORT "后端" 30; then
-        # 获取实际监听端口的进程 PID（go run 可能产生子进程）
-        local actual_pid=$(lsof -ti ":$BACKEND_PORT" -sTCP:LISTEN 2>/dev/null | head -1)
-        if [ -n "$actual_pid" ]; then
-            echo $actual_pid > "$BACKEND_PID_FILE"
-            log_success "后端已启动 (PID: $actual_pid, http://localhost:$BACKEND_PORT)"
-        else
-            # 如果找不到监听进程，保留 shell PID
-            log_success "后端已启动 (PID: $shell_pid, http://localhost:$BACKEND_PORT)"
+        log_success "后端已启动 (PID: $pid, http://localhost:$BACKEND_PORT)"
+        if [ "$ai_tags" = "sqlite_vec" ]; then
+            echo "  → AI 模式已启用 (sqlite-vec)"
         fi
         return 0
     else
@@ -643,9 +608,11 @@ cmd_start() {
 
     check_docker
 
-    # 按顺序启动服务
-    start_postgres || exit 1
-    sleep 2
+    # 按顺序启动服务（SQLite 模式跳过 PostgreSQL）
+    if [ "$SQLITE_VEC" != "true" ]; then
+        start_postgres || exit 1
+        sleep 2
+    fi
     start_backend || exit 1
     sleep 1
     start_frontend || exit 1
@@ -653,6 +620,7 @@ cmd_start() {
     echo ""
     log_success "所有服务已启动！"
     echo ""
+    echo "数据库: $([ "$SQLITE_VEC" = "true" ] && echo "SQLite + sqlite-vec" || echo "PostgreSQL")"
     echo "服务地址:"
     echo "  - 后端: http://localhost:$BACKEND_PORT"
     echo "  - 前端: http://localhost:$FRONTEND_PORT"
@@ -677,10 +645,12 @@ cmd_stop() {
     log_info "停止 DivineSense 开发环境..."
     echo ""
 
-    # 按逆序停止服务
+    # 按逆序停止服务（SQLite 模式跳过 PostgreSQL）
     stop_frontend
     stop_backend
-    stop_postgres
+    if [ "$SQLITE_VEC" != "true" ]; then
+        stop_postgres
+    fi
 
     echo ""
     log_success "所有服务已停止"

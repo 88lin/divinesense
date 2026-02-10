@@ -12,19 +12,21 @@
 - **端口**：25432（开发环境）
 - **版本**：PostgreSQL 16+
 
-### SQLite（仅开发环境 - 无 AI 功能）
+### SQLite（开发环境 - 向量搜索支持）
 
-- **状态**：仅限开发和测试
-- **AI 功能**：**不支持** —— 向量搜索、对话持久化、重排均已禁用
-- **推荐用途**：仅限非 AI 功能的本地开发
+- **状态**：开发环境
+- **AI 功能**：**部分支持** —— 仅向量搜索（语义检索）
+- **向量搜索**：sqlite-vec 扩展或应用层 cosine 相似度计算
+- **全文搜索**：FTS5（可用）或 LIKE fallback
+- **推荐用途**：本地开发、语义搜索功能测试
 - **限制**：
-  - 无 AI 对话持久化（AI 功能需使用 PostgreSQL）
-  - 无向量搜索、BM25、混合搜索或重排
-  - 无并发写入支持
-  - 无全文搜索（FTS5 不保证）
-- **维护状态**：仅对非 AI 功能尽力维护
-
-> 💡 **SQLite AI 支持研究**：详见 [#9](https://github.com/hrygo/divinesense/issues/9) - 探索向量搜索可行性及替代方案
+  - **不**支持 AI 对话持久化（AIBlock/AIConversation）—— 需使用 PostgreSQL
+  - **不**支持情景记忆（episodic_memory）—— 需使用 PostgreSQL
+  - **不**支持用户偏好（user_preferences）—— 需使用 PostgreSQL
+  - 向量搜索性能不如 PostgreSQL + pgvector
+  - 大数据集（>10k 向量）性能下降
+- **维护状态**：仅向量搜索功能
+- **注意**：完整 AI 功能（对话、记忆、偏好）必须使用 PostgreSQL
 
 ### MySQL（已移除）
 - **状态**：**不支持** —— 已移除所有 MySQL 支持
