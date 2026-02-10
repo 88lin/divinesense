@@ -4,6 +4,7 @@ package universal
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -123,9 +124,15 @@ func WithScheduleService(scheduleFactory func() any) FactoryOption {
 func NewParrotFactory(opts ...FactoryOption) (*ParrotFactory, error) {
 	factory := &ParrotFactory{
 		configs:       make(map[string]*ParrotConfig),
-		configDir:     "./config/parrots", // Default
 		toolFactories: make(map[string]ToolFactoryFunc),
 	}
+
+	// Set default config dir, but allow environment variable override
+	configDir := "./config/parrots"
+	if envDir := os.Getenv("DIVINESENSE_PARROT_CONFIG_DIR"); envDir != "" {
+		configDir = envDir
+	}
+	factory.configDir = configDir
 
 	for _, opt := range opts {
 		if err := opt(factory); err != nil {
@@ -133,9 +140,10 @@ func NewParrotFactory(opts ...FactoryOption) (*ParrotFactory, error) {
 		}
 	}
 
-	// Load configurations from directory
+	// Load configurations from directory (ignore errors if dir doesn't exist)
 	if err := factory.LoadConfigs(); err != nil {
-		return nil, fmt.Errorf("load configs: %w", err)
+		// Log but don't fail - configs can be registered programmatically
+		slog.Warn("Failed to load parrot configs from directory", "dir", configDir, "error", err)
 	}
 
 	return factory, nil
@@ -240,7 +248,7 @@ func (f *ParrotFactory) CreateParrotFromConfig(config *ParrotConfig, userID int3
 	return parrot, nil
 }
 
-// CreateMemoParrot creates a MemoParrot using configuration.
+// CreateMemoParrot creates a UniversalParrot configured as memo parrot.
 func (f *ParrotFactory) CreateMemoParrot(userID int32, retriever any) (agent.ParrotAgent, error) {
 	config, ok := f.GetConfig("memo")
 	if !ok {
@@ -261,7 +269,7 @@ func (f *ParrotFactory) CreateMemoParrot(userID int32, retriever any) (agent.Par
 	return parrot, nil
 }
 
-// CreateScheduleParrot creates a ScheduleParrot using configuration.
+// CreateScheduleParrot creates a UniversalParrot configured as schedule parrot.
 func (f *ParrotFactory) CreateScheduleParrot(userID int32, scheduleService any) (agent.ParrotAgent, error) {
 	config, ok := f.GetConfig("schedule")
 	if !ok {
@@ -282,7 +290,7 @@ func (f *ParrotFactory) CreateScheduleParrot(userID int32, scheduleService any) 
 	return parrot, nil
 }
 
-// CreateAmazingParrot creates an AmazingParrot using configuration.
+// CreateAmazingParrot creates a UniversalParrot configured as amazing parrot.
 func (f *ParrotFactory) CreateAmazingParrot(userID int32, retriever any, scheduleService any) (agent.ParrotAgent, error) {
 	config, ok := f.GetConfig("amazing")
 	if !ok {
