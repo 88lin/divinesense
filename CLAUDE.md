@@ -133,6 +133,27 @@ make check-all → feat/fix 分支 → PR → 合并
 ```
 详细规范：@.claude/rules/git-workflow.md
 
+### 发布流程
+
+```bash
+# 1. 更新 CHANGELOG.md
+# 2. 创建 git tag (单一版本来源)
+git tag -a v0.XX.0 -m "Release v0.XX.0"
+git push origin v0.XX.0
+
+# 3. 创建 GitHub Release
+gh release create v0.XX.0 --notes "Release notes..."
+
+# 获取当前版本命令
+git tag -l | sort -V | tail -1 | sed 's/^v//'
+```
+
+**版本规约**：
+- **单一版本来源**：`git tag` 是项目版本的唯一真实来源
+- 发布前必须先创建 git tag
+- CHANGELOG.md 和文档版本号必须与 git tag 同步
+- 使用语义化版本：`v{major}.{minor}.{patch}`
+
 ---
 
 ## 📐 编码规范
