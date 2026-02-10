@@ -98,7 +98,4 @@ store/db/sqlite/.lib/
 *.so
 *.dylib
 divinesense-*-*
-# 但保留 .claude 目录下的代码审查 agent
-!.claude/agents/divinesense-code-reviewer.md
-!.claude/agent-memory/divinesense-code-reviewer/
 divinesense
