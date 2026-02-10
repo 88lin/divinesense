@@ -152,12 +152,16 @@ IDLE ──/docs-*──▶ SCAN ──▶ ANALYZE ──▶ COMPARE ──▶ R
 > **最后检查**: vX.Y.Z
 ```
 
-**获取项目当前版本** (执行时动态获取):
+**获取项目当前版本** (从 git tag 动态获取):
 ```bash
-# 方法 1: 从 CHANGELOG.md 获取最新版本
+# 方法 1: 获取最新 git tag (推荐 - 单一版本来源)
+git tag -l | sort -V | tail -1 | sed 's/^v//'
+
+# 方法 2: 使用 git describe (包含 commit 信息)
+git describe --tags --always | sed 's/^v//'
+
+# 方法 3: 从 CHANGELOG.md 获取 (备选，可能与 tag 不同步)
 grep "^## \[v" CHANGELOG.md | head -1 | sed 's/.*\[v//;s/\].*//'
-# 方法 2: 从 README.md 获取
-grep "version-v" README.md | head -1 | sed 's/.*version-v//;s/"//'
 ```
 
 **scope 选项**:
