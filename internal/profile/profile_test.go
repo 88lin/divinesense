@@ -21,14 +21,14 @@ func TestAIProfileDefaults(t *testing.T) {
 	}{
 		{"AIEnabled should be false by default", "AIEnabled", "false", boolToString(profile.AIEnabled)},
 		{"AIEmbeddingProvider default", "AIEmbeddingProvider", "siliconflow", profile.AIEmbeddingProvider},
-		{"AILLMProvider default", "AILLMProvider", "deepseek", profile.AILLMProvider},
+		{"AILLMProvider default", "AILLMProvider", "anthropic", profile.AILLMProvider},
 		{"AISiliconFlowBaseURL default", "AISiliconFlowBaseURL", "https://api.siliconflow.cn/v1", profile.AISiliconFlowBaseURL},
 		{"AIDeepSeekBaseURL default", "AIDeepSeekBaseURL", "https://api.deepseek.com", profile.AIDeepSeekBaseURL},
 		{"AIOpenAIBaseURL default", "AIOpenAIBaseURL", "https://api.openai.com/v1", profile.AIOpenAIBaseURL},
 		{"AIOllamaBaseURL default", "AIOllamaBaseURL", "http://localhost:11434", profile.AIOllamaBaseURL},
 		{"AIEmbeddingModel default", "AIEmbeddingModel", "BAAI/bge-m3", profile.AIEmbeddingModel},
 		{"AIRerankModel default", "AIRerankModel", "BAAI/bge-reranker-v2-m3", profile.AIRerankModel},
-		{"AILLMModel default", "AILLMModel", "deepseek-chat", profile.AILLMModel},
+		{"AILLMModel default", "AILLMModel", "claude-opus-7-20250219", profile.AILLMModel},
 	}
 
 	for _, tt := range tests {
@@ -53,74 +53,74 @@ func TestAIProfileFromEnv(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "MEMOS_AI_ENABLED=true",
-			envVar:   "MEMOS_AI_ENABLED",
+			name:     "DIVINESENSE_AI_ENABLED=true",
+			envVar:   "DIVINESENSE_AI_ENABLED",
 			envValue: "true",
 			field:    func(p *Profile) string { return boolToString(p.AIEnabled) },
 			expected: "true",
 		},
 		{
-			name:     "MEMOS_AI_EMBEDDING_PROVIDER",
-			envVar:   "MEMOS_AI_EMBEDDING_PROVIDER",
+			name:     "DIVINESENSE_AI_EMBEDDING_PROVIDER",
+			envVar:   "DIVINESENSE_AI_EMBEDDING_PROVIDER",
 			envValue: "openai",
 			field:    func(p *Profile) string { return p.AIEmbeddingProvider },
 			expected: "openai",
 		},
 		{
-			name:     "MEMOS_AI_LLM_PROVIDER",
-			envVar:   "MEMOS_AI_LLM_PROVIDER",
-			envValue: "ollama",
+			name:     "DIVINESENSE_AI_LLM_PROVIDER",
+			envVar:   "DIVINESENSE_AI_LLM_PROVIDER",
+			envValue: "anthropic",
 			field:    func(p *Profile) string { return p.AILLMProvider },
-			expected: "ollama",
+			expected: "anthropic",
 		},
 		{
-			name:     "MEMOS_AI_SILICONFLOW_API_KEY",
-			envVar:   "MEMOS_AI_SILICONFLOW_API_KEY",
+			name:     "DIVINESENSE_AI_SILICONFLOW_API_KEY",
+			envVar:   "DIVINESENSE_AI_SILICONFLOW_API_KEY",
 			envValue: "test-key-123",
 			field:    func(p *Profile) string { return p.AISiliconFlowAPIKey },
 			expected: "test-key-123",
 		},
 		{
-			name:     "MEMOS_AI_DEEPSEEK_API_KEY",
-			envVar:   "MEMOS_AI_DEEPSEEK_API_KEY",
+			name:     "DIVINESENSE_AI_DEEPSEEK_API_KEY",
+			envVar:   "DIVINESENSE_AI_DEEPSEEK_API_KEY",
 			envValue: "deepseek-key",
 			field:    func(p *Profile) string { return p.AIDeepSeekAPIKey },
 			expected: "deepseek-key",
 		},
 		{
-			name:     "MEMOS_AI_OPENAI_API_KEY",
-			envVar:   "MEMOS_AI_OPENAI_API_KEY",
+			name:     "DIVINESENSE_AI_OPENAI_API_KEY",
+			envVar:   "DIVINESENSE_AI_OPENAI_API_KEY",
 			envValue: "openai-key",
 			field:    func(p *Profile) string { return p.AIOpenAIAPIKey },
 			expected: "openai-key",
 		},
 		{
-			name:     "MEMOS_AI_OPENAI_BASE_URL",
-			envVar:   "MEMOS_AI_OPENAI_BASE_URL",
-			envValue: "https://custom.openai.proxy/v1",
-			field:    func(p *Profile) string { return p.AIOpenAIBaseURL },
-			expected: "https://custom.openai.proxy/v1",
+			name:     "DIVINESENSE_AI_ANTHROPIC_API_KEY",
+			envVar:   "DIVINESENSE_AI_ANTHROPIC_API_KEY",
+			envValue: "anthropic-key",
+			field:    func(p *Profile) string { return p.AIAnthropicAPIKey },
+			expected: "anthropic-key",
 		},
 		{
-			name:     "MEMOS_AI_EMBEDDING_MODEL",
-			envVar:   "MEMOS_AI_EMBEDDING_MODEL",
+			name:     "DIVINESENSE_AI_EMBEDDING_MODEL",
+			envVar:   "DIVINESENSE_AI_EMBEDDING_MODEL",
 			envValue: "custom-embedding-model",
 			field:    func(p *Profile) string { return p.AIEmbeddingModel },
 			expected: "custom-embedding-model",
 		},
 		{
-			name:     "MEMOS_AI_RERANK_MODEL",
-			envVar:   "MEMOS_AI_RERANK_MODEL",
+			name:     "DIVINESENSE_AI_RERANK_MODEL",
+			envVar:   "DIVINESENSE_AI_RERANK_MODEL",
 			envValue: "custom-rerank-model",
 			field:    func(p *Profile) string { return p.AIRerankModel },
 			expected: "custom-rerank-model",
 		},
 		{
-			name:     "MEMOS_AI_LLM_MODEL",
-			envVar:   "MEMOS_AI_LLM_MODEL",
-			envValue: "gpt-4",
+			name:     "DIVINESENSE_AI_LLM_MODEL",
+			envVar:   "DIVINESENSE_AI_LLM_MODEL",
+			envValue: "claude-3-5-sonnet-20241022",
 			field:    func(p *Profile) string { return p.AILLMModel },
-			expected: "gpt-4",
+			expected: "claude-3-5-sonnet-20241022",
 		},
 	}
 
@@ -220,7 +220,7 @@ func TestIsAIEnabled(t *testing.T) {
 // Helper functions
 
 func clearAIEnvVars() {
-	prefixes := []string{"MEMOS_AI_", "DIVINESENSE_AI_"}
+	prefix := "DIVINESENSE_AI_"
 	suffixes := []string{
 		"ENABLED",
 		"EMBEDDING_PROVIDER",
@@ -232,14 +232,14 @@ func clearAIEnvVars() {
 		"OPENAI_API_KEY",
 		"OPENAI_BASE_URL",
 		"OLLAMA_BASE_URL",
+		"ANTHROPIC_API_KEY",
+		"ANTHROPIC_BASE_URL",
 		"EMBEDDING_MODEL",
 		"RERANK_MODEL",
 		"LLM_MODEL",
 	}
-	for _, prefix := range prefixes {
-		for _, suffix := range suffixes {
-			os.Unsetenv(prefix + suffix)
-		}
+	for _, suffix := range suffixes {
+		os.Unsetenv(prefix + suffix)
 	}
 }
 
