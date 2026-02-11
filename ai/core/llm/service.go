@@ -93,7 +93,7 @@ type FunctionCall struct {
 
 // Config represents LLM service configuration.
 type Config struct {
-	Provider    string // deepseek, openai, siliconflow, ollama, zai (deprecated: anthropic)
+	Provider    string // deepseek, openai, siliconflow, ollama, zai
 	Model       string // deepseek-chat, gpt-4o, claude-opus-7-20250219
 	APIKey      string
 	BaseURL     string
@@ -517,8 +517,8 @@ func (s *service) provider() string {
 		return "openai"
 	case strings.Contains(modelLower, "qwen"):
 		return "siliconflow"
-	case strings.Contains(modelLower, "claude") || strings.Contains(modelLower, "anthropic"):
-		return "anthropic"
+	case strings.Contains(modelLower, "glm"):
+		return "zai"
 	default:
 		return "llm"
 	}
