@@ -1,16 +1,21 @@
 # DivineSense with SQLite + sqlite-vec
 # This Dockerfile builds DivineSense with full AI support using SQLite and sqlite-vec
+#
+# IMPORTANT: This Dockerfile uses native compilation (not cross-compilation) because
+# CGO requires the target architecture's C libraries. When building multi-arch images,
+# docker buildx will automatically spawn separate containers for each target platform.
+#
+# Usage:
+#   docker buildx build --platform linux/amd64,linux/arm64 -t divinesense:latest .
 
-FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS backend
+FROM golang:1.25-bookworm AS backend
 WORKDIR /backend-build
 
 # Install build dependencies (including gcc for CGO)
-# Cross-compilers for both AMD64 and ARM64 to support all platform combinations
+# NOTE: Cross-compilation with CGO is complex. We use native compilation per platform.
+# For multi-arch builds, docker buildx will spawn separate builds for each platform.
 RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc \
-    gcc-aarch64-linux-gnu \
-    gcc-x86-64-linux-gnu \
     libsqlite3-dev \
     git \
     ca-certificates \
@@ -37,35 +42,24 @@ RUN if [ "$TARGETOS" = "linux" ]; then \
     fi
 
 # Build with CGO and sqlite_vec tag
+# NOTE: Cross-compilation with CGO requires target architecture's C libraries.
+# Using native compilation per platform for simplicity and reliability.
+# For multi-arch builds, use: docker buildx build --platform linux/amd64,linux/arm64
 ARG TARGETOS TARGETARCH BUILDARCH VERSION COMMIT
-# Set CC based on target architecture for cross-compilation
-# Handles all combinations: amd64→amd64, amd64→arm64, arm64→amd64, arm64→arm64
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    if [ "$BUILDARCH" = "$TARGETARCH" ]; then \
-        echo "Native compilation: BUILDARCH=$BUILDARCH, TARGETARCH=$TARGETARCH"; \
-        export CC=gcc; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        echo "Cross-compiling to ARM64"; \
-        export CC=aarch64-linux-gnu-gcc; \
-    elif [ "$TARGETARCH" = "amd64" ]; then \
-        echo "Cross-compiling to AMD64"; \
-        export CC=x86_64-linux-gnu-gcc; \
-    else \
-        echo "Unknown TARGETARCH=$TARGETARCH, using default gcc"; \
-        export CC=gcc; \
-    fi \
-    && echo "Using CC=$CC" \
+    set -x \
+    && echo "Building for TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH BUILDARCH=$BUILDARCH" \
+    && ls -la store/db/sqlite/.lib/ || echo "sqlite-vec lib not found" \
     && CGO_ENABLED=1 \
     GOOS=$TARGETOS \
     GOARCH=$TARGETARCH \
-    CC="$CC" \
     go build \
     -trimpath \
     -ldflags="-s -w" \
     -tags sqlite_vec \
     -o divinesense \
-    ./cmd/divinesense
+    ./cmd/divinesense 2>&1
 
 # Runtime image
 FROM debian:bookworm-slim AS runtime
