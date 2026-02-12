@@ -7,15 +7,16 @@
 
 ## 📖 项目简介
 
-DivineSense (神识) 是一款 AI 驱动的个人第二大脑，通过五位智能代理自动化任务、过滤高价值信息、以技术杠杆提升生产力。
+DivineSense (神识) 是一款 AI 驱动的个人第二大脑，采用 **Orchestrator-Workers 多代理架构**，通过智能代理自动化任务、过滤高价值信息、以技术杠杆提升生产力。
 
 ### 核心特性
 
-- **AI 代理系统**：五位「鹦鹉」协同工作（灰灰、时巧、折衷、极客、进化）
-- **智能路由**：四层意图分类，响应延迟 0-400ms
+- **Orchestrator-Workers 架构**：LLM 驱动的任务分解与协调
+- **专家代理 (Expert Agents)**：MemoParrot (灰灰)、ScheduleParrot (时巧) 等领域专家
+- **外部执行器**：GeekParrot (Claude Code CLI)、EvolutionParrot (自我进化)
+- **智能路由**：Cache → Rule → History → LLM，响应延迟 0-400ms
 - **混合检索**：BM25 + 向量搜索 + RRF 融合
 - **Chat Apps 集成**：支持 Telegram、钉钉、WhatsApp
-- **Geek Mode**：Claude Code CLI 集成，自动化编码
 - **单二进制部署**：极简部署，无需 Node.js/Nginx
 
 ### 技术栈
@@ -25,7 +26,7 @@ DivineSense (神识) 是一款 AI 驱动的个人第二大脑，通过五位智�
 | **后端** | Go 1.25, Echo, Connect RPC, pgvector |
 | **前端** | React 18, Vite 7, TypeScript, Tailwind CSS 4, Radix UI |
 | **数据库** | PostgreSQL 16+（生产），SQLite（开发） |
-| **AI** | DeepSeek（对话），SiliconFlow（嵌入/分类/重排） |
+| **AI** | 智谱 GLM / DeepSeek（对话），SiliconFlow（嵌入/分类/重排） |
 
 ---
 
@@ -84,12 +85,47 @@ divinesense/
 ├── cmd/divinesense/     # 应用程序入口
 ├── server/              # HTTP/gRPC 服务器 & 路由
 ├── ai/                  # AI 核心模块
+│   ├── agents/          # 代理系统
+│   │   └── orchestrator/  # Orchestrator-Workers 架构
+│   ├── routing/         # 智能路由
+│   └── core/            # LLM/嵌入核心
 ├── web/                 # React 前端应用
 ├── store/               # 数据存储层
 ├── proto/               # Protobuf 定义
+├── config/              # 配置文件（代理提示词等）
 ├── plugin/              # 插件系统
 └── deploy/              # 部署脚本
 ```
+
+### Orchestrator-Workers 架构
+
+```
+用户输入
+    ↓
+┌─────────────────────────────────────────┐
+│            Orchestrator                 │  ← LLM 驱动任务分解
+│  ┌─────────────────────────────────┐   │
+│  │  Decomposer (任务分解)           │   │
+│  │  Executor  (并行执行)            │   │
+│  │  Aggregator (结果聚合)           │   │
+│  └─────────────────────────────────┘   │
+└────────────────┬────────────────────────┘
+                 │
+        ┌────────┴────────┐
+        ↓                 ↓
+┌───────────────┐ ┌───────────────┐
+│ MemoParrot    │ │ ScheduleParrot│  ← Expert Agents (配置化)
+└───────────────┘ └───────────────┘
+```
+
+**关键文件**：
+| 文件 | 职责 |
+|:-----|:-----|
+| `ai/agents/orchestrator/orchestrator.go` | 核心编排器 |
+| `ai/agents/orchestrator/decomposer.go` | 任务分解（DAG 依赖） |
+| `ai/agents/orchestrator/executor.go` | 并行执行 |
+| `ai/agents/orchestrator/aggregator.go` | 结果聚合 |
+| `config/orchestrator/*.yaml` | 提示词配置 |
 
 ---
 
@@ -334,4 +370,4 @@ gh pr merge 456            # 合并 PR
 
 Happy Coding! 🚀
 
-*最后更新：2026-02-10*
+*最后更新：2026-02-12 (v0.99.0)*
