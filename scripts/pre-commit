@@ -3,14 +3,6 @@
 set -e
 set -o pipefail
 
-# ==================== AI Session Detection ====================
-# Skip hooks when AI is controlling git operations (it will run checks via subagent)
-if [ -n "$CLAUDE_CODE_SESSION" ] || [ -n "$AI_SESSION" ] || [ "$SKIP_HOOKS" = "1" ]; then
-    echo "🤖 AI session detected - skipping hooks"
-    echo "   → Delegate to subagent: Task(code-reviewer, 'run make check-all and fix errors')"
-    exit 0
-fi
-
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -130,8 +122,6 @@ if [ "$CHECKS_FAILED" = true ]; then
     echo ""
     echo "Fix the errors above and try again, or use:"
     echo "  git commit --no-verify -m 'message'"
-    echo ""
-    echo "🤖 AI Action: Task(general-purpose, 'fix pre-commit errors and stage changes')"
     exit 1
 fi
 
