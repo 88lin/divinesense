@@ -55,6 +55,8 @@
 | **GeekParrot** | 极客 | Claude Code CLI 集成，代码执行沙箱 |
 | **EvolutionParrot** | 进化 | 自我进化，AI 修改源代码提交 PR |
 
+> **Note**: AmazingParrot 已被 Orchestrator 替代，其职责由 Orchestrator 动态协调 Expert Agents 完成。
+
 **智能路由**：四层意图分类（Cache → Rule → History → LLM），响应延迟 0-400ms
 
 ### 搜索与检索

@@ -1,14 +1,17 @@
 # 架构文档
 
-> **保鲜状态**: ✅ 已更新 (2026-02-12) | **最后检查**: v0.99.0 (Orchestrator-Workers)
+> **保鲜状态**: ✅ 2026-02-13 | **版本**: v0.99.0 | **架构**: Orchestrator-Workers
 
 ## 项目概述
 
-DivineSense (神识) 是一款隐私优先、轻量级的笔记服务，通过 AI 驱动的「鹦鹉」代理增强用户体验。
-- **核心架构**：Go 后端 (Echo/Connect RPC) + React 前端 (Vite/Tailwind) —— **单二进制分发**
-- **数据存储**：PostgreSQL（生产环境，完整 AI 支持），SQLite（仅开发环境，**无 AI**）详见 [#9](https://github.com/hrygo/divinesense/issues/9)
-- **核心特性**：多代理 AI 系统、语义搜索、日程助理、自托管无遥测
-- **端口**：后端 28081，前端 25173，PostgreSQL 25432（开发环境）
+DivineSense (神识) 是一款隐私优先、轻量级的 AI 驱动第二大脑。
+
+| 特性 | 描述 |
+|:-----|:-----|
+| **核心架构** | Go 后端 + React 前端 —— 单二进制分发 |
+| **AI 架构** | Orchestrator-Workers 多代理 |
+| **数据存储** | PostgreSQL（生产），SQLite（开发，无 AI） |
+| **端口** | 后端 28081，前端 25173，PostgreSQL 25432 |
 
 ## 技术栈
 
@@ -297,33 +300,28 @@ git push --no-verify
 
 ### 代理类型 (`ai/agents/`)
 
-|  AgentType  | 鹦鹉名称 | 配置/文件              | 中文名 | 描述                             |
-| :---------: | :------- | :--------------------- | :----- | :------------------------------- |
-|   `AUTO`    | —        | —                      | —      | 路由标记（非鹦鹉），由后端三层路由决定使用哪只鹦鹉 |
-|   `MEMO`    | 灰灰     | `config/parrots/memo.yaml` | 灰灰   | 笔记搜索和检索专家               |
-| `SCHEDULE`  | 时巧     | `config/parrots/schedule.yaml` | 时巧 | 日程创建和管理                   |
-|  `AMAZING`  | 折衷     | `config/parrots/amazing.yaml` | 折衷 | 综合助理（笔记 + 日程）          |
-|   `GEEK`    | 极客     | `geek_parrot.go`       | 极客   | Claude Code CLI 通信层（零 LLM） |
-| `EVOLUTION` | 进化     | `evolution_parrot.go`  | 进化   | 自我进化能力（源代码修改）       |
+| AgentType | 名称 | 配置/文件 | 描述 |
+| :-------: | :--- | :-------- | :--- |
+| `AUTO` | — | — | 路由标记，由 Orchestrator 决定调用哪些 Expert |
+| `MEMO` | 灰灰 | `config/parrots/memo.yaml` | 笔记搜索专家 |
+| `SCHEDULE` | 时巧 | `config/parrots/schedule.yaml` | 日程管理专家 |
+| `GEEK` | 极客 | `geek_parrot.go` | Claude Code CLI 通信层 |
+| `EVOLUTION` | 进化 | `evolution_parrot.go` | 自我进化（源代码修改） |
 
-**说明**：
-- **鹦鹉共五只**：MEMO、SCHEDULE、AMAZING（配置驱动）、GEEK、EVOLUTION（代码实现）
-- **AUTO 不是鹦鹉**：它是前端发送给后端的特殊标记，表示"请后端路由系统决定使用哪只鹦鹉"
-- 当 `AgentType == AUTO` 时，后端触发三层路由（规则匹配 → 历史感知 → LLM 降级）
+> **Note**: AmazingParrot 已被 Orchestrator 替代。当用户请求涉及多领域时，Orchestrator 动态协调 Memo 和 Schedule Agents 并行处理。
 
 ### UniversalParrot 架构
 
 > **实现状态**: ✅ 完成 (v0.97.0) | **位置**: `ai/agents/universal/`
 
-**概述**：UniversalParrot 是配置驱动的通用代理系统，三只核心鹦鹉（MEMO、SCHEDULE、AMAZING）通过 YAML 配置文件定义，无需编写代码。
+**概述**：UniversalParrot 是配置驱动的通用代理系统，Expert Agents 通过 YAML 配置文件定义。
 
 **配置目录**：`config/parrots/`
 
 | 配置文件 | 代理名称 | 执行策略 |
 |:--------|:--------|:---------|
-| `memo.yaml` | MemoParrot | ReAct 循环（`react`） |
-| `schedule.yaml` | ScheduleParrot | 原生工具调用（`direct`） |
-| `amazing.yaml` | AmazingParrot | 两阶段规划 + 并发执行（`planning`） |
+| `memo.yaml` | MemoParrot | ReAct 循环 |
+| `schedule.yaml` | ScheduleParrot | 原生工具调用 |
 
 **核心组件**：
 
@@ -332,8 +330,8 @@ git push --no-verify
 | **UniversalParrot** | `universal_parrot.go` | 配置驱动的通用代理实现 |
 | **ParrotFactory** | `parrot_factory.go` | 从配置创建代理的工厂 |
 | **ParrotConfig** | `parrot_config.go` | 配置加载和验证 |
-| **ExecutionStrategy** | `*_executor.go` | 执行策略接口（Direct/ReAct/Planning） |
-| **ToolRegistry** | `registry/tool_registry.go` | 工具注册表（动态工具发现） |
+| **ExecutionStrategy** | `*_executor.go` | 执行策略接口 |
+| **ToolRegistry** | `registry/tool_registry.go` | 工具注册表 |
 
 **执行策略**：
 
@@ -341,7 +339,6 @@ git push --no-verify
 |:-----|:-----|:-----|:---------|
 | **DirectExecutor** | `direct_executor.go` | 原生 LLM 工具调用 | 简单工具调用 |
 | **ReActExecutor** | `react_executor.go` | 思考-行动循环 | 复杂多步任务 |
-| **PlanningExecutor** | `planning_executor.go` | 两阶段规划 + 并发 | 多工具协作 |
 
 ### 代理路由器
 
@@ -373,7 +370,7 @@ ChatRouter 实现**四层**意图分类系统：
     │  Layer 3: LLM Classifier (~400ms)   │  → 返回 JSON {intent, confidence}
     └─────────────────────────────────────┘
                   ↓
-           路由结果（MEMO/SCHEDULE/AMAZING）
+           Orchestrator（动态协调 MEMO/SCHEDULE）
 ```
 
 **Layer 0: Cache (LRU)**
@@ -727,17 +724,12 @@ RootLayout（全局导航 + 认证）
 后端（ai_service_chat.go）
     │
     ↓ GeekMode?
-    │   Yes → GeekParrot（Claude Code CLI，零 LLM）
-    │   No  ↓ ChatRouter.Route()
-    │       → 规则匹配（0ms）
-    │       → 历史感知（~10ms）
-    │       → LLM 降级（~400ms）
-    ↓
-代理执行
-    │   → GeekParrot（Claude Code CLI）
-    │   → MemoParrot（memo_search 工具）
-    │   → ScheduleParrotV2（scheduler 工具）
-    │   → AmazingParrot（并发工具）
+    │   Yes → GeekParrot（Claude Code CLI）
+    │   No  ↓ Orchestrator
+    │       → Decomposer（任务分解）
+    │       → Executor（并行执行）
+    │       → Expert Agents（Memo/Schedule）
+    │       → Aggregator（结果聚合）
     ↓
 响应流式传输
     │   → 事件类型：thinking、tool_use、tool_result、answer
@@ -844,9 +836,9 @@ pending ──▶ streaming ──▶ completed
 
 ### BlockMode 映射
 
-| BlockMode | ParrotAgentType | 用途 |
-|:----------|:----------------|:-----|
-| `normal` | `AUTO` | 普通模式，由后端三层路由决定使用哪只鹦鹉（MEMO/SCHEDULE/AMAZING） |
+| BlockMode | AgentType | 用途 |
+|:----------|:----------|:-----|
+| `normal` | `AUTO` | 普通模式，由 Orchestrator 动态协调 Expert Agents |
 | `geek` | `GEEK` | 极客模式，Claude Code CLI 代码执行 |
 | `evolution` | `EVOLUTION` | 进化模式，系统自我进化 |
 
