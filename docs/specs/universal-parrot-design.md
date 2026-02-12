@@ -1,6 +1,11 @@
 # UniversalParrot 统一架构设计文档
 
-> **版本**: v1.0 | **日期**: 2026-02-08 | **状态**: 设计阶段
+> **版本**: v1.0 | **日期**: 2026-02-08 | **状态**: ⚠️ 已废弃
+>
+> **⚠️ 重要说明**: 自 v0.99.0 起，AmazingParrot 已被 **Orchestrator-Workers 架构** 替代。
+> 本文档保留作为历史参考，新开发请参考:
+> - [Orchestrator-Workers 架构文档](../architecture/orchestrator-workers.md)
+> - [Orchestrator 调研报告](../research/orchestrator-workers-research.md)
 >
 > **目标**: 三鹦鹉统一架构，差异仅在 Prompt 和工具链
 >

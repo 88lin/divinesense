@@ -1,6 +1,11 @@
 # UniversalParrot 配置驱动架构 - Phase 7 总结
 
-> **状态**: 已完成 (Phase 1-5) | **版本**: v1.0 | **日期**: 2026-02-08
+> **状态**: ⚠️ 已废弃 | **版本**: v1.0 | **日期**: 2026-02-08
+>
+> **⚠️ 重要说明**: 自 v0.99.0 起，AmazingParrot 已被 **Orchestrator-Workers 架构** 替代。
+> 本文档保留作为历史参考。MemoParrot 和 ScheduleParrot 仍使用 UniversalParrot 框架。
+>
+> 新开发请参考: [Orchestrator-Workers 架构文档](../architecture/orchestrator-workers.md)
 
 ---
 

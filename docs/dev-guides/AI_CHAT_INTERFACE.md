@@ -1,11 +1,17 @@
 # AI Chat 界面架构
 
-> **保鲜状态**: ✅ 已验证 (2026-02-11) | **最后检查**: v0.97.0 (Anthropic 默认 LLM)
+> **保鲜状态**: ✅ 已验证 (2026-02-12) | **最后检查**: v0.99.0 (Orchestrator-Workers)
 > **关联规格**: [Unified Block Model](../specs/block-design/unified-block-model.md) | [P1-A006](../specs/block-design/P1-A006-llm-stats-collection.md)
 
 ## 概述
 
 AI Chat 界面采用 **Unified Block Model（统一块模型）** 设计，将用户输入与 AI 回复封装为一个完整的可折叠 Block。每个 Block 包含完整的对话上下文、Token 统计、成本追踪和分支信息。
+
+## v0.99.0 更新内容
+
+- **Orchestrator-Workers 架构**: 替代 AmazingParrot，支持多代理协作
+- **任务透明性**: 向用户展示任务分解和执行过程
+- **DAG 依赖支持**: 任务可以声明依赖关系
 
 ## v0.97.0 更新内容
 
