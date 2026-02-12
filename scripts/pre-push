@@ -1,6 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 # Pre-push hook - smart CI checks based on changes being pushed
 set -e
+set -o pipefail
 
 # Color output
 RED='\033[0;31m'

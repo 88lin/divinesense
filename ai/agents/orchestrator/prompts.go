@@ -126,7 +126,10 @@ func readFileWithFallback(path string) ([]byte, error) {
 	}
 
 	// Try relative to executable for production builds
-	execPath, _ := os.Executable()
+	execPath, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
 	absPath := filepath.Join(filepath.Dir(execPath), path)
 	return os.ReadFile(absPath)
 }

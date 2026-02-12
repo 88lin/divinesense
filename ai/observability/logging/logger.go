@@ -3,6 +3,7 @@ package logging
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"sync"
@@ -168,7 +169,10 @@ func (l *Logger) log(level LogLevel, msg string, args ...any) {
 	// Handle variadic args as key-value pairs
 	for i := 0; i < len(args); i += 2 {
 		if i+1 < len(args) {
-			key, _ := args[i].(string)
+			key, ok := args[i].(string)
+			if !ok {
+				key = fmt.Sprintf("arg%d", i)
+			}
 			attrs = append(attrs, slog.Any(key, args[i+1]))
 		}
 	}
@@ -178,7 +182,7 @@ func (l *Logger) log(level LogLevel, msg string, args ...any) {
 	record.AddAttrs(attrs...)
 
 	// Handle using the underlying handler
-	_ = l.handler.Handle(context.Background(), record)
+	_ = l.handler.Handle(context.Background(), record) //nolint:errcheck // logging best effort
 }
 
 // FromContext extracts the logger from context.

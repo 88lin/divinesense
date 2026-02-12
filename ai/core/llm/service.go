@@ -376,7 +376,7 @@ func (s *service) ChatStream(ctx context.Context, messages []Message) (<-chan st
 			}
 			return
 		}
-		defer func() { stream.Close() }()
+		defer func() { _ = stream.Close() }() //nolint:errcheck // cleanup
 
 		chunkCount := 0
 		var totalTokens int

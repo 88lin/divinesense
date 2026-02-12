@@ -160,7 +160,7 @@ func (tc *TimeContext) FormatAsJSONBlock() string {
 				"timezone":  "UTC",
 			},
 		}
-		data, _ = json.MarshalIndent(fallback, "  ", "  ")
+		data, _ = json.MarshalIndent(fallback, "  ", "  ") //nolint:errcheck // fallback data is safe
 	}
 	return "```json\n  " + string(data) + "\n```"
 }

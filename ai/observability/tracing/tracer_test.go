@@ -59,7 +59,7 @@ func TestTracer_StartSpan_Disabled(t *testing.T) {
 	tracer := NewTracer(false)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 
 	if span == nil {
 		t.Fatal("StartSpan() returned nil span")
@@ -76,7 +76,7 @@ func TestTracer_End(t *testing.T) {
 	tracer := NewTracer(true)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	tracer.End(span)
 
 	// After ending, current should be reset to nil
@@ -90,10 +90,10 @@ func TestTracer_End_ChildSpan(t *testing.T) {
 	ctx := context.Background()
 
 	// Start parent span
-	ctx, parent := tracer.StartSpan(ctx, "parent")
+	_, parent := tracer.StartSpan(ctx, "parent")
 
 	// Start child span
-	ctx, child := tracer.StartSpan(ctx, "child")
+	_, child := tracer.StartSpan(ctx, "child")
 
 	if tracer.current != child {
 		t.Error("tracer.current should be child span")
@@ -118,7 +118,7 @@ func TestTracer_End_Disabled(t *testing.T) {
 	tracer := NewTracer(false)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	tracer.End(span) // Should not panic
 }
 
@@ -126,7 +126,7 @@ func TestTracer_SetMetadata(t *testing.T) {
 	tracer := NewTracer(true)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	tracer.SetMetadata(span, "key", "value")
 
 	if span.metadata == nil {
@@ -141,10 +141,10 @@ func TestTracer_SetMetadata_Disabled(t *testing.T) {
 	tracer := NewTracer(false)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	tracer.SetMetadata(span, "key", "value") // Should not panic
 
-	if span.metadata != nil && len(span.metadata) > 0 {
+	if len(span.metadata) > 0 {
 		t.Error("disabled tracer should not set metadata")
 	}
 }
@@ -153,7 +153,7 @@ func TestTracer_RecordError(t *testing.T) {
 	tracer := NewTracer(true)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	testErr := errors.New("test error")
 	tracer.RecordError(span, testErr)
 
@@ -248,7 +248,7 @@ func TestWithSpan_WithError(t *testing.T) {
 		return testErr
 	})
 
-	if err != testErr {
+	if !errors.Is(err, testErr) {
 		t.Errorf("WithSpan() error = %v, want %v", err, testErr)
 	}
 

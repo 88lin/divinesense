@@ -21,18 +21,22 @@ import (
 // 类型别名，用于向后兼容
 
 // CCRunner is an alias for runner.CCRunner.
+//
 // Deprecated: Use runner.CCRunner directly.
 type CCRunner = runner.CCRunner
 
 // CCRunnerConfig is an alias for runner.Config.
+//
 // Deprecated: Use runner.Config directly.
 type CCRunnerConfig = runner.Config
 
 // DangerDetector is an alias for runner.Detector.
+//
 // Deprecated: Use runner.Detector directly.
 type DangerDetector = runner.Detector
 
 // CCSessionManager is an alias for runner.CCSessionManager.
+//
 // Deprecated: Use runner.CCSessionManager directly.
 type CCSessionManager = runner.CCSessionManager
 
@@ -203,9 +207,10 @@ func BuildSystemPrompt(workDir, sessionID string, userID int32, deviceContext st
 }
 
 // SafeCallback wraps an EventCallback to log errors instead of propagating them.
+//
 // Deprecated: Use runner.SafeCallback directly.
 func SafeCallback(callback EventCallback) runner.SafeCallbackFunc {
-	return runner.SafeCallback(runner.EventCallback(callback))
+	return runner.SafeCallback(callback)
 }
 
 // NewEventWithMeta creates a new EventWithMeta.

@@ -32,11 +32,9 @@ type embeddingService struct {
 // The actual embedding functionality has been moved to ai/core/embedding/provider.go.
 // Future refactoring will deprecate this file in favor of the core package.
 func NewEmbeddingService(cfg *EmbeddingConfig) (EmbeddingService, error) {
-	var clientConfig openai.ClientConfig
-
 	// Generic configuration for any OpenAI-compatible provider
 	// Includes siliconflow, openai, ollama, zai, dashscope, etc.
-	clientConfig = openai.DefaultConfig(cfg.APIKey)
+	clientConfig := openai.DefaultConfig(cfg.APIKey)
 	if cfg.BaseURL != "" {
 		clientConfig.BaseURL = cfg.BaseURL
 	}

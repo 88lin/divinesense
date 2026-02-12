@@ -321,10 +321,8 @@ func TestDangerDetector_GitOperations(t *testing.T) {
 				if event.Category != tt.wantCat {
 					t.Errorf("Category = %s, want %s", event.Category, tt.wantCat)
 				}
-			} else {
-				if event != nil {
-					t.Errorf("CheckInput() = non-nil, want nil (should allow)\nEvent: %+v", event)
-				}
+			} else if event != nil {
+				t.Errorf("CheckInput() = non-nil, want nil (should allow)\nEvent: %+v", event)
 			}
 		})
 	}
@@ -394,10 +392,8 @@ restart\s+-k\s+\*|Kill and restart all services|moderate|service
 				if !strings.Contains(event.Reason, tt.wantDesc) {
 					t.Errorf("Reason = %s, want contains %s", event.Reason, tt.wantDesc)
 				}
-			} else {
-				if event != nil {
-					t.Errorf("CheckInput() = non-nil, want nil (should allow)\nEvent: %+v", event)
-				}
+			} else if event != nil {
+				t.Errorf("CheckInput() = non-nil, want nil (should allow)\nEvent: %+v", event)
 			}
 		})
 	}

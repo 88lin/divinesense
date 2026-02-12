@@ -1,6 +1,7 @@
 package embedding
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -65,13 +66,12 @@ func TestNewProvider(t *testing.T) {
 				t.Errorf("NewProvider() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				if p == nil {
-					t.Error("NewProvider() returned nil provider")
-				}
-				if p.config == nil {
-					t.Error("NewProvider() returned provider with nil config")
-				}
+			if !tt.wantErr && p == nil {
+				t.Error("NewProvider() returned nil provider")
+				return
+			}
+			if !tt.wantErr && p.config == nil {
+				t.Error("NewProvider() returned provider with nil config")
 			}
 		})
 	}
@@ -126,7 +126,7 @@ func TestProvider_Validate(t *testing.T) {
 				APIKey:  tt.apiKey,
 			})
 
-			err := p.Validate(nil)
+			err := p.Validate(context.TODO())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -177,7 +177,7 @@ func TestListModels(t *testing.T) {
 	}
 
 	p, _ := NewProvider(cfg)
-	models, err := p.ListModels(nil)
+	models, err := p.ListModels(context.TODO())
 
 	if err != nil {
 		t.Fatalf("ListModels() error = %v", err)

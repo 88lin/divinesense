@@ -83,17 +83,10 @@ func TestGeekModeBuildSystemPrompt(t *testing.T) {
 		UserID    int32
 	}
 
-	cfg := &TestConfig{
-		WorkDir:   "/workspace",
-		SessionID: "session-123",
-		UserID:    42,
-	}
-
 	// Call BuildSystemPrompt - we can't use the agentpkg.CCRunnerConfig directly
 	// due to import cycle, but the method works with any struct that has
 	// the required fields. We'll test the actual method indirectly by
 	// creating a real CCRunnerConfig in a separate integration test.
-	_ = cfg // TODO: create proper test without import cycle
 	_ = mode
 }
 

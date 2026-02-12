@@ -477,10 +477,9 @@ func TestSession_close(t *testing.T) {
 		time.Sleep(150 * time.Millisecond)
 
 		// Timer should have been stopped
-		if timerFired {
-			// Timer fired before we could stop it - this is a race in the test
-			// but we can verify the session's timer reference was cleared
-		}
+		// Note: timerFired may be true due to race conditions, but we
+		// verify the timer reference was cleared below
+		_ = timerFired // Avoid SA9003: empty branch
 
 		if sess.statusResetTimer != nil {
 			t.Error("statusResetTimer not nil after close")

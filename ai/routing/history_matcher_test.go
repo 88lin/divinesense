@@ -2,6 +2,7 @@
 package routing
 
 import (
+	"context"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func TestNewHistoryMatcher(t *testing.T) {
 func TestHistoryMatcher_Match(t *testing.T) {
 	matcher := NewHistoryMatcher(nil)
 
-	result, err := matcher.Match(nil, 123, "搜索笔记")
+	result, err := matcher.Match(context.TODO(), 123, "搜索笔记")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -137,7 +138,7 @@ func TestHistoryMatcher_IntentToAgentType(t *testing.T) {
 func TestHistoryMatcher_SaveDecision(t *testing.T) {
 	matcher := NewHistoryMatcher(nil)
 
-	err := matcher.SaveDecision(nil, 123, "搜索笔记", IntentMemoSearch, true)
+	err := matcher.SaveDecision(context.TODO(), 123, "搜索笔记", IntentMemoSearch, true)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

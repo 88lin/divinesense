@@ -5,10 +5,12 @@ import (
 )
 
 // RerankResult represents a reranking result.
+//
 // Deprecated: Use reranker.Result directly.
 type RerankResult = reranker.Result
 
 // RerankerService is the reranking service interface.
+//
 // Deprecated: Use reranker.Service directly.
 type RerankerService = reranker.Service
 
