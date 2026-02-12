@@ -401,23 +401,25 @@ func convertAIConversationFromStore(c *store.AIConversation) *v1pb.AIConversatio
 		parrotId = val
 	} else {
 		// Try short format lookup ("MEMO" → "AGENT_TYPE_MEMO")
-		// Legacy: DEFAULT/CREATIVE → AMAZING
+		// AUTO → DEFAULT (Orchestrator routing)
+		// Legacy: AMAZING/DEFAULT/CREATIVE → DEFAULT (now handled by Orchestrator)
 		shortToLong := map[string]v1pb.AgentType{
 			"MEMO":     v1pb.AgentType_AGENT_TYPE_MEMO,
 			"SCHEDULE": v1pb.AgentType_AGENT_TYPE_SCHEDULE,
-			"AMAZING":  v1pb.AgentType_AGENT_TYPE_AMAZING,
-			"DEFAULT":  v1pb.AgentType_AGENT_TYPE_AMAZING, // Legacy alias
-			"CREATIVE": v1pb.AgentType_AGENT_TYPE_AMAZING, // Legacy alias
+			"AUTO":     v1pb.AgentType_AGENT_TYPE_DEFAULT, // Auto-route via Orchestrator
+			"AMAZING":  v1pb.AgentType_AGENT_TYPE_DEFAULT, // Legacy: now Orchestrator
+			"DEFAULT":  v1pb.AgentType_AGENT_TYPE_DEFAULT, // Legacy alias
+			"CREATIVE": v1pb.AgentType_AGENT_TYPE_DEFAULT, // Legacy alias
 		}
 		if val, ok := shortToLong[c.ParrotID]; ok {
 			parrotId = int32(val)
 		} else {
-			// Unknown value, log warning and fallback to AMAZING
-			slog.Default().Warn("Unknown ParrotID in conversation, falling back to AMAZING",
+			// Unknown value, log warning and fallback to DEFAULT (Orchestrator routing)
+			slog.Default().Warn("Unknown ParrotID in conversation, falling back to DEFAULT",
 				"conversation_id", c.ID,
 				"parrot_id", c.ParrotID,
 			)
-			parrotId = int32(v1pb.AgentType_AGENT_TYPE_AMAZING)
+			parrotId = int32(v1pb.AgentType_AGENT_TYPE_DEFAULT)
 		}
 	}
 

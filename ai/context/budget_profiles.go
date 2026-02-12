@@ -256,13 +256,13 @@ func (r *IntentResolver) Resolve(agentType string) string {
 	case "schedule":
 		return "schedule_create" // Default to create (can be refined with LLM)
 	case "amazing":
-		return "amazing"
+		return "default" // Legacy: amazing is deprecated, use Orchestrator
 	case "geek":
 		return "geek" // Special case: no LLM budget needed
 	case "evolution":
 		return "evolution" // Special case: maximum priority
 	case "auto":
-		return "amazing" // AUTO defaults to amazing (most versatile)
+		return "default" // AUTO routes via Orchestrator, use default budget
 	default:
 		return "default"
 	}
