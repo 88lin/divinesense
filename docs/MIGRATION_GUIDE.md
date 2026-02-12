@@ -283,4 +283,4 @@ docker exec divinesense env | grep DIVINESENSE_AI
 
 ---
 
-**最后更新**: 2026-02-11 (v0.98.0 - 移除 MEMOS_ 前缀支持)
+**最后更新**: 2026-02-12 (v0.99.0 - Orchestrator-Workers 架构)
