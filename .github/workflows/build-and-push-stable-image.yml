@@ -192,8 +192,8 @@ jobs:
       matrix:
         platform:
           - linux/amd64
-          - linux/arm/v7
-          - linux/arm64
+          # NOTE: arm64/armv7 not supported for SQLite edition due to sqlite-vec
+          # static library compatibility issues. Use PostgreSQL image for arm.
     steps:
       - uses: actions/checkout@v5
         with:
