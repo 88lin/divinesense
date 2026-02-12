@@ -1,19 +1,17 @@
 # DivineSense with SQLite + sqlite-vec
 # This Dockerfile builds DivineSense with full AI support using SQLite and sqlite-vec
 #
-# IMPORTANT: This Dockerfile uses native compilation (not cross-compilation) because
-# CGO requires the target architecture's C libraries. When building multi-arch images,
-# docker buildx will automatically spawn separate containers for each target platform.
+# IMPORTANT: sqlite-vec static linking is ONLY supported on amd64 due to upstream
+# library compatibility issues with the aarch64 static library format.
+# arm64 builds are NOT supported for the SQLite edition.
 #
 # Usage:
-#   docker buildx build --platform linux/amd64,linux/arm64 -t divinesense:latest .
+#   docker buildx build --platform linux/amd64 -t divinesense:sqlite .
 
 FROM golang:1.25-bookworm AS backend
 WORKDIR /backend-build
 
 # Install build dependencies (including gcc for CGO)
-# NOTE: Cross-compilation with CGO is complex. We use native compilation per platform.
-# For multi-arch builds, docker buildx will spawn separate builds for each platform.
 RUN apt-get update && apt-get install -y \
     build-essential \
     libsqlite3-dev \
@@ -32,25 +30,25 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
-# Download sqlite-vec static library for target platform
+# Download sqlite-vec static library (amd64 only)
 ARG TARGETOS TARGETARCH
-RUN if [ "$TARGETOS" = "linux" ]; then \
+RUN if [ "$TARGETOS" = "linux" ] && [ "$TARGETARCH" = "amd64" ]; then \
         echo "📦 Downloading sqlite-vec for Linux/$TARGETARCH..."; \
         cd store/db/sqlite && \
         GOOS=linux GOARCH=$TARGETARCH bash download_sqlite_vec.sh && \
         cd ../../../; \
+    else \
+        echo "❌ ERROR: sqlite-vec edition only supports linux/amd64. Found: $TARGETOS/$TARGETARCH"; \
+        exit 1; \
     fi
 
 # Build with CGO and sqlite_vec tag
-# NOTE: Cross-compilation with CGO requires target architecture's C libraries.
-# Using native compilation per platform for simplicity and reliability.
-# For multi-arch builds, use: docker buildx build --platform linux/amd64,linux/arm64
 ARG TARGETOS TARGETARCH BUILDARCH VERSION COMMIT
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     set -x \
     && echo "Building for TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH BUILDARCH=$BUILDARCH" \
-    && ls -la store/db/sqlite/.lib/ || echo "sqlite-vec lib not found" \
+    && ls -la store/db/sqlite/.lib/ \
     && CGO_ENABLED=1 \
     GOOS=$TARGETOS \
     GOARCH=$TARGETARCH \
