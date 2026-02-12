@@ -1,6 +1,5 @@
 import type { Location, Memo, Visibility } from "@/types/proto/api/v1/memo_service_pb";
-import type { EditorRefActions } from "../Editor";
-import type { Command } from "../Editor/commands";
+import type { EditorRefActions } from "./editor";
 import type { LocationState } from "./insert-menu";
 
 export interface MemoEditorProps {
@@ -20,8 +19,16 @@ export interface EditorContentProps {
 }
 
 export interface EditorToolbarProps {
-  onSave: () => void;
+  onSave?: () => void;
   onCancel?: () => void;
+  onUploadAttachment?: () => void;
+  onLinkMemo?: () => void;
+  onToggleFocusMode?: () => void;
+  onVisibilityChange?: (visibility: import("@/types/proto/api/v1/memo_service_pb").Visibility) => void;
+  onOpenMobileTools?: () => void;
+  onInsertTags?: (tags: string[]) => void;
+  onFormatContent?: (formattedContent: string) => void;
+  currentVisibility?: import("@/types/proto/api/v1/memo_service_pb").Visibility;
   memoName?: string;
 }
 
@@ -78,7 +85,14 @@ export interface TagSuggestionsProps {
 export interface SlashCommandsProps {
   editorRef: React.RefObject<HTMLTextAreaElement>;
   editorActions: React.ForwardedRef<EditorRefActions>;
-  commands: Command[];
+  commands: unknown[];
+}
+
+export interface CompactEditorProps {
+  placeholder?: string;
+  onSave?: () => void;
+  onExpand?: () => void;
+  keyboardHeight?: number;
 }
 
 export interface EditorProps {
@@ -86,15 +100,28 @@ export interface EditorProps {
   initialContent: string;
   placeholder: string;
   onContentChange: (content: string) => void;
-  onPaste: (event: React.ClipboardEvent) => void;
-  isFocusMode?: boolean;
-  isInIME?: boolean;
+  // biome-ignore lint/suspicious/noExplicitAny: Event types from textarea
+  onPaste: (event: any) => void;
+  // biome-ignore lint/suspicious/noExplicitAny: KeyboardEvent from textarea
+  onKeyDown?: (e: any) => void;
   onCompositionStart?: () => void;
   onCompositionEnd?: () => void;
+  // biome-ignore lint/suspicious/noExplicitAny: Ref types vary
+  ref?: React.RefObject<any>;
 }
 
 export interface VisibilitySelectorProps {
   value: Visibility;
   onChange: (visibility: Visibility) => void;
   onOpenChange?: (open: boolean) => void;
+}
+
+export interface MobileToolsSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUploadFile: () => void;
+  onLinkMemo: () => void;
+  onAddLocation: () => void;
+  onVisibilityChange: (visibility: Visibility) => void;
+  keyboardHeight?: number;
 }

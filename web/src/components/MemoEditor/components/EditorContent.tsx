@@ -1,52 +1,20 @@
 import { forwardRef } from "react";
-import Editor, { type EditorRefActions } from "../Editor";
-import { useBlobUrls, useDragAndDrop } from "../hooks";
-import { useEditorContext } from "../state";
+import type { EnhancedEditorRefActions } from "../core/editor-types";
+import { useDragAndDrop } from "../hooks";
 import type { EditorContentProps } from "../types";
-import type { LocalFile } from "../types/attachment";
+import { EditorWithPlugins } from "./EditorWithPlugins";
 
-export const EditorContent = forwardRef<EditorRefActions, EditorContentProps>(({ placeholder }, ref) => {
-  const { state, actions, dispatch } = useEditorContext();
-  const { createBlobUrl } = useBlobUrls();
-
-  const { dragHandlers } = useDragAndDrop((files: FileList) => {
-    const localFiles: LocalFile[] = Array.from(files).map((file) => ({
-      file,
-      previewUrl: createBlobUrl(file),
-    }));
-    localFiles.forEach((localFile) => dispatch(actions.addLocalFile(localFile)));
-  });
-
-  const handleCompositionStart = () => {
-    dispatch(actions.setComposing(true));
+export const EditorContent = forwardRef<EnhancedEditorRefActions, EditorContentProps>(({ placeholder }, ref) => {
+  // Handle file drops (no-op for now, can be implemented later)
+  const handleDrop = (_files: FileList) => {
+    // TODO: implement file drop handling
   };
 
-  const handleCompositionEnd = () => {
-    dispatch(actions.setComposing(false));
-  };
-
-  const handleContentChange = (content: string) => {
-    dispatch(actions.updateContent(content));
-  };
-
-  const handlePaste = () => {
-    // Paste handling is managed by the Editor component internally
-  };
+  const dragHandlers = useDragAndDrop(handleDrop);
 
   return (
-    <div className="w-full flex flex-col flex-1" {...dragHandlers}>
-      <Editor
-        ref={ref}
-        className="memo-editor-content"
-        initialContent={state.content}
-        placeholder={placeholder || ""}
-        isFocusMode={state.ui.isFocusMode}
-        isInIME={state.ui.isComposing}
-        onContentChange={handleContentChange}
-        onPaste={handlePaste}
-        onCompositionStart={handleCompositionStart}
-        onCompositionEnd={handleCompositionEnd}
-      />
+    <div className="w-full flex flex-col flex-1 relative" {...dragHandlers.dragHandlers}>
+      <EditorWithPlugins ref={ref} placeholder={placeholder ?? ""} />
     </div>
   );
 });

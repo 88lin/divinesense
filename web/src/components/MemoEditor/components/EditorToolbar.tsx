@@ -1,246 +1,138 @@
-/**
- * EditorToolbar - 禅意工具栏 (ZenToolbar)
- *
- * 设计哲学：「禅意智识」
- * - 不折叠：所有功能直观呈现
- * - 呼吸感：与 logo 同步的 3000ms 呼吸周期
- * - 留白：4px 基础间距单位
- * - 响应式：PC 水平布局 / 移动两行布局
- *
- * ## 设计规范
- * - 按钮尺寸：PC 36×36px / 移动 40×40px
- * - 圆角：统一 rounded-xl (12px)
- * - 动画：300ms ease-out
- */
-
-import React, { memo, useCallback, useEffect, useState } from "react";
+import { Globe, Link2, Loader2, Lock, type LucideIcon, MapPin, Maximize2, Paperclip, Shield, Sparkles } from "lucide-react";
+import type { FC } from "react";
+import { forwardRef, lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { useReverseGeocoding } from "@/components/map";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import VisibilityIcon from "@/components/VisibilityIcon";
+import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import type { MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import { TOOLBAR_BUTTON_STYLES } from "../constants";
 import { useFileUpload, useLinkMemo, useLocation } from "../hooks";
-import { validationService } from "../services";
 import { useEditorContext } from "../state";
 import type { EditorToolbarProps } from "../types";
 import type { LocalFile } from "../types/attachment";
-import { LinkMemoDialog } from ".";
+import { AIFormatButton } from "./AIFormatButton";
+import { AITagButton } from "./AITagButton";
+import { LinkMemoDialog } from "./LinkMemoDialog";
+import { VisibilityToggleGroup } from "./VisibilityToggleGroup";
 
 // Lazy load LocationDialog
-const LocationDialog = React.lazy(() => import(".").then((module) => ({ default: module.LocationDialog })));
+const LocationDialog = lazy(() => import("./LocationDialog").then((module) => ({ default: module.LocationDialog })));
 
 // ============================================================================
-// 常量
+// Constants
 // ============================================================================
 
 const BREATH_DURATION = 3000; // 与 logo-breathe-gentle 同步
 
+const VISIBILITY_CYCLE: Visibility[] = [Visibility.PRIVATE, Visibility.PROTECTED, Visibility.PUBLIC];
+
 // ============================================================================
-// 子组件
+// VisibilityCycleButton - 移动端可见性循环切换按钮
 // ============================================================================
 
-interface ToolButtonProps {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  shortcut?: string;
-  isActive?: boolean;
-  isLoading?: boolean;
-  isDisabled?: boolean;
-  tooltipSide?: "top" | "bottom" | "left" | "right";
-  onClick: () => void;
-  className?: string;
-  children?: React.ReactNode;
+interface VisibilityCycleButtonProps {
+  value: Visibility;
+  onChange: (value: Visibility) => void;
 }
 
-const ToolButton = memo(function ToolButton({
-  icon: Icon,
-  label,
-  shortcut,
-  isActive = false,
-  isLoading = false,
-  isDisabled = false,
-  tooltipSide = "top",
-  onClick,
-  className,
-  children,
-}: ToolButtonProps) {
-  const [isHovered, setIsHovered] = useState(false);
+const VisibilityCycleButton: FC<VisibilityCycleButtonProps> = ({ value, onChange }) => {
+  const t = useTranslate();
+
+  const { icon: Icon, label } = useMemo(() => {
+    switch (value) {
+      case Visibility.PRIVATE:
+        return { icon: Lock, label: t("memo.visibility.private") };
+      case Visibility.PROTECTED:
+        return { icon: Shield, label: t("memo.visibility.protected") };
+      case Visibility.PUBLIC:
+        return { icon: Globe, label: t("memo.visibility.public") };
+      default:
+        return { icon: Lock, label: t("memo.visibility.private") };
+    }
+  }, [value, t]);
+
+  const cycleVisibility = () => {
+    const currentIndex = VISIBILITY_CYCLE.indexOf(value);
+    const nextIndex = (currentIndex + 1) % VISIBILITY_CYCLE.length;
+    onChange(VISIBILITY_CYCLE[nextIndex]);
+  };
 
   return (
     <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>
         <button
           type="button"
-          onClick={onClick}
-          disabled={isDisabled || isLoading}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
+          onClick={cycleVisibility}
           className={cn(
-            "relative group",
-            // 响应式尺寸：移动端稍大
-            "h-9 w-9 sm:h-10 sm:w-10",
-            "rounded-xl",
-            "transition-all duration-300 ease-out",
-            // 状态
-            isActive ? "bg-primary/10 text-primary shadow-inner" : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-            isDisabled && "opacity-40 cursor-not-allowed",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-            className,
+            "h-9 w-9 rounded-xl flex items-center justify-center",
+            "text-muted-foreground hover:text-foreground",
+            "hover:bg-muted/50 active:scale-95",
+            "transition-all duration-200",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
           )}
           aria-label={label}
         >
-          {/* 呼吸光晕 */}
-          {(isHovered || isActive) && !isDisabled && (
-            <span
-              className="absolute inset-0 rounded-xl bg-primary/10 animate-pulse"
-              style={{ animationDuration: `${BREATH_DURATION}ms` }}
-            />
-          )}
-
-          {/* 加载中 */}
-          {isLoading ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : (
-            <Icon className="h-4 w-4 relative z-10" />
-          )}
-
-          {children}
+          <Icon className="w-4 h-4" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side={tooltipSide} className="flex items-center gap-2">
-        <span>{label}</span>
-        {shortcut && <kbd className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">{shortcut}</kbd>}
+      <TooltipContent side="top">
+        <p>{label}</p>
       </TooltipContent>
     </Tooltip>
   );
-});
-
-interface VisibilitySelectorProps {
-  value: Visibility;
-  onChange: (value: Visibility) => void;
-}
-
-const VISIBILITY_OPTIONS = [
-  { value: Visibility.PRIVATE, label: "memo.visibility.private" },
-  { value: Visibility.PROTECTED, label: "memo.visibility.protected" },
-  { value: Visibility.PUBLIC, label: "memo.visibility.public" },
-] as const;
-
-const VisibilitySelector = memo(function VisibilitySelector({ value, onChange }: VisibilitySelectorProps) {
-  const t = useTranslate();
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // 获取当前可见性文本
-  const getCurrentLabel = () => {
-    if (value === Visibility.PRIVATE) return t("memo.visibility.private");
-    if (value === Visibility.PROTECTED) return t("memo.visibility.protected");
-    return t("memo.visibility.public");
-  };
-
-  return (
-    <div className="relative" onMouseEnter={() => setIsExpanded(true)} onMouseLeave={() => setIsExpanded(false)}>
-      {/* 展开面板 */}
-      {isExpanded && (
-        <div
-          className={cn(
-            "absolute bottom-full left-1/2 -translate-x-1/2 mb-2",
-            "flex items-center gap-1 p-1",
-            "rounded-xl bg-background border border-border/50 shadow-lg",
-            "animate-in fade-in slide-in-from-bottom-1 duration-200 z-50",
-          )}
-        >
-          {VISIBILITY_OPTIONS.map((option) => {
-            const isSelected = value === option.value;
-            return (
-              <Tooltip key={option.value} delayDuration={200}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onChange(option.value)}
-                    className={cn(
-                      "h-9 w-9 rounded-lg flex items-center justify-center",
-                      "transition-all duration-200",
-                      isSelected ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                    )}
-                  >
-                    <VisibilityIcon visibility={option.value} className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{t(option.label)}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 当前选择按钮 */}
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => {
-              const currentIndex = VISIBILITY_OPTIONS.findIndex((opt) => opt.value === value);
-              const nextIndex = (currentIndex + 1) % VISIBILITY_OPTIONS.length;
-              onChange(VISIBILITY_OPTIONS[nextIndex].value);
-            }}
-            className={cn(
-              "h-9 sm:h-10 w-9 sm:w-10",
-              "rounded-xl flex items-center justify-center",
-              "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-              "transition-all duration-300",
-            )}
-          >
-            <VisibilityIcon visibility={value} className="h-4 w-4" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          <div className="flex items-center gap-2">
-            <span>{getCurrentLabel()}</span>
-            <span className="text-muted-foreground text-xs">→ 点击切换</span>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
-});
+};
 
 // ============================================================================
-// 主组件
+// EditorToolbar Component
 // ============================================================================
 
-export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, memoName }) => {
+/**
+ * EditorToolbar - 禅意智识风格的编辑器工具栏
+ *
+ * 设计基因来自 HeroSection：
+ * - 统一圆角：rounded-xl
+ * - 微交互：hover:scale-105 active:scale-95
+ * - 呼吸感：subtle transitions
+ * - 视觉层次：分组清晰的工具栏
+ * - 响应式：
+ *   - PC: [📎][📍][🔗] | [✨AI标签][🪄格式化] | Spacer | [🔒][👥][🌐] | [⛶] | [Save]
+ *   - Mobile: [📎][📍][🔗] | [✨AI][🪄] | [🔒] | [Save]
+ */
+export const EditorToolbar: FC<EditorToolbarProps> = ({
+  onSave,
+  onCancel,
+  onLinkMemo,
+  onToggleFocusMode,
+  onVisibilityChange,
+  onInsertTags,
+  onFormatContent,
+  memoName,
+}) => {
   const t = useTranslate();
+  const lg = useMediaQuery("lg");
   const { state, actions, dispatch } = useEditorContext();
-  const { valid } = validationService.canSave(state);
 
+  const hasCancel = !!onCancel;
+  const hasContent = state.content.trim().length > 0;
   const isSaving = state.ui.isLoading.saving;
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+
+  // Location dialog state
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
 
-  // 文件上传
+  // Link memo dialog state
+  const [linkMemoDialogOpen, setLinkMemoDialogOpen] = useState(false);
+
+  // File upload hook
   const { fileInputRef, selectingFlag, handleFileInputChange, handleUploadClick } = useFileUpload((newFiles: LocalFile[]) => {
     newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
   });
 
-  // 链接笔记
-  const linkMemo = useLinkMemo({
-    isOpen: linkDialogOpen,
-    currentMemoName: memoName,
-    existingRelations: state.metadata.relations,
-    onAddRelation: (relation: MemoRelation) => {
-      const relations = state.metadata.relations.some((r) => r.relatedMemo?.name === relation.relatedMemo?.name)
-        ? state.metadata.relations
-        : [...state.metadata.relations, relation];
-      dispatch(actions.setMetadata({ relations }));
-      setLinkDialogOpen(false);
-    },
-  });
-
-  // 位置
+  // Location hook
   const location = useLocation(state.metadata.location);
   const [debouncedPosition, setDebouncedPosition] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
@@ -252,6 +144,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
     [location.state.position],
   );
 
+  // Reverse geocoding for location display name
   const { data: displayName } = useReverseGeocoding(debouncedPosition?.lat, debouncedPosition?.lng);
 
   useEffect(() => {
@@ -260,9 +153,24 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
     }
   }, [displayName, location]);
 
+  // Link memo hook
+  const linkMemo = useLinkMemo({
+    isOpen: linkMemoDialogOpen,
+    currentMemoName: memoName,
+    existingRelations: state.metadata.relations,
+    onAddRelation: (relation: MemoRelation) => {
+      dispatch(actions.addRelation(relation));
+      setLinkMemoDialogOpen(false);
+    },
+  });
+
   const isUploading = selectingFlag || state.ui.isLoading.uploading;
 
-  // 处理函数
+  const handleSave = () => {
+    onSave?.();
+  };
+
+  // Location handlers
   const handleLocationClick = useCallback(() => {
     setLocationDialogOpen(true);
     if (!state.metadata.location && !location.locationInitialized) {
@@ -280,7 +188,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
         );
       }
     }
-  }, [state.metadata.location, location, location.locationInitialized]);
+  }, [state.metadata.location, location]);
 
   const handleLocationConfirm = useCallback(() => {
     const newLocation = location.getLocation();
@@ -288,7 +196,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
       dispatch(actions.setMetadata({ location: newLocation }));
       setLocationDialogOpen(false);
     }
-  }, [location, dispatch]);
+  }, [location, dispatch, actions]);
 
   const handleLocationCancel = useCallback(() => {
     location.reset();
@@ -302,281 +210,109 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
     [location],
   );
 
-  const handleToggleFocusMode = useCallback(() => {
-    dispatch(actions.toggleFocusMode());
-  }, [dispatch]);
-
-  const handleVisibilityChange = useCallback(
-    (visibility: Visibility) => {
-      dispatch(actions.setMetadata({ visibility }));
-    },
-    [dispatch],
-  );
-
   return (
     <>
-      {/* 桌面端工具栏 */}
-      <div className="hidden sm:flex items-center justify-between gap-3">
-        {/* 左侧：插入功能 */}
-        <div className="flex items-center gap-1">
-          <ToolButton
-            icon={({ className }) => (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={className}
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            )}
-            label={t("common.upload")}
-            isLoading={isUploading}
+      <div className="w-full flex items-center justify-between gap-2 sm:gap-3 px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 backdrop-blur-sm">
+        {/* Left: Tool buttons group + AI tags */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Upload attachment - always visible */}
+          <ToolbarButton
+            icon={Paperclip}
+            ariaLabel={t("editor.add-attachment")}
+            tooltip={t("editor.add-attachment")}
             onClick={handleUploadClick}
+            isLoading={isUploading}
           />
 
-          <ToolButton
-            icon={({ className }) => (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={className}
-              >
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            )}
-            label={t("tooltip.link-memo")}
-            onClick={() => setLinkDialogOpen(true)}
-          />
-
-          <ToolButton
-            icon={({ className }) => (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={className}
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-            )}
-            label={t("tooltip.select-location")}
-            isActive={!!state.metadata.location}
+          {/* Location button - now visible on both desktop and mobile */}
+          <ToolbarButton
+            icon={MapPin}
+            ariaLabel={t("editor.add-location")}
+            tooltip={t("editor.add-location")}
             onClick={handleLocationClick}
+            isActive={!!state.metadata.location}
           />
 
-          <ToolButton
-            icon={({ className }) => (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={className}
-              >
-                <polyline points="15 3 21 3 21 9" />
-                <polyline points="9 21 3 21 3 15" />
-                <line x1="21" x2="14" y1="3" y2="10" />
-                <line x1="3" x2="10" y1="21" y2="14" />
-              </svg>
-            )}
-            label={t("editor.focus-mode")}
-            shortcut="⌘⇧F"
-            onClick={handleToggleFocusMode}
-          />
+          {/* Link memo button - both desktop and mobile */}
+          {onLinkMemo && (
+            <ToolbarButton
+              icon={Link2}
+              ariaLabel={t("editor.link-memo")}
+              tooltip={t("editor.link-memo")}
+              onClick={() => setLinkMemoDialogOpen(true)}
+            />
+          )}
+
+          {/* Divider */}
+          {(onInsertTags || onFormatContent) && <div className="w-px h-5 bg-border/50 mx-1" />}
+
+          {/* AI Tag button - both desktop and mobile */}
+          {onInsertTags && <AITagButton content={state.content} onInsertTags={onInsertTags} compact={!lg} />}
+
+          {/* AI Format button - both desktop and mobile */}
+          {onFormatContent && <AIFormatButton content={state.content} onFormat={onFormatContent} compact={!lg} />}
         </div>
 
-        {/* 右侧：可见性 + 操作 */}
-        <div className="flex items-center gap-1">
-          <VisibilitySelector value={state.metadata.visibility} onChange={handleVisibilityChange} />
+        {/* Right: Settings and action buttons */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Visibility: PC = button group, Mobile = cycle button */}
+          {onVisibilityChange &&
+            (lg ? (
+              <VisibilityToggleGroup value={state.metadata.visibility} onChange={onVisibilityChange} />
+            ) : (
+              <VisibilityCycleButton value={state.metadata.visibility} onChange={onVisibilityChange} />
+            ))}
 
-          {onCancel && (
+          {/* Focus mode button - Desktop only */}
+          {lg && onToggleFocusMode && (
+            <ToolbarButton
+              icon={Maximize2}
+              ariaLabel={t("editor.focus-mode")}
+              tooltip={t("editor.focus-mode")}
+              onClick={onToggleFocusMode}
+            />
+          )}
+
+          {/* Save button - styled with breathing effect when has content */}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!hasContent || isSaving}
+            className={cn(
+              "shrink-0 h-9 px-4 min-w-[64px] rounded-xl transition-all duration-300",
+              "hover:scale-105 active:scale-95",
+              "text-sm font-medium",
+              isSaving
+                ? "bg-muted text-muted-foreground"
+                : hasContent
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
+            )}
+            aria-label={t("editor.save")}
+          >
+            {isSaving ? (
+              <Sparkles className="w-4 h-4 opacity-50 animate-pulse mx-auto" />
+            ) : (
+              <span>{memoName ? t("common.update") : t("editor.save")}</span>
+            )}
+          </button>
+
+          {/* Cancel button - when cancel callback exists */}
+          {hasCancel && (
             <Button
               variant="ghost"
               size="sm"
+              className="h-9 px-4 rounded-xl hover:bg-accent/60 active:scale-95 transition-all duration-200 text-sm font-medium"
               onClick={onCancel}
-              disabled={isSaving}
-              className="h-9 px-3 text-muted-foreground hover:text-foreground"
             >
               {t("common.cancel")}
             </Button>
           )}
-
-          <Button onClick={onSave} disabled={!valid || isSaving} className="h-9 px-4">
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                {t("common.saving")}
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                {t("editor.save")}
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-3.5 w-3.5"
-                >
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 11 22" />
-                </svg>
-              </span>
-            )}
-          </Button>
         </div>
       </div>
 
-      {/* 移动端工具栏 */}
-      <div className="sm:hidden flex flex-col gap-2">
-        {/* 第一行：插入功能 */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
-            <ToolButton
-              icon={({ className }) => (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={className}
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-              )}
-              label={t("common.upload")}
-              isLoading={isUploading}
-              onClick={handleUploadClick}
-            />
-
-            <ToolButton
-              icon={({ className }) => (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={className}
-                >
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
-              )}
-              label={t("tooltip.link-memo")}
-              onClick={() => setLinkDialogOpen(true)}
-            />
-
-            <ToolButton
-              icon={({ className }) => (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={className}
-                >
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-              )}
-              label={t("tooltip.select-location")}
-              isActive={!!state.metadata.location}
-              onClick={handleLocationClick}
-            />
-
-            <ToolButton
-              icon={({ className }) => (
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={className}
-                >
-                  <polyline points="15 3 21 3 21 9" />
-                  <polyline points="9 21 3 21 3 15" />
-                  <line x1="21" x2="14" y1="3" y2="10" />
-                  <line x1="3" x2="10" y1="21" y2="14" />
-                </svg>
-              )}
-              label={t("editor.focus-mode")}
-              onClick={handleToggleFocusMode}
-            />
-          </div>
-
-          <VisibilitySelector value={state.metadata.visibility} onChange={handleVisibilityChange} />
-        </div>
-
-        {/* 第二行：操作按钮 */}
-        <div className="flex items-center justify-end gap-2">
-          {onCancel && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onCancel}
-              disabled={isSaving}
-              className="h-10 px-4 text-muted-foreground hover:text-foreground"
-            >
-              {t("common.cancel")}
-            </Button>
-          )}
-
-          <Button onClick={onSave} disabled={!valid || isSaving} className="h-10 px-4">
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                {t("common.saving")}
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                {t("editor.save")}
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                >
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 11 22" />
-                </svg>
-              </span>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* 隐藏的文件输入 */}
+      {/* Hidden file input */}
       <input
         className="hidden"
         ref={fileInputRef}
@@ -587,10 +323,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
         accept="*"
       />
 
-      {/* 链接笔记对话框 */}
+      {/* Link Memo Dialog */}
       <LinkMemoDialog
-        open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
+        open={linkMemoDialogOpen}
+        onOpenChange={setLinkMemoDialogOpen}
         searchText={linkMemo.searchText}
         onSearchChange={linkMemo.setSearchText}
         filteredMemos={linkMemo.filteredMemos}
@@ -598,9 +334,9 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
         onSelectMemo={linkMemo.addMemoRelation}
       />
 
-      {/* 位置选择对话框 */}
+      {/* Location Dialog */}
       {locationDialogOpen && (
-        <React.Suspense fallback={null}>
+        <Suspense fallback={null}>
           <LocationDialog
             open={locationDialogOpen}
             onOpenChange={setLocationDialogOpen}
@@ -612,8 +348,75 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({ onSave, onCancel, 
             onCancel={handleLocationCancel}
             onConfirm={handleLocationConfirm}
           />
-        </React.Suspense>
+        </Suspense>
       )}
     </>
   );
 };
+
+// ============================================================================
+// ToolbarButton - Enhanced tool button with micro-interactions and Tooltip
+// ============================================================================
+
+interface ToolbarButtonProps {
+  icon: LucideIcon;
+  ariaLabel: string;
+  tooltip?: string;
+  onClick?: () => void;
+  className?: string;
+  isActive?: boolean;
+  isLoading?: boolean;
+}
+
+const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
+  ({ icon: Icon, ariaLabel, tooltip, onClick, className, isActive = false, isLoading = false }, ref) => {
+    const [isHovered, setIsHovered] = useState(false);
+
+    const button = (
+      <button
+        ref={ref}
+        type="button"
+        onClick={onClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        disabled={isLoading}
+        className={cn(
+          TOOLBAR_BUTTON_STYLES.base,
+          TOOLBAR_BUTTON_STYLES.ghost,
+          "relative group",
+          "h-9 w-9 rounded-xl",
+          "flex items-center justify-center",
+          isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+          isLoading && "opacity-50 cursor-not-allowed",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+          "transition-all duration-300 ease-out",
+          className,
+        )}
+        aria-label={ariaLabel}
+      >
+        {/* 呼吸光晕 - hover 时显示 */}
+        {(isHovered || isActive) && !isLoading && (
+          <span className="absolute inset-0 rounded-xl bg-primary/10 animate-pulse" style={{ animationDuration: `${BREATH_DURATION}ms` }} />
+        )}
+        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4 relative z-10" />}
+      </button>
+    );
+
+    if (tooltip) {
+      return (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return button;
+  },
+);
+
+ToolbarButton.displayName = "ToolbarButton";
+
+EditorToolbar.displayName = "EditorToolbar";

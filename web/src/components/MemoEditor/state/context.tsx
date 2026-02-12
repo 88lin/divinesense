@@ -1,5 +1,7 @@
 import { createContext, type Dispatch, type FC, type PropsWithChildren, useContext, useMemo, useReducer } from "react";
+import type { EditorRefActions } from "../types/editor";
 import { editorActions } from "./actions";
+import { Editor } from "./Editor";
 import { editorReducer } from "./reducer";
 import type { EditorAction, EditorState } from "./types";
 import { initialState } from "./types";
@@ -38,3 +40,6 @@ export const EditorProvider: FC<EditorProviderProps> = ({ children, initialEdito
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 };
+
+export { Editor };
+export type { EditorRefActions };
