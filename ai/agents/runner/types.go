@@ -124,6 +124,7 @@ type Config struct {
 }
 
 // CCRunnerConfig is an alias for Config for backward compatibility.
+//
 // Deprecated: Use Config directly.
 type CCRunnerConfig = Config
 

@@ -41,42 +41,52 @@ type DangerDetector = runner.Detector
 type CCSessionManager = runner.CCSessionManager
 
 // Session is an alias for runner.Session.
+//
 // Deprecated: Use runner.Session directly.
 type Session = runner.Session
 
 // SessionStatus is an alias for runner.SessionStatus.
+//
 // Deprecated: Use runner.SessionStatus directly.
 type SessionStatus = runner.SessionStatus
 
 // SessionManager is an alias for runner.SessionManager.
+//
 // Deprecated: Use runner.SessionManager directly.
 type SessionManager = runner.SessionManager
 
 // StreamMessage is an alias for runner.StreamMessage.
+//
 // Deprecated: Use runner.StreamMessage directly.
 type StreamMessage = runner.StreamMessage
 
 // EventCallback is an alias for runner.EventCallback.
+//
 // Deprecated: Use runner.EventCallback directly.
 type EventCallback = runner.EventCallback
 
 // EventMeta is an alias for runner.EventMeta.
+//
 // Deprecated: Use runner.EventMeta directly.
 type EventMeta = runner.EventMeta
 
 // EventWithMeta is an alias for runner.EventWithMeta.
+//
 // Deprecated: Use runner.EventWithMeta directly.
 type EventWithMeta = runner.EventWithMeta
 
 // SessionStats is an alias for runner.SessionStats.
+//
 // Deprecated: Use runner.SessionStats directly.
 type SessionStats = runner.SessionStats
 
 // SessionStatsData is an alias for runner.SessionStatsData.
+//
 // Deprecated: Use runner.SessionStatsData directly.
 type SessionStatsData = runner.SessionStatsData
 
 // AgentSessionStatsForStorage is an alias for runner.AgentSessionStatsForStorage.
+//
 // Deprecated: Use runner.AgentSessionStatsForStorage directly.
 type AgentSessionStatsForStorage = runner.AgentSessionStatsForStorage
 
@@ -108,38 +118,47 @@ func NewParrotStreamAdapter(send func(eventType string, eventData any) error) *P
 }
 
 // DangerLevel is an alias for runner.DangerLevel.
+//
 // Deprecated: Use runner.DangerLevel directly.
 type DangerLevel = runner.DangerLevel
 
 // DangerBlockEvent is an alias for runner.DangerBlockEvent.
+//
 // Deprecated: Use runner.DangerBlockEvent directly.
 type DangerBlockEvent = runner.DangerBlockEvent
 
 // ProcessingPhase is an alias for runner.ProcessingPhase.
+//
 // Deprecated: Use runner.ProcessingPhase directly.
 type ProcessingPhase = runner.ProcessingPhase
 
 // PhaseChangeEvent is an alias for runner.PhaseChangeEvent.
+//
 // Deprecated: Use runner.PhaseChangeEvent directly.
 type PhaseChangeEvent = runner.PhaseChangeEvent
 
 // ProgressEvent is an alias for runner.ProgressEvent.
+//
 // Deprecated: Use runner.ProgressEvent directly.
 type ProgressEvent = runner.ProgressEvent
 
 // SafeCallbackFunc is an alias for runner.SafeCallbackFunc.
+//
 // Deprecated: Use runner.SafeCallbackFunc directly.
 type SafeCallbackFunc = runner.SafeCallbackFunc
 
 // ContentBlock is an alias for runner.ContentBlock.
+//
 // Deprecated: Use runner.ContentBlock directly.
 type ContentBlock = runner.ContentBlock
 
 // AssistantMessage is an alias for runner.AssistantMessage.
+//
 // Deprecated: Use runner.AssistantMessage directly.
 type AssistantMessage = runner.AssistantMessage
 
 // UsageStats is an alias for runner.UsageStats.
+//
 // Deprecated: Use runner.UsageStats directly.
 type UsageStats = runner.UsageStats
 
@@ -177,30 +196,35 @@ const (
 // 函数别名，用于向后兼容
 
 // NewCCRunner creates a new CCRunner instance.
+//
 // Deprecated: Use runner.NewCCRunner directly.
 func NewCCRunner(timeout time.Duration, logger *slog.Logger) (*CCRunner, error) {
 	return runner.NewCCRunner(timeout, logger)
 }
 
 // NewDangerDetector creates a new danger detector.
+//
 // Deprecated: Use runner.NewDetector directly.
 func NewDangerDetector(logger *slog.Logger) *DangerDetector {
 	return runner.NewDetector(logger)
 }
 
 // NewCCSessionManager creates a new session manager.
+//
 // Deprecated: Use runner.NewCCSessionManager directly.
 func NewCCSessionManager(logger *slog.Logger, timeout time.Duration) *CCSessionManager {
 	return runner.NewCCSessionManager(logger, timeout)
 }
 
 // ConversationIDToSessionID converts a database ConversationID to a SessionID.
+//
 // Deprecated: Use runner.ConversationIDToSessionID directly.
 func ConversationIDToSessionID(conversationID int64) string {
 	return runner.ConversationIDToSessionID(conversationID)
 }
 
 // BuildSystemPrompt provides context for Claude Code CLI.
+//
 // Deprecated: Use runner.BuildSystemPrompt directly.
 func BuildSystemPrompt(workDir, sessionID string, userID int32, deviceContext string) string {
 	return runner.BuildSystemPrompt(workDir, sessionID, userID, deviceContext)
@@ -214,12 +238,14 @@ func SafeCallback(callback EventCallback) runner.SafeCallbackFunc {
 }
 
 // NewEventWithMeta creates a new EventWithMeta.
+//
 // Deprecated: Use runner.NewEventWithMeta directly.
 func NewEventWithMeta(eventType, eventData string, meta *EventMeta) *EventWithMeta {
 	return runner.NewEventWithMeta(eventType, eventData, meta)
 }
 
 // TruncateString truncates a string to a maximum length for logging.
+//
 // Deprecated: Use runner.TruncateString directly.
 func TruncateString(s string, maxLen int) string {
 	return runner.TruncateString(s, maxLen)

@@ -396,10 +396,12 @@ func (d DangerLevel) String() string {
 }
 
 // DangerDetector is an alias for Detector for backward compatibility.
+//
 // Deprecated: Use Detector directly.
 type DangerDetector = Detector
 
 // NewDangerDetector is an alias for NewDetector for backward compatibility.
+//
 // Deprecated: Use NewDetector directly.
 func NewDangerDetector(logger *slog.Logger) *Detector {
 	return NewDetector(logger)

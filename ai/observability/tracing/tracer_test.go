@@ -169,7 +169,7 @@ func TestTracer_RecordError_NilError(t *testing.T) {
 	tracer := NewTracer(true)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	tracer.RecordError(span, nil) // Should not panic
 
 	if _, ok := span.metadata["error"]; ok {
@@ -181,7 +181,7 @@ func TestTracer_RecordError_Disabled(t *testing.T) {
 	tracer := NewTracer(false)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
 	testErr := errors.New("test error")
 	tracer.RecordError(span, testErr) // Should not panic
 
@@ -298,7 +298,8 @@ func TestSpan_Duration(t *testing.T) {
 	tracer := NewTracer(true)
 	ctx := context.Background()
 
-	ctx, span := tracer.StartSpan(ctx, "test-span")
+	_, span := tracer.StartSpan(ctx, "test-span")
+	_ = ctx // ctx is unused but StartSpan returns it
 
 	// Simulate some work
 	time.Sleep(10 * time.Millisecond)
