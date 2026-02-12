@@ -331,11 +331,13 @@ func (r *AdaptiveRetriever) memoBM25Only(ctx context.Context, opts *RetrievalOpt
 	}
 
 	// 执行 BM25 搜索
+	// Note: MinScore=0 means no filtering - rely on DB's ORDER BY score DESC + LIMIT
+	// This is best practice since DB already returns most relevant results
 	bm25Results, err := r.store.BM25Search(ctx, &store.BM25SearchOptions{
-		UserID:   opts.UserID,
-		Query:    opts.Query,
-		Limit:    limit,
-		MinScore: 0.1,
+		UserID: opts.UserID,
+		Query:  opts.Query,
+		Limit:  limit,
+		// MinScore: 0 (default) - no post-filter needed
 	})
 	if err != nil {
 		opts.Logger.ErrorContext(ctx, "BM25 search failed",
