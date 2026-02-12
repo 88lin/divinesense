@@ -583,6 +583,10 @@
         "synthesizing": "综合"
       },
       "timeRemaining": "剩余 {{time}}"
+    },
+    "pending_queue": {
+      "title": "{{count}} 条待发送消息",
+      "clear_all": "取消全部"
     }
   },
   "auth": {
@@ -1044,6 +1048,16 @@
       "tool-completed": "完成",
       "updating-schedule": "正在更新日程...",
       "using-tool": "使用工具"
+    },
+    "orchestrator": {
+      "analysis": "任务分析",
+      "parallelExecution": "并行执行中",
+      "sequentialExecution": "顺序执行中",
+      "completed": "完成",
+      "taskPending": "等待中",
+      "taskRunning": "执行中",
+      "taskCompleted": "已完成",
+      "taskFailed": "失败"
     },
     "batch": {
       "confirm-create": "确认创建",

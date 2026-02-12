@@ -588,6 +588,10 @@
         "synthesizing": "Synthesizing"
       },
       "timeRemaining": "{{time}} left"
+    },
+    "pending_queue": {
+      "title": "{{count}} pending messages",
+      "clear_all": "Clear all"
     }
   },
   "auth": {
@@ -1049,6 +1053,16 @@
       "tool-completed": "Done",
       "updating-schedule": "Updating schedule...",
       "using-tool": "Using tool"
+    },
+    "orchestrator": {
+      "analysis": "Task Analysis",
+      "parallelExecution": "Executing in parallel",
+      "sequentialExecution": "Executing sequentially",
+      "completed": "completed",
+      "taskPending": "Pending",
+      "taskRunning": "Running",
+      "taskCompleted": "Completed",
+      "taskFailed": "Failed"
     },
     "batch": {
       "confirm-create": "Confirm Create",
