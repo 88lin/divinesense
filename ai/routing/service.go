@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,9 @@ type Service struct {
 	cache             *RouterCache // Performance optimization: cache routing decisions
 	feedbackCollector *FeedbackCollector
 	weightStorage     RouterWeightStorage
+	registry          *IntentRegistry // OCP-compliant intent registry
+	modelStrategy     ModelStrategy   // OCP-compliant model selection
+	bgWg              sync.WaitGroup  // WaitGroup for background goroutines
 }
 
 // Config contains the configuration for the router service.
@@ -23,14 +27,40 @@ type Config struct {
 	EnableCache    bool                // Enable routing result cache (default: true)
 	WeightStorage  RouterWeightStorage // Storage for dynamic weights (optional)
 	EnableFeedback bool                // Enable feedback-based weight adjustment (default: true)
+	Registry       *IntentRegistry     // Intent registry for OCP-compliant routing (DIP: inject instead of global)
+	ModelStrategy  ModelStrategy       // Model selection strategy (DIP: inject instead of constructor call)
+}
+
+// DefaultConfig returns a Config with sensible defaults.
+// This provides backward compatibility for callers that don't need custom configuration.
+func DefaultConfig() Config {
+	return Config{
+		EnableCache:    true,
+		EnableFeedback: true,
+		Registry:       DefaultRegistry(),
+		ModelStrategy:  NewDefaultModelStrategy(),
+	}
 }
 
 // NewService creates a new router service.
+// DIP-compliant: dependencies are injected via Config, not created internally.
 func NewService(cfg Config) *Service {
+	// Apply defaults for nil dependencies (backward compatibility)
+	registry := cfg.Registry
+	if registry == nil {
+		registry = DefaultRegistry()
+	}
+	modelStrategy := cfg.ModelStrategy
+	if modelStrategy == nil {
+		modelStrategy = NewDefaultModelStrategy()
+	}
+
 	svc := &Service{
 		ruleMatcher:    NewRuleMatcher(),
 		historyMatcher: NewHistoryMatcher(nil), // No memory service
 		weightStorage:  cfg.WeightStorage,
+		registry:       registry,
+		modelStrategy:  modelStrategy,
 	}
 
 	// Enable cache by default for performance
@@ -133,7 +163,9 @@ func (s *Service) saveToHistoryAsync(userID int32, input string, intent Intent) 
 	if s.historyMatcher == nil || userID <= 0 || intent == IntentUnknown {
 		return
 	}
+	s.bgWg.Add(1)
 	go func() {
+		defer s.bgWg.Done()
 		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := s.historyMatcher.SaveDecision(bgCtx, userID, input, intent, true); err != nil {
@@ -142,60 +174,20 @@ func (s *Service) saveToHistoryAsync(userID int32, input string, intent Intent) 
 	}()
 }
 
+// Shutdown waits for background tasks to complete.
+// Call this before service termination to ensure graceful shutdown.
+func (s *Service) Shutdown() {
+	s.bgWg.Wait()
+}
+
 // Returns: model configuration (local/cloud).
 func (s *Service) SelectModel(ctx context.Context, task TaskType) (ModelConfig, error) {
-	// Model selection strategy based on task complexity
-	switch task {
-	case TaskIntentClassification:
-		return ModelConfig{
-			Provider:    "local",
-			Model:       "qwen2.5-0.5b",
-			MaxTokens:   256,
-			Temperature: 0.1,
-		}, nil
-	case TaskEntityExtraction:
-		return ModelConfig{
-			Provider:    "local",
-			Model:       "qwen2.5-1.5b",
-			MaxTokens:   512,
-			Temperature: 0.2,
-		}, nil
-	case TaskSimpleQA:
-		return ModelConfig{
-			Provider:    "local",
-			Model:       "qwen2.5-3b",
-			MaxTokens:   1024,
-			Temperature: 0.3,
-		}, nil
-	case TaskComplexReasoning:
-		return ModelConfig{
-			Provider:    "cloud",
-			Model:       "deepseek-chat",
-			MaxTokens:   4096,
-			Temperature: 0.5,
-		}, nil
-	case TaskSummarization:
-		return ModelConfig{
-			Provider:    "cloud",
-			Model:       "deepseek-chat",
-			MaxTokens:   2048,
-			Temperature: 0.3,
-		}, nil
-	case TaskTagSuggestion:
-		return ModelConfig{
-			Provider:    "local",
-			Model:       "qwen2.5-1.5b",
-			MaxTokens:   256,
-			Temperature: 0.4,
-		}, nil
-	default:
-		return ModelConfig{
-			Provider:    "cloud",
-			Model:       "deepseek-chat",
-			MaxTokens:   2048,
-			Temperature: 0.5,
-		}, nil
+	// Use strategy for OCP-compliant model selection
+	if s.modelStrategy != nil {
+		return s.modelStrategy.SelectModel(ctx, task)
 	}
+	// Fallback to default
+	return DefaultFallbackModel(), nil
 }
 
 // userIDContextKey is the context key for user ID.

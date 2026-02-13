@@ -216,14 +216,20 @@ jobs:
           cache: true
 
       - name: Install protoc
-        run: |
-          curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v28.4/protoc-28.4-linux-x86_64.zip
-          unzip protoc-28.4-linux-x86_64.zip -d /usr/local
-          protoc --version
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "28.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate and check
+        working-directory: proto
         run: |
-          make generate
+          buf generate
           if ! git diff --quiet; then
             echo "Generated files differ from committed files"
             git diff
