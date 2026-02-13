@@ -1,25 +1,23 @@
 /**
- * MemoBlockV2 - "Fluid Card" Design for AI-Native Note Taking
+ * MemoBlockV3 - "Sticky Note" Design DNA
  *
- * ## Design Philosophy
- * - Content-first: UI gets out of the way
- * - Gesture-driven: Swipe actions on mobile
- * - Progressive disclosure: Summary → Content → Actions
- * - AI-aware: Subtle visual cues for AI features
+ * 设计哲学：「彩色便签纸」
+ * - Apple Notes 风格彩色背景
+ * - 标签自动映射颜色
+ * - 微妙折角效果
+ * - **保留 V2 所有能力**：折叠展开、Markdown渲染、滑动手势、任务操作
  *
- * ## Key Features
+ * ## Key Features (继承自 V2)
  * - Swipe gestures (mobile): left to archive, right to delete
  * - Long-press for quick actions menu
  * - Expand/collapse with spring animation
- * - Contextual AI chip (when AI is relevant)
- * - Adaptive layout: 2-column grid on desktop, single on mobile
+ * - MemoView for Markdown rendering (展开时)
+ * - Task list actions
  *
- * ## UX Improvements (v2.1)
- * - Click-outside to close dropdown
- * - Proper dropdown positioning with boundary detection
- * - Synced collapse/expand state across all controls
- * - Better mobile touch handling
- * - Smooth animations and transitions
+ * ## New in V3
+ * - Tag-based color mapping (6 color palette)
+ * - Paper-like shadow and fold effect
+ * - 200-char smart preview (折叠时)
  */
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -55,43 +53,24 @@ import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { hasCompletedTasks, removeCompletedTasks } from "@/utils/markdown-manipulation";
+import { getMemoColorClasses } from "@/utils/tag-colors";
+import { generatePreview } from "@/utils/text";
 
 // ============================================================================
-// Design Tokens
+// Types
 // ============================================================================
 
-const FLUID_THEME = {
-  // Card states
-  card: {
-    base: "bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl",
-    hover: "hover:bg-white dark:hover:bg-zinc-900",
-    border: "border-zinc-200/70 dark:border-zinc-800/70",
-    shadow: "shadow-sm hover:shadow-sm transition-all duration-200",
-  },
-  // Typography
-  text: {
-    primary: "text-zinc-900 dark:text-zinc-100",
-    secondary: "text-zinc-500 dark:text-zinc-400",
-    muted: "text-zinc-400 dark:text-zinc-500",
-  },
-  // Accents
-  accent: {
-    primary: "text-violet-600 dark:text-violet-400",
-    bg: "bg-violet-500/10",
-    border: "border-violet-200 dark:border-violet-800/50",
-  },
-  // Status indicators
-  status: {
-    pinned: "text-amber-500",
-    archived: "text-zinc-400",
-    ai: "text-violet-500",
-  },
-  // Motion
-  spring: {
-    default: "transition-all duration-200 ease-out",
-  },
-} as const;
+export interface MemoBlockV3Props {
+  memo: Memo;
+  isLatest?: boolean;
+  onEdit?: (memo: Memo) => void;
+  className?: string;
+}
+
+type QuickAction = "pin" | "archive" | "delete" | "copy" | "share";
+type SwipeDirection = "left" | "right" | null;
 
 // ============================================================================
 // Utilities
@@ -105,31 +84,17 @@ function formatRelativeTime(timestamp: number, t: (key: string, options?: Record
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
 
-  if (diffMins < 1) return "now";
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h`;
+  if (diffMins < 1) return t("common.now");
+  if (diffMins < 60) return t("common.minutes-ago", { count: diffMins });
+  if (diffMins < 1440) return t("common.hours-ago", { count: Math.floor(diffMins / 60) });
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface MemoBlockV2Props {
-  memo: Memo;
-  isLatest?: boolean;
-  onEdit?: (memo: Memo) => void;
-  className?: string;
-}
-
-type QuickAction = "pin" | "archive" | "delete" | "copy" | "share";
-type SwipeDirection = "left" | "right" | null;
 
 // ============================================================================
 // Main Component
 // ============================================================================
 
-export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, onEdit, className }: MemoBlockV2Props) {
+export const MemoBlockV3 = memo(function MemoBlockV3({ memo, isLatest = false, onEdit, className }: MemoBlockV3Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigateTo = useNavigateTo();
@@ -138,10 +103,13 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
   const { mutateAsync: updateMemo } = useUpdateMemo();
   const { mutateAsync: deleteMemo } = useDeleteMemo();
 
-  const memoId = memo.name.split("/").pop() || memo.name;
   const isInMemoDetailPage = location.pathname.startsWith(`/${memo.name}`);
   const hasCompletedTaskList = hasCompletedTasks(memo.content);
   const isArchived = memo.state === State.ARCHIVED;
+  const tags = memo.tags || [];
+
+  // Get color scheme based on tags
+  const colorClasses = useMemo(() => getMemoColorClasses(tags), [tags]);
 
   // States
   const [isExpanded, setIsExpanded] = useState(() => {
@@ -157,16 +125,21 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
   const cardRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; right: number } | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
 
   // Persist collapse state
   useEffect(() => {
+    const memoId = memo.name.split("/").pop() || memo.name;
     try {
       localStorage.setItem(`memo-block-collapsed-${memoId}`, String(!isExpanded));
     } catch {
-      // ignore
+      // localStorage unavailable (private browsing, quota exceeded, etc.)
+      // Non-critical: collapse state won't persist across sessions
     }
-  }, [memoId, isExpanded]);
+  }, [memo.name, isExpanded]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -202,7 +175,6 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
       const rect = dropdownButtonRef.current.getBoundingClientRect();
       setDropdownPosition({
         top: rect.bottom + 4,
-        left: rect.left,
         right: window.innerWidth - rect.right,
       });
     } else {
@@ -223,10 +195,13 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
         update: { name: memo.name, pinned: !memo.pinned },
         updateMask: ["pinned"],
       });
-    } catch {
-      // silent
+    } catch (error: unknown) {
+      handleError(error, toast.error, {
+        context: "Pin",
+        fallbackMessage: t("message.failed-toggle-pin"),
+      });
     }
-  }, [memo.name, memo.pinned, updateMemo]);
+  }, [memo.name, memo.pinned, updateMemo, t]);
 
   const handleToggleArchive = useCallback(async () => {
     const newState = memo.state === State.ARCHIVED ? State.NORMAL : State.ARCHIVED;
@@ -241,7 +216,7 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
     } catch (error: unknown) {
       handleError(error, toast.error, {
         context: newState === State.ARCHIVED ? "Archive" : "Restore",
-        fallbackMessage: "An error occurred",
+        fallbackMessage: t("message.error-occurred"),
       });
       return;
     }
@@ -270,20 +245,34 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
   }, [memo.name, t, profile.instanceUrl]);
 
   const confirmDelete = useCallback(async () => {
-    await deleteMemo(memo.name);
-    toast.success(t("message.deleted-successfully"));
-    if (isInMemoDetailPage) navigateTo("/");
-    queryClient.invalidateQueries({ queryKey: userKeys.stats() });
+    try {
+      await deleteMemo(memo.name);
+      toast.success(t("message.deleted-successfully"));
+      if (isInMemoDetailPage) navigateTo("/");
+      queryClient.invalidateQueries({ queryKey: userKeys.stats() });
+    } catch (error: unknown) {
+      handleError(error, toast.error, {
+        context: "Delete",
+        fallbackMessage: t("message.failed-to-delete"),
+      });
+    }
   }, [memo.name, t, isInMemoDetailPage, navigateTo, queryClient, deleteMemo]);
 
   const handleRemoveTasks = useCallback(async () => {
-    const newContent = removeCompletedTasks(memo.content);
-    await updateMemo({
-      update: { name: memo.name, content: newContent },
-      updateMask: ["content"],
-    });
-    toast.success(t("message.remove-completed-task-list-items-successfully"));
-    queryClient.invalidateQueries({ queryKey: userKeys.stats() });
+    try {
+      const newContent = removeCompletedTasks(memo.content);
+      await updateMemo({
+        update: { name: memo.name, content: newContent },
+        updateMask: ["content"],
+      });
+      toast.success(t("message.remove-completed-task-list-items-successfully"));
+      queryClient.invalidateQueries({ queryKey: userKeys.stats() });
+    } catch (error: unknown) {
+      handleError(error, toast.error, {
+        context: "RemoveTasks",
+        fallbackMessage: t("message.failed-remove-tasks"),
+      });
+    }
   }, [memo.name, memo.content, t, queryClient, updateMemo]);
 
   // Touch handlers for swipe gestures
@@ -315,8 +304,7 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
 
   // Memo metadata
   const previewText = useMemo(() => {
-    const firstLine = memo.content.split("\n")[0];
-    return firstLine.length > 120 ? firstLine.slice(0, 120) + "..." : firstLine;
+    return generatePreview(memo.content, { maxLength: 120 });
   }, [memo.content]);
 
   const relativeTime = useMemo(() => {
@@ -326,31 +314,46 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
 
   const visibilityLabel = useMemo(() => {
     switch (memo.visibility) {
-      case 1:
-        return "Public";
-      case 2:
-        return "Protected";
+      case Visibility.PUBLIC:
+        return t("memo.visibility.public");
+      case Visibility.PROTECTED:
+        return t("memo.visibility.protected");
       default:
-        return "Private";
+        return t("memo.visibility.private");
     }
-  }, [memo.visibility]);
+  }, [memo.visibility, t]);
 
-  // Quick actions menu - only show actions not visible in footer
+  // Quick actions menu
   const quickActions = useMemo(() => {
-    const actions: Array<{ key: QuickAction; icon: typeof Edit3; label: string; action: () => void; danger?: boolean }> = [];
+    const actions: Array<{
+      key: QuickAction;
+      icon: typeof Edit3;
+      label: string;
+      action: () => void;
+      danger?: boolean;
+    }> = [];
 
-    // Archive/Restore (always in dropdown, not in footer)
     if (!isArchived) {
-      actions.push({ key: "archive", icon: Archive, label: "Archive", action: handleToggleArchive });
+      actions.push({ key: "archive", icon: Archive, label: t("common.archive"), action: handleToggleArchive });
     } else {
-      actions.push({ key: "archive", icon: ArchiveRestore, label: "Restore", action: handleToggleArchive });
+      actions.push({
+        key: "archive",
+        icon: ArchiveRestore,
+        label: t("common.restore"),
+        action: handleToggleArchive,
+      });
     }
 
-    // Delete (always in dropdown, not in footer)
-    actions.push({ key: "delete", icon: Trash2, label: "Delete", action: () => setDeleteDialogOpen(true), danger: true });
+    actions.push({
+      key: "delete",
+      icon: Trash2,
+      label: t("common.delete"),
+      action: () => setDeleteDialogOpen(true),
+      danger: true,
+    });
 
     return actions;
-  }, [isArchived, handleToggleArchive]);
+  }, [isArchived, handleToggleArchive, t]);
 
   return (
     <>
@@ -359,9 +362,12 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
         className={cn(
           // Base card styles
           "group relative rounded-lg overflow-hidden",
-          FLUID_THEME.card.base,
-          FLUID_THEME.card.border,
-          FLUID_THEME.card.shadow,
+          // Sticky note background
+          colorClasses.bg,
+          "border",
+          colorClasses.border,
+          // Paper shadow
+          "shadow-sm hover:shadow-md transition-all duration-200",
           // Swipe indicators
           swipeDirection === "left" && "bg-amber-50/95 dark:bg-amber-950/20",
           swipeDirection === "right" && "bg-red-50/95 dark:bg-red-950/20",
@@ -371,6 +377,9 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* Fold corner effect */}
+        <div className="sticky-note-corner" />
+
         {/* Swipe action hints (mobile) */}
         {swipeDirection && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/5 backdrop-blur-sm animate-in fade-in">
@@ -382,13 +391,23 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
                   : "text-red-600 bg-red-100 dark:bg-red-900/30",
               )}
             >
-              {swipeDirection === "left" ? "Archive →" : "← Delete"}
+              {swipeDirection === "left" ? t("memo.swipe_archive") : t("memo.swipe_delete")}
             </span>
           </div>
         )}
 
+        {/* Status indicator line */}
+        <div
+          className={cn(
+            "absolute left-0 top-0 bottom-0 w-1 rounded-l-lg transition-colors",
+            memo.pinned && "bg-amber-500",
+            memo.state === State.ARCHIVED && "bg-zinc-300 dark:bg-zinc-700",
+            !memo.pinned && memo.state !== State.ARCHIVED && "bg-transparent",
+          )}
+        />
+
         {/* Main content */}
-        <div className={FLUID_THEME.spring.default}>
+        <div className="transition-all duration-200 ease-out">
           {/* Compact Header - Always visible */}
           <MemoCompactHeader
             memo={memo}
@@ -398,12 +417,13 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
             isExpanded={isExpanded}
             onToggle={handleToggle}
             isArchived={isArchived}
+            colorClasses={colorClasses}
           />
 
-          {/* Expandable Content */}
+          {/* Expandable Content - Markdown Rendering */}
           {isExpanded && (
             <div className="px-5 pb-4 animate-in slide-in-from-top-2 duration-200">
-              <div className="border-t border-zinc-200/60 dark:border-zinc-800/60 pt-4">
+              <div className="border-t border-current/10 pt-4">
                 <MemoView
                   memo={memo}
                   showVisibility={false}
@@ -419,9 +439,13 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
               {hasCompletedTaskList && !isArchived && !memo.parent && (
                 <button
                   onClick={handleRemoveTasks}
-                  className="mt-4 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors px-3 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  className={cn(
+                    "mt-4 text-xs transition-colors px-3 py-1.5 rounded-lg",
+                    "hover:bg-black/5 dark:hover:bg-white/10",
+                    colorClasses.muted,
+                  )}
                 >
-                  ✓ Clear completed tasks
+                  {t("memo.clear_completed_tasks")}
                 </button>
               )}
             </div>
@@ -445,18 +469,9 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
             dropdownRef={dropdownRef}
             dropdownButtonRef={dropdownButtonRef}
             dropdownPosition={dropdownPosition}
+            colorClasses={colorClasses}
           />
         </div>
-
-        {/* Status indicator line */}
-        <div
-          className={cn(
-            "absolute left-0 top-0 bottom-0 w-1 transition-colors",
-            memo.pinned && "bg-amber-500",
-            memo.state === State.ARCHIVED && "bg-zinc-300 dark:bg-zinc-700",
-            !memo.pinned && memo.state !== State.ARCHIVED && "bg-transparent",
-          )}
-        />
       </div>
 
       {/* Delete confirmation */}
@@ -474,7 +489,7 @@ export const MemoBlockV2 = memo(function MemoBlockV2({ memo, isLatest = false, o
   );
 });
 
-MemoBlockV2.displayName = "MemoBlockV2";
+MemoBlockV3.displayName = "MemoBlockV3";
 
 // ============================================================================
 // Sub-components
@@ -488,9 +503,21 @@ interface MemoCompactHeaderProps {
   isExpanded: boolean;
   onToggle: () => void;
   isArchived: boolean;
+  colorClasses: { text: string; muted: string; tag: string };
 }
 
-function MemoCompactHeader({ memo, previewText, relativeTime, visibilityLabel, isExpanded, onToggle, isArchived }: MemoCompactHeaderProps) {
+function MemoCompactHeader({
+  memo,
+  previewText,
+  relativeTime,
+  visibilityLabel,
+  isExpanded,
+  onToggle,
+  isArchived,
+  colorClasses,
+}: MemoCompactHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-start gap-3 p-4">
       {/* Icon indicator - clickable for toggle */}
@@ -501,44 +528,39 @@ function MemoCompactHeader({ memo, previewText, relativeTime, visibilityLabel, i
           "hover:scale-105 active:scale-95",
           memo.pinned
             ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50"
-            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700",
+            : "bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20",
+          colorClasses.text,
         )}
-        aria-label={isExpanded ? "Collapse" : "Expand"}
+        aria-label={isExpanded ? t("common.collapse") : t("common.expand")}
       >
         {memo.pinned ? <Pin className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
       </button>
 
       {/* Content preview - clickable for toggle */}
       <button onClick={onToggle} className="flex-1 min-w-0 text-left">
-        <p
-          className={cn(
-            "text-sm leading-relaxed text-left w-full",
-            isArchived ? "text-zinc-400 line-through" : FLUID_THEME.text.primary,
-            "hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors",
-          )}
-        >
+        <p className={cn("text-sm leading-relaxed text-left w-full", isArchived && "line-through opacity-60", colorClasses.text)}>
           {previewText}
         </p>
 
         {/* Metadata row */}
         <div className="flex items-center gap-2.5 mt-2 text-xs">
-          <span className={FLUID_THEME.text.muted}>{relativeTime}</span>
+          <span className={colorClasses.muted}>{relativeTime}</span>
           <span
             className={cn(
               "px-2 py-0.5 rounded-full text-[11px] font-medium",
-              memo.visibility === 1
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                : memo.visibility === 2
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+              memo.visibility === Visibility.PUBLIC
+                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                : memo.visibility === Visibility.PROTECTED
+                  ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                  : "bg-black/10 text-zinc-600 dark:text-zinc-400",
             )}
           >
             {visibilityLabel}
           </span>
           {memo.parent && (
-            <span className="flex items-center gap-1 text-zinc-400">
+            <span className={cn("flex items-center gap-1", colorClasses.muted)}>
               <MessageCircle className="w-3 h-3" />
-              Comment
+              {t("memo.comment_label")}
             </span>
           )}
         </div>
@@ -549,11 +571,11 @@ function MemoCompactHeader({ memo, previewText, relativeTime, visibilityLabel, i
         onClick={onToggle}
         className={cn(
           "p-2 rounded-lg transition-all shrink-0",
-          "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100",
-          "dark:text-zinc-500 dark:hover:text-zinc-300 dark:hover:bg-zinc-800",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50",
+          "hover:bg-black/5 dark:hover:bg-white/10",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/30",
+          colorClasses.muted,
         )}
-        aria-label={isExpanded ? "Collapse" : "Expand"}
+        aria-label={isExpanded ? t("common.collapse") : t("common.expand")}
       >
         {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
       </button>
@@ -583,7 +605,8 @@ interface MemoCompactFooterProps {
   onQuickMenuToggle: () => void;
   dropdownRef: React.RefObject<HTMLDivElement>;
   dropdownButtonRef: React.RefObject<HTMLButtonElement>;
-  dropdownPosition: { top: number; left: number; right: number } | null;
+  dropdownPosition: { top: number; right: number } | null;
+  colorClasses: { muted: string };
 }
 
 function MemoCompactFooter({
@@ -603,55 +626,68 @@ function MemoCompactFooter({
   dropdownRef,
   dropdownButtonRef,
   dropdownPosition,
+  colorClasses,
 }: MemoCompactFooterProps) {
+  const { t } = useTranslation();
+
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-t border-zinc-200/60 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/30">
+    <div
+      className={cn("flex items-center justify-between px-4 py-2.5", "border-t border-current/10", "bg-black/[0.02] dark:bg-white/[0.02]")}
+    >
       {/* Left: Collapse/Expand indicator */}
       <button
         onClick={onToggle}
         className={cn(
-          "flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200",
-          "transition-colors px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800",
+          "flex items-center gap-2 text-xs transition-colors px-2 py-1 rounded-lg",
+          "hover:bg-black/5 dark:hover:bg-white/10",
+          colorClasses.muted,
         )}
       >
         {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        <span className="hidden sm:inline">{isExpanded ? "Show less" : "Show more"}</span>
+        <span className="hidden sm:inline">{isExpanded ? t("memo.show-less") : t("memo.show-more")}</span>
       </button>
 
       {/* Right: Primary actions */}
       <div className="flex items-center gap-0.5">
         {/* Edit button - always visible when not archived */}
-        {!isArchived && <ActionButton icon={Edit3} label="Edit" onClick={onEdit} />}
+        {!isArchived && <ActionButton icon={Edit3} label={t("common.edit")} onClick={onEdit} colorClasses={colorClasses} />}
 
         {/* Pin button - visible for root memos */}
         {!memo.parent && !isArchived && (
           <ActionButton
             icon={memo.pinned ? PinOff : Pin}
-            label={memo.pinned ? "Unpin" : "Pin"}
+            label={memo.pinned ? t("common.unpin") : t("common.pin")}
             onClick={onTogglePin}
+            colorClasses={colorClasses}
             className={memo.pinned ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20" : undefined}
           />
         )}
 
         {/* Copy button */}
-        {!isArchived && <ActionButton icon={Copy} label="Copy" onClick={onCopy} />}
+        {!isArchived && <ActionButton icon={Copy} label={t("common.copy")} onClick={onCopy} colorClasses={colorClasses} />}
 
         {/* Share button - if available */}
         {!isArchived && typeof navigator !== "undefined" && "share" in navigator && (
-          <ActionButton icon={Share2} label="Share" onClick={onShare} />
+          <ActionButton icon={Share2} label={t("common.share")} onClick={onShare} colorClasses={colorClasses} />
         )}
 
         {/* Desktop (sm+): Show Archive button directly */}
         <div className="hidden sm:block">
-          <ActionButton icon={isArchived ? ArchiveRestore : Archive} label={isArchived ? "Restore" : "Archive"} onClick={onToggleArchive} />
+          <ActionButton
+            icon={isArchived ? ArchiveRestore : Archive}
+            label={isArchived ? t("common.restore") : t("common.archive")}
+            onClick={onToggleArchive}
+            colorClasses={colorClasses}
+          />
         </div>
 
         {/* Desktop (sm+): Show Delete button directly */}
         <div className="hidden sm:block">
           <ActionButton
             icon={Trash2}
-            label="Delete"
+            label={t("common.delete")}
             onClick={onDelete}
+            colorClasses={colorClasses}
             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
           />
         </div>
@@ -660,16 +696,16 @@ function MemoCompactFooter({
         <div className="sm:hidden relative">
           <ActionButton
             icon={Ellipsis}
-            label="More actions"
+            label={t("memo.more_actions")}
             onClick={onQuickMenuToggle}
+            colorClasses={colorClasses}
             isActive={quickMenuOpen}
-            className={quickMenuOpen ? "bg-zinc-200 dark:bg-zinc-700" : undefined}
             buttonRef={dropdownButtonRef}
           />
         </div>
       </div>
 
-      {/* Mobile only: Dropdown menu - rendered via Portal to avoid overflow clipping */}
+      {/* Mobile only: Dropdown menu - rendered via Portal */}
       {quickMenuOpen &&
         dropdownPosition &&
         createPortal(
@@ -684,17 +720,16 @@ function MemoCompactFooter({
             )}
             style={{
               top: `${dropdownPosition.top}px`,
-              left: "auto",
               right: `${dropdownPosition.right}px`,
             }}
           >
             {/* Header with close button */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Actions</span>
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t("memo.actions")}</span>
               <button
                 onClick={() => onQuickMenuToggle()}
                 className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                aria-label="Close menu"
+                aria-label={t("common.close")}
               >
                 <X className="w-3.5 h-3.5 text-zinc-400" />
               </button>
@@ -729,27 +764,33 @@ function MemoCompactFooter({
   );
 }
 
+// ============================================================================
+// Action Button Component
+// ============================================================================
+
 interface ActionButtonProps {
   icon: typeof Edit3;
   label: string;
   onClick: () => void;
+  colorClasses: { muted: string };
   className?: string;
   isActive?: boolean;
   buttonRef?: React.RefObject<HTMLButtonElement>;
 }
 
-function ActionButton({ icon: Icon, label, onClick, className, isActive, buttonRef }: ActionButtonProps) {
+function ActionButton({ icon: Icon, label, onClick, colorClasses, className, isActive, buttonRef }: ActionButtonProps) {
   return (
     <button
+      type="button"
       ref={buttonRef}
       onClick={onClick}
       className={cn(
         "p-2 rounded-lg transition-all duration-150",
-        "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200",
-        "hover:bg-zinc-100 dark:hover:bg-zinc-800",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50",
+        colorClasses.muted,
+        "hover:bg-black/5 dark:hover:bg-white/10",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/30",
         "active:scale-95",
-        isActive && "bg-zinc-200 dark:bg-zinc-800",
+        isActive && "bg-black/10 dark:bg-white/20",
         className,
       )}
       aria-label={label}
