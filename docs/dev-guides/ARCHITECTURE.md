@@ -344,7 +344,7 @@ git push --no-verify
 
 **位置**：`ai/agents/chat_router.go` + `ai/routing/service.go`
 
-ChatRouter 实现**四层**意图分类系统：
+ChatRouter 实现**三层**意图分类系统：
 
 ```
 用户输入 → EvolutionMode? ─Yes→ EvolutionParrot（自我进化）
@@ -367,7 +367,6 @@ ChatRouter 实现**四层**意图分类系统：
     │  Layer 0: Cache (LRU, 0ms)          │  → Hit? 返回缓存结果
     │  Layer 1: RuleMatcher (0ms)        │  → Match? 返回
     │  Layer 2: HistoryMatcher (~10ms)   │  → Match? 返回
-    │  Layer 3: LLM Classifier (~400ms)   │  → 返回 JSON {intent, confidence}
     └─────────────────────────────────────┘
                   ↓
            Orchestrator（动态协调 MEMO/SCHEDULE）
@@ -389,12 +388,7 @@ ChatRouter 实现**四层**意图分类系统：
 - 存储表：`conversation_context`
 - 延迟：~10ms
 
-**Layer 3: LLM Classifier**
-- Provider: 轻量级 LLM（可配置）
-- Model: 7B 参数级模型（如 Qwen2.5-7B-Instruct）
-- Token: 50, Temperature: 0
-- 输出格式：JSON Schema `{intent, confidence}`
-- 延迟：~400ms
+> 复杂请求会转发给 Orchestrator，由 LLM 进行动态任务分解和协调。
 
 **智能路由反馈（v0.97.0 新增）**：
 - 收集用户对路由结果的反馈
@@ -665,7 +659,7 @@ BAAI/bge-reranker-v2-m3 用于结果精炼（可通过策略配置）。
 | :------------- | :---------------- | :------------- | :----------------------- |
 | `/`            | 重定向到 `/chat` | RootLayout | 默认入口                 |
 | `/auth/*`      | 认证页面组      | RootLayout | 登录/注册/OAuth 回调      |
-| `/home`        | `Home.tsx`        | MemoLayout     | 主时间线 + 笔记编辑器    |
+| `/memo`        | `Home.tsx`        | MemoLayout     | 主时间线 + 笔记编辑器    |
 | `/explore`      | `Explore.tsx`      | MemoLayout     | 搜索和探索内容           |
 | `/archived`     | `Archived.tsx`      | MemoLayout     | 已归档笔记               |
 | `/chat`         | `AIChat.tsx`       | AIChatLayout   | AI 聊天界面（多模式）     |
@@ -687,7 +681,7 @@ BAAI/bge-reranker-v2-m3 用于结果精炼（可通过策略配置）。
 RootLayout（全局导航 + 认证）
     │
     ├── MemoLayout（可折叠侧边栏：MemoExplorer）
-    │   └── /home, /explore, /archived, /u/:username
+    │   └── /memo, /explore, /archived, /u/:username
     │
     ├── AIChatLayout（固定侧边栏：AIChatSidebar）
     │   └── /chat

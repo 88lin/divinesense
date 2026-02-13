@@ -234,23 +234,24 @@ DIVINESENSE_AI_RERANK_MODEL=BAAI/bge-reranker-v2-m3
 |:-----|:---------|:-----|:-----|
 | **MemoParrot** | `config/parrots/memo.yaml` | 笔记搜索和检索 | `memo_search` |
 | **ScheduleParrot** | `config/parrots/schedule.yaml` | 日程管理 | `schedule_add`、`schedule_query`、`schedule_update`、`find_free_time` |
-| **AmazingParrot** | `config/parrots/amazing.yaml` | 组合笔记 + 日程 | 所有工具 + 并发执行 |
 
-> **实现**: 所有三种代理由 `ai/agents/universal/` 中的 **UniversalParrot** 配置驱动系统实现。
+> **Note**: AmazingParrot 已被 Orchestrator 替代。当用户请求涉及多领域时，Orchestrator 动态协调 Memo 和 Schedule Agents 并行处理。
 
-**聊天路由流程**（`chat_router.go`）：
+> **实现**: Expert Agents 由 `ai/agents/universal/` 中的 **UniversalParrot** 配置驱动系统实现。
+
+**聊天路由流程**（`ai/routing/service.go`）：
 ```
-输入 → 规则匹配（0ms）→ 历史感知（~10ms）→ 权重匹配（~5ms）→ LLM 分类（~400ms）
+输入 → Cache（0ms）→ 规则匹配（0ms）→ 历史感知（~10ms）→ LLM 分类（~400ms）
        ↓                ↓                  ↓                    ↓
-    关键词         对话上下文          个性化路由          语义理解
+    缓存命中        关键词            对话上下文           语义理解
 ```
 
-**五层路由系统（v0.97.0）**：
-- Layer 0: Cache (LRU, 0ms)
-- Layer 1: RuleMatcher (关键词匹配, 0ms)
-- Layer 2: HistoryMatcher (对话历史, ~10ms)
-- Layer 3: WeightMatcher (动态权重, ~5ms) — 新增
-- Layer 4: LLM Classifier (~400ms)
+**三层 FastRouter 系统（v0.99.0）**：
+- Layer 0: Cache (LRU, 0ms) - 缓存命中直接返回
+- Layer 1: RuleMatcher (关键词匹配, 0ms) - 快速路径
+- Layer 2: HistoryMatcher (对话历史, ~10ms) - 上下文感知
+
+> 复杂请求会转发给 Orchestrator 进行动态任务分解和协调。
 
 ### 查询引擎
 
@@ -531,7 +532,7 @@ CREATE UNIQUE INDEX idx_chat_app_credential_unique ON chat_app_credential(creato
 | `server/service/` | 业务逻辑层 |
 | `ai/core/retrieval/` | 混合搜索（BM25 + 向量） |
 | `server/queryengine/` | 查询分析和路由 |
-| `ai/agents/` | AI 代理（MemoParrot、ScheduleParrot、AmazingParrot） |
+| `ai/agents/` | AI 代理（MemoParrot、ScheduleParrot、Orchestrator） |
 | `ai/routing/` | 三层意图路由 |
 | `ai/vector/` | Embedding 服务 |
 | `plugin/chat_apps/` | 聊天应用接入（Telegram/钉钉/WhatsApp） |

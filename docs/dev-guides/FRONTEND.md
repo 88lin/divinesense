@@ -142,7 +142,7 @@ ls web/dist/assets/ | grep "^_"  # 应该为空
 RootLayout (全局导航 + 认证)
     │
     ├── MemoLayout (可折叠侧边栏：MemoExplorer)
-    │   └── /home, /explore, /archived, /u/:username
+    │   └── /memo, /explore, /archived, /u/:username
     │
     ├── GeneralLayout (无侧边栏，全宽内容)
     │   └── /knowledge-graph, /inbox, /attachments, /setting, /memos/:uid, /review, /403, /404
@@ -257,7 +257,7 @@ const FeatureLayout = () => {
 |:-----|:-----|:-----|:-----|
 | `/` | 重定向到 `/chat` | RootLayout | 默认入口 |
 | `/auth/*` | 认证页面组 | RootLayout | 登录/注册/OAuth 回调 |
-| `/home` | `Home.tsx` | MemoLayout | 主时间线 + 笔记编辑器 |
+| `/memo` | `Home.tsx` | MemoLayout | 主时间线 + 笔记编辑器 |
 | `/explore` | `Explore.tsx` | MemoLayout | 搜索和探索内容 |
 | `/archived` | `Archived.tsx` | MemoLayout | 已归档笔记 |
 | `/chat` | `AIChat.tsx` | AIChatLayout | AI 聊天界面（多模式） |

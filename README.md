@@ -81,7 +81,7 @@
 
 ### Chat Apps 集成
 
-- **多平台支持**：Telegram、钉钉、WhatsApp（预留）
+- **多平台支持**：Telegram、钉钉、WhatsApp（实验性支持）
 - **双向对话**：聊天应用中发送消息，AI 自动回复
 - **安全加密**：AES-256-GCM 加密存储访问令牌
 - **Webhook 验证**：HMAC-SHA256 签名 + 时间戳防重放
@@ -200,7 +200,7 @@ make deps-all && make start
 
 ### Q: AI 功能是否必须联网？
 
-**A**: 是的，AI 功能需要调用外部 API（DeepSeek/SiliconFlow），但所有数据存储在您的服务器
+**A**: 是的，AI 功能需要调用外部 API（Z.AI GLM/SiliconFlow），但所有数据存储在您的服务器
 
 ---
 

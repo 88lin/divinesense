@@ -34,8 +34,6 @@ make web                # 仅启动前端
 make db-shell           # 进入 PostgreSQL shell
 make db-reset           # 重置数据库（破坏性）
 make db-vector          # 验证 pgvector 扩展
-make migration-create NAME=add_new_table  # 创建迁移
-make migration-up       # 应用迁移
 ```
 
 ### 检查和测试
@@ -134,16 +132,13 @@ make test-ai           # AI 相关测试
 
 ### 添加新 API
 1. 定义 Proto：`proto/api/v1/your_service.proto`
-2. 生成代码：`make gen-proto`
+2. 生成代码：`make generate`
 3. 实现服务：`server/service/your_service/`
 4. 注册路由：`server/router/v1/`
 5. 测试：`go test ./server/service/your_service/...`
 
 ### 添加数据库迁移
-```bash
-make migration-create NAME=add_new_table
-make migration-up
-```
+在 `store/migration/postgres/migrate/` 目录下创建新的迁移 SQL 文件。
 
 ### 调试 AI 代理
 ```bash
