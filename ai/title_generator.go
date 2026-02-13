@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/sashabaranov/go-openai"
+	"github.com/hrygo/divinesense/ai/core/llm"
 )
 
 // LLM parameters for title generation
@@ -20,19 +20,15 @@ const (
 	titleMaxRuneCount = 50
 )
 
-// Default API configuration
-const (
-	defaultBaseURL = "https://api.siliconflow.cn/v1"
-	defaultModel   = "Qwen/Qwen2.5-7B-Instruct"
-)
-
 // TitleGenerator generates meaningful titles for AI conversations.
 type TitleGenerator struct {
-	client *openai.Client
-	model  string
+	llm LLMService
 }
 
 // TitleGeneratorConfig holds configuration for the title generator.
+//
+// Deprecated: Use NewTitleGenerator(llm LLMService) directly.
+// This config is kept for backward compatibility.
 type TitleGeneratorConfig struct {
 	APIKey  string
 	BaseURL string
@@ -40,24 +36,35 @@ type TitleGeneratorConfig struct {
 }
 
 // NewTitleGenerator creates a new title generator instance.
+//
+// Deprecated: Use NewTitleGeneratorWithLLM(llm LLMService) instead.
+// This constructor is kept for backward compatibility.
 func NewTitleGenerator(cfg TitleGeneratorConfig) *TitleGenerator {
-	baseURL := cfg.BaseURL
-	if baseURL == "" {
-		baseURL = defaultBaseURL
+	// Create LLM service from config (backward compatibility)
+	llmCfg := &LLMConfig{
+		Provider:    "generic",
+		APIKey:      cfg.APIKey,
+		BaseURL:     cfg.BaseURL,
+		Model:       cfg.Model,
+		MaxTokens:   titleMaxTokens,
+		Temperature: titleTemperature,
 	}
-
-	model := cfg.Model
-	if model == "" {
-		model = defaultModel
+	llmService, err := NewLLMService(llmCfg)
+	if err != nil {
+		slog.Error("failed to create LLM service for title generator", "error", err)
+		return nil
 	}
+	return &TitleGenerator{llm: llmService}
+}
 
-	config := openai.DefaultConfig(cfg.APIKey)
-	config.BaseURL = baseURL
-
-	return &TitleGenerator{
-		client: openai.NewClientWithConfig(config),
-		model:  model,
+// NewTitleGeneratorWithLLM creates a new title generator with an existing LLMService.
+// This is the preferred constructor for dependency injection.
+// Panics if llmService is nil.
+func NewTitleGeneratorWithLLM(llmService LLMService) *TitleGenerator {
+	if llmService == nil {
+		panic("ai: NewTitleGeneratorWithLLM: llmService cannot be nil")
 	}
+	return &TitleGenerator{llm: llmService}
 }
 
 // Generate generates a title based on the conversation content.
@@ -74,55 +81,32 @@ func (tg *TitleGenerator) Generate(ctx context.Context, userMessage, aiResponse 
 	}
 	prompt := fmt.Sprintf("用户消息: %s\n\nAI 回复: %s\n\n请为这段对话生成一个简短的标题。", userMessage, aiResponse)
 
-	req := openai.ChatCompletionRequest{
-		Model:       tg.model,
-		MaxTokens:   titleMaxTokens,
-		Temperature: titleTemperature,
-		TopP:        titleTopP,
-		Stop:        []string{"\n"},
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: titleSystemPrompt,
-			},
-			{
-				Role:    openai.ChatMessageRoleUser,
-				Content: prompt,
-			},
-		},
-		ResponseFormat: &openai.ChatCompletionResponseFormat{
-			Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
-			JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
-				Name:   "title_generation",
-				Strict: true,
-				Schema: titleJSONSchema,
-			},
-		},
+	messages := []llm.Message{
+		llm.SystemPrompt(titleSystemPrompt),
+		llm.UserMessage(prompt),
 	}
 
 	start := time.Now()
-	resp, err := tg.client.CreateChatCompletion(ctx, req)
+	content, stats, err := tg.llm.Chat(ctx, messages)
 	latency := time.Since(start)
 
 	if err != nil {
 		slog.Error("title_generation_failed",
-			"model", tg.model,
 			"error", err,
 			"latency_ms", latency.Milliseconds())
 		return "", fmt.Errorf("LLM request failed: %w", err)
 	}
 
-	if len(resp.Choices) == 0 {
+	if content == "" {
 		return "", fmt.Errorf("empty response from LLM")
 	}
 
 	var result struct {
 		Title string `json:"title"`
 	}
-	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &result); err != nil {
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
 		slog.Warn("title_generation_parse_failed",
-			"model", tg.model,
-			"content", resp.Choices[0].Message.Content,
+			"content", content,
 			"error", err)
 		return "", fmt.Errorf("parse response failed: %w", err)
 	}
@@ -138,10 +122,9 @@ func (tg *TitleGenerator) Generate(ctx context.Context, userMessage, aiResponse 
 	}
 
 	slog.Debug("title_generation_success",
-		"model", tg.model,
 		"title", result.Title,
 		"latency_ms", latency.Milliseconds(),
-		"tokens_total", resp.Usage.TotalTokens)
+		"tokens_total", stats.TotalTokens)
 
 	return result.Title, nil
 }
@@ -191,33 +174,5 @@ const titleSystemPrompt = `你是一个专业的对话标题生成助手。你�
 - 输入: "帮我写一个二分查找算法" -> 输出: "二分查找算法实现"
 - 输入: "今天天气怎么样？" -> 输出: "天气查询"
 - 输入: "我的日程安排" -> 输出: "日程管理"
-`
 
-// titleJSONSchema defines the JSON schema for title generation response.
-var titleJSONSchema = &jsonSchema{
-	Type:                 "object",
-	AdditionalProperties: false,
-	Required:             []string{"title"},
-	Properties: map[string]*jsonSchema{
-		"title": {
-			Type:        "string",
-			Description: "生成的对话标题，3-15个字符",
-		},
-	},
-}
-
-// jsonSchema implements json.Marshaler for OpenAI's JSON Schema format.
-// The alias type prevents infinite recursion during marshaling.
-type jsonSchema struct {
-	Properties           map[string]*jsonSchema `json:"properties,omitempty"`
-	Type                 string                 `json:"type"`
-	Description          string                 `json:"description,omitempty"`
-	Required             []string               `json:"required,omitempty"`
-	Enum                 []string               `json:"enum,omitempty"`
-	AdditionalProperties bool                   `json:"additionalProperties"`
-}
-
-func (s *jsonSchema) MarshalJSON() ([]byte, error) {
-	type alias jsonSchema
-	return json.Marshal((*alias)(s))
-}
+请直接返回JSON格式：{"title": "生成的标题"}`
