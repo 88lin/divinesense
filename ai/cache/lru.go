@@ -42,26 +42,45 @@ func NewLRUCache[K comparable, V any](capacity int, defaultTTL time.Duration) *L
 }
 
 // Get retrieves a value from the cache.
+// Uses a two-phase locking strategy: RLock for read, upgrade to Lock only if modification needed.
 func (c *LRUCache[K, V]) Get(key K) (V, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+	// Phase 1: Read lock to check existence and expiration
+	c.mu.RLock()
 	e, ok := c.cache[key]
 	if !ok {
+		c.mu.RUnlock()
 		var zero V
 		return zero, false
 	}
 
-	// Check expiration
-	if time.Now().After(e.expiresAt) {
-		c.removeEntry(e)
+	// Check expiration while holding read lock
+	expired := time.Now().After(e.expiresAt)
+	c.mu.RUnlock()
+
+	// If expired, need write lock to remove
+	if expired {
+		c.mu.Lock()
+		// Re-check after acquiring write lock (double-checked locking)
+		if e, ok := c.cache[key]; ok && time.Now().After(e.expiresAt) {
+			c.removeEntry(e)
+		}
+		c.mu.Unlock()
 		var zero V
 		return zero, false
 	}
 
-	// Move to front (most recently used)
-	c.order.MoveToFront(e.element)
-	return e.value, true
+	// Phase 2: Write lock to update LRU order
+	c.mu.Lock()
+	// Re-check entry still exists (may have been removed by another goroutine)
+	if e, ok := c.cache[key]; ok {
+		c.order.MoveToFront(e.element)
+		value := e.value
+		c.mu.Unlock()
+		return value, true
+	}
+	c.mu.Unlock()
+	var zero V
+	return zero, false
 }
 
 // Set stores a value in the cache.
@@ -232,6 +251,25 @@ func (c *LRUCache[K, V]) Capacity() int {
 }
 
 // Contains checks if a key exists in the cache (without updating access order).
+//
+// IMPORTANT: Unlike Get, this method does NOT remove expired entries. It only checks
+// if the key exists AND has not expired. This means Contains() may return true while
+// a subsequent Get() returns false (if the entry expired between the two calls).
+//
+// This "read-only" semantics is intentional for performance. If you need consistent
+// behavior with Get, call Get instead.
+//
+// Example:
+//
+//	// DON'T: Check then Get (race condition possible)
+//	if cache.Contains(key) {
+//	    val, ok := cache.Get(key) // ok may be false!
+//	}
+//
+//	// DO: Just call Get directly
+//	if val, ok := cache.Get(key); ok {
+//	    // use val
+//	}
 func (c *LRUCache[K, V]) Contains(key K) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

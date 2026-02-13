@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hrygo/divinesense/ai"
+	"github.com/hrygo/divinesense/ai/internal/strutil"
 )
 
 // LLMLayer provides tag suggestions using LLM.
@@ -56,11 +57,8 @@ func (l *LLMLayer) Suggest(ctx context.Context, req *SuggestRequest) []Suggestio
 	ctx, cancel := context.WithTimeout(ctx, l.timeout)
 	defer cancel()
 
-	// Prepare content (truncate if too long)
-	content := req.Content
-	if len(content) > 500 {
-		content = content[:500] + "..."
-	}
+	// Prepare content (truncate if too long, Unicode-safe)
+	content := strutil.Truncate(req.Content, 500)
 
 	title := req.Title
 	if title == "" {
@@ -89,7 +87,7 @@ func (l *LLMLayer) Suggest(ctx context.Context, req *SuggestRequest) []Suggestio
 	tags := parseTagsFromJSON(response)
 	if len(tags) == 0 {
 		slog.Warn("LLM returned no parseable tags",
-			"response", truncateLog(response, 100),
+			"response", strutil.Truncate(response, 100),
 		)
 		return nil
 	}
@@ -148,12 +146,4 @@ func parseTagsFromJSON(response string) []string {
 	}
 
 	return tags
-}
-
-// truncateLog truncates string for logging.
-func truncateLog(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
 }
