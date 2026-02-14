@@ -57,7 +57,7 @@
 
 > **Note**: AmazingParrot 已被 Orchestrator 替代，其职责由 Orchestrator 动态协调 Expert Agents 完成。
 
-**智能路由**：四层意图分类（Cache → Rule → History → LLM），响应延迟 0-400ms
+**智能路由**：Cache → Rule 高效匹配，低置信度请求自动转 Orchestrator
 
 ### 搜索与检索
 
