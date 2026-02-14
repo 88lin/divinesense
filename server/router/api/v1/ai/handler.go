@@ -19,6 +19,7 @@ import (
 	"github.com/hrygo/divinesense/ai/agents/geek"
 	"github.com/hrygo/divinesense/ai/agents/orchestrator"
 	ctxpkg "github.com/hrygo/divinesense/ai/context"
+	"github.com/hrygo/divinesense/ai/memory"
 	"github.com/hrygo/divinesense/ai/routing"
 	aistats "github.com/hrygo/divinesense/ai/services/stats"
 	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
@@ -35,14 +36,17 @@ type ChatStream interface {
 
 // ParrotHandler handles all parrot agent requests (DEFAULT, MEMO, SCHEDULE, AMAZING, CREATIVE).
 type ParrotHandler struct {
-	factory        *AgentFactory
-	llm            ai.LLMService
-	chatRouter     *agentpkg.ChatRouter
-	orchestrator   *orchestrator.Orchestrator // Orchestrator for complex/multi-intent requests
-	persister      *aistats.Persister         // session stats persister
-	blockManager   *BlockManager              // Phase 5: Unified Block Model support
-	titleGenerator *ai.TitleGenerator         // Title generator for auto-naming conversations
-	metadataMgr    *ctxpkg.MetadataManager    // Context engineering: metadata-based sticky routing
+	factory                *AgentFactory
+	llm                    ai.LLMService
+	chatRouter             *agentpkg.ChatRouter
+	chatRouterWithMetadata *agentpkg.ChatRouterWithMetadata // P0 fix: sticky routing with metadata
+	orchestrator           *orchestrator.Orchestrator       // Orchestrator for complex/multi-intent requests
+	persister              *aistats.Persister               // session stats persister
+	blockManager           *BlockManager                    // Phase 5: Unified Block Model support
+	titleGenerator         *ai.TitleGenerator               // Title generator for auto-naming conversations
+	metadataMgr            *ctxpkg.MetadataManager          // Context engineering: metadata-based sticky routing
+	contextBuilder         *ctxpkg.Service                  // P0 fix: backend-driven context construction
+	memoryGenerator        memory.Generator                 // Phase 3: async episodic memory generation (extension point)
 }
 
 // NewParrotHandler creates a new parrot handler.
@@ -61,6 +65,17 @@ func (h *ParrotHandler) SetChatRouter(router *agentpkg.ChatRouter) {
 	h.chatRouter = router
 }
 
+// SetChatRouterWithMetadata configures the chat router with metadata-based sticky routing.
+// This enables persistent routing state across sessions using database-stored metadata.
+// P0 fix: enables context-engineering.md Phase 2 sticky routing.
+func (h *ParrotHandler) SetChatRouterWithMetadata(router *agentpkg.ChatRouterWithMetadata) {
+	h.chatRouterWithMetadata = router
+	// Also set base router for fallback
+	if router != nil {
+		h.chatRouter = router.ChatRouter
+	}
+}
+
 // SetOrchestrator configures the orchestrator for complex/multi-intent requests.
 func (h *ParrotHandler) SetOrchestrator(orch *orchestrator.Orchestrator) {
 	h.orchestrator = orch
@@ -70,6 +85,20 @@ func (h *ParrotHandler) SetOrchestrator(orch *orchestrator.Orchestrator) {
 // This enables metadata-based sticky routing and state persistence.
 func (h *ParrotHandler) SetMetadataManager(mgr *ctxpkg.MetadataManager) {
 	h.metadataMgr = mgr
+}
+
+// SetContextBuilder configures the context builder for backend-driven context construction.
+// P0 fix: enables context-engineering.md Phase 1 backend-driven context.
+func (h *ParrotHandler) SetContextBuilder(builder *ctxpkg.Service) {
+	h.contextBuilder = builder
+}
+
+// SetMemoryGenerator configures the memory generator for async episodic memory creation.
+// Phase 3: enables context-engineering.md Phase 3 memory generation.
+// Default is NoOpGenerator (no-op). Use simple.Generator for dev/test, or integrate
+// with professional memory services (Mem0, Letta) for production.
+func (h *ParrotHandler) SetMemoryGenerator(gen memory.Generator) {
+	h.memoryGenerator = gen
 }
 
 // maybeGenerateConversationTitle auto-generates a conversation title after the first block.
@@ -218,8 +247,24 @@ func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream Cha
 			slog.Warn("failed to send routing_start event", "error", err)
 		}
 
-		// Execute FastRouter: cache -> rule
-		routeResult, err := h.chatRouter.Route(ctx, req.Message)
+		// Execute routing with metadata-based sticky routing if available
+		// P0 fix: enables context-engineering.md Phase 2 sticky routing
+		var routeResult *agentpkg.ChatRouteResult
+		var err error
+		if h.chatRouterWithMetadata != nil && req.ConversationID > 0 {
+			// Use sticky routing with metadata (blockID=0 means persist later after block creation)
+			routeResult, err = h.chatRouterWithMetadata.RouteWithContextWithMetadata(
+				ctx, req.Message, nil, req.ConversationID, 0)
+			if err == nil && routeResult.Method == "metadata_sticky" {
+				slog.Info("route reused from metadata sticky",
+					"conversation_id", req.ConversationID,
+					"route", routeResult.Route,
+					"confidence", routeResult.Confidence)
+			}
+		} else {
+			// Fallback to standard routing
+			routeResult, err = h.chatRouter.Route(ctx, req.Message)
+		}
 		duration := time.Since(startTime)
 
 		if err != nil {
@@ -264,6 +309,18 @@ func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream Cha
 					Route:      string(routeResult.Route),
 					Confidence: routeResult.Confidence,
 					Method:     routeResult.Method,
+				}
+
+				// Phase 2 fix: Immediately update cache for sticky routing
+				// This enables the next request to use the current routing result
+				// without waiting for block completion.
+				if h.metadataMgr != nil && req.ConversationID > 0 {
+					h.metadataMgr.UpdateCacheOnly(
+						req.ConversationID,
+						string(routeResult.Route),
+						extractIntentFromRoute(string(routeResult.Route)),
+						float32(routeResult.Confidence),
+					)
 				}
 			}
 		}
@@ -857,7 +914,31 @@ func (h *ParrotHandler) executeAgent(
 
 	// Execute agent
 	defer close(heartbeatDone) // Ensure heartbeat stops even on panic
-	execErr := agent.Execute(ctx, req.Message, req.History, callback)
+
+	// P0-2: Use backend-driven context construction if contextBuilder is available
+	// This implements context-engineering.md Phase 1: Backend as Source of Truth
+	history := req.History
+	if h.contextBuilder != nil && req.ConversationID > 0 {
+		sessionID := fmt.Sprintf("conv_%d", req.ConversationID)
+		ctxReq := &ctxpkg.ContextRequest{
+			SessionID:    sessionID,
+			CurrentQuery: req.Message,
+			AgentType:    req.AgentType.String(),
+			UserID:       req.UserID,
+		}
+		builtHistory, err := h.contextBuilder.BuildHistory(ctx, ctxReq)
+		if err != nil {
+			logger.Warn("Failed to build history from context engine, falling back to req.History",
+				slog.String("error", err.Error()))
+		} else if builtHistory != nil {
+			history = builtHistory
+			logger.Debug("Using backend-driven context",
+				slog.Int("history_count", len(history)),
+				slog.String("source", "context_builder"))
+		}
+	}
+
+	execErr := agent.Execute(ctx, req.Message, history, callback)
 	logger.Info("ai.agent.completed",
 		slog.String("execErr", fmt.Sprintf("%v", execErr)),
 		slog.Int64("duration_ms", time.Since(sessionStartTime).Milliseconds()))
@@ -1047,6 +1128,18 @@ func (h *ParrotHandler) executeAgent(
 					slog.Int64("block_id", currentBlock.ID),
 					slog.Int("content_length", len(finalContent)),
 				)
+
+				// Phase 3: Async episodic memory generation
+				// Trigger memory generation after successful block completion
+				if h.memoryGenerator != nil && len(currentBlock.UserInputs) > 0 {
+					h.memoryGenerator.GenerateAsync(ctx, memory.MemoryRequest{
+						BlockID:   currentBlock.ID,
+						UserID:    req.UserID,
+						AgentType: string(req.AgentType),
+						UserInput: currentBlock.UserInputs[0].Content,
+						Outcome:   finalContent,
+					})
+				}
 
 				// Context Engineering: Persist routing metadata for sticky routing
 				if h.metadataMgr != nil && req.RouteResult != nil && currentBlock.ConversationID > 0 {
