@@ -70,10 +70,14 @@
 ## 路由流程
 
 ```
-用户输入 → ChatRouter → Orchestrator → Expert Agents → Response
+用户输入 → ChatRouter → [高置信度] → 直接响应
                 ↓
-         Cache → Rule → History → LLM (~400ms)
+         [低置信度/多意图]
+                ↓
+         Orchestrator → Expert Agents → Response
 ```
+
+> **简化**: 路由层 LLM 已移除，复杂请求直接转 Orchestrator
 
 ---
 
@@ -113,11 +117,12 @@ ExpertAgent (配置驱动)
 
 ### 执行策略对比
 
-| 策略     | 适用场景         | 特点             |
-| :------- | :--------------- | :--------------- |
-| `direct` | 简单 CRUD        | 快速，单次调用   |
-| `react`  | 多步推理         | 思考-行动循环    |
-| `planning`| 复杂多工具协作   | 两阶段，可并行   |
+| 策略       | 适用场景         | 特点               |
+| :--------- | :--------------- | :----------------- |
+| `direct`   | 简单 CRUD        | 快速，单次调用     |
+| `react`    | 多步推理         | 思考-行动循环      |
+| `planning` | 复杂多工具协作   | 两阶段，可并行     |
+| `reflexion`| 需要自我优化     | 反思迭代改进       |
 
 ---
 
@@ -149,16 +154,34 @@ divinesense/
 | 日程服务     | `server/service/schedule/` |
 | 数据迁移     | `store/migration/postgres/` |
 
+### 缓存层
+
+Store 结构包含三层内存缓存：
+
+| 缓存              | 用途           | TTL   |
+| :---------------- | :------------- | :---- |
+| `instanceSettingCache` | 实例配置  | 10min |
+| `userCache`       | 用户信息       | 10min |
+| `userSettingCache`| 用户设置       | 10min |
+
+### Background Runners
+
+| Runner           | 职责               | 路径                   |
+| :--------------- | :----------------- | :--------------------- |
+| Embedding Runner | 向量嵌入后台任务   | `ai/embedding/runner.go` |
+| OCR Runner       | 文本提取           | `ai/ocr/runner.go`     |
+
 ### 前端关键路径
 
-| 功能模块     | 路径                           |
-| :----------- | :----------------------------- |
-| 布局组件     | `web/src/layouts/`             |
-| 聊天界面     | `web/src/pages/chat/`          |
-| 笔记编辑器   | `web/src/components/memo/`     |
-| 日历组件     | `web/src/components/calendar/` |
-| AI Hooks     | `web/src/hooks/ai/`            |
-| API 调用     | `web/src/hooks/grpc/`          |
+| 功能模块     | 路径                               |
+| :----------- | :--------------------------------- |
+| 布局组件     | `web/src/layouts/`                 |
+| AI 聊天      | `web/src/components/AIChat/`       |
+| Memo 组件    | `web/src/components/Memo/`         |
+| 编辑器模块   | `web/src/components/MemoEditor/`   |
+| 状态管理     | `web/src/contexts/`                |
+| API Hooks    | `web/src/hooks/useAIQueries.ts` 等 |
+| 国际化       | `web/src/locales/`                 |
 
 ---
 

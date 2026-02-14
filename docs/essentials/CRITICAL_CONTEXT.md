@@ -68,13 +68,27 @@ manualChunks(id) {
 
 ### PostgreSQL（生产环境）
 - **AI 功能**：完整支持（pgvector、混合搜索、重排）
+- **Tree Branching**：完整支持（ForkBlock、SwitchBranch）
 - **推荐用途**：所有生产部署
 - **维护状态**：积极维护
 
 ### SQLite（仅开发环境）
-- **AI 功能**：**不支持**
+- **向量搜索**：✅ 支持（sqlite-vec）
+- **AI 功能**：❌ 不支持（AIBlock、AgentStats 返回错误）
+- **Tree Branching**：❌ 不支持
 - **推荐用途**：仅限非 AI 功能的本地开发
 - **维护状态**：仅对非 AI 功能尽力维护
+
+---
+
+## Background Runners
+
+| Runner           | 职责               | 触发条件           |
+| :--------------- | :----------------- | :----------------- |
+| Embedding Runner | 向量嵌入后台任务   | Memo 创建/更新     |
+| OCR Runner       | 图片文本提取       | 附件上传           |
+
+> 运行在服务器启动时，自动处理异步任务
 
 ---
 

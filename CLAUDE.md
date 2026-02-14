@@ -2,7 +2,7 @@
 
 > DivineSense 项目开发纲领 — Claude Code 辅助开发的核心指导文档
 >
-> **保鲜状态**: ✅ 2026-02-12 v0.99.0 | **架构**: Go + React 单二进制 | **AI**: Orchestrator-Workers 多代理
+> **保鲜状态**: ✅ 2026-02-14 v0.99.0 | **架构**: Go + React 单二进制 | **AI**: Orchestrator-Workers 多代理
 
 ---
 
@@ -114,16 +114,22 @@
 
 ### 路由与编排
 ```
-用户输入 → Orchestrator → Task Decomposition → Expert Agents → Aggregation
+用户输入 → ChatRouter → [高置信度] → 直接响应
                 ↓
-         Cache → Rule → History → LLM (~400ms)
+         [低置信度/多意图]
+                ↓
+         Orchestrator → Task Decomposition → Expert Agents → Aggregation
 ```
+
+> **简化**: 路由层 LLM 已移除，低置信度请求直接转 Orchestrator
 
 ### 核心概念
 - **Orchestrator**: LLM 驱动的任务分解与协调器
 - **Expert Agent**: 领域专家代理（Memo, Schedule）
 - **Block**: 用户-AI 交互轮次
 - **Task Plan**: 结构化任务计划，支持透明性展示
+- **Context Engineering**: 长期记忆检索（episodic memory），MemoParrot 已启用
+- **CCRunner**: 统一的 Claude Code 执行器，Geek/Evolution 模式共享
 
 ---
 
