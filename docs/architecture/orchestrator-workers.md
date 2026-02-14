@@ -370,4 +370,96 @@ Orchestrator 视角:
 
 ---
 
+## 8. 审查与实施状态
+
+> **审查日期**: 2026-02-14
+> **实现完成度**: ~70%
+
+### 8.1 组件实现状态
+
+| 状态 | 组件 | 文件位置 | 说明 |
+|:-----|:-----|:---------|:-----|
+| ✅ | FastRouter | `ai/routing/service.go:84-135` | Cache → Rule 两层路由，置信度阈值 0.8 |
+| ✅ | Decomposer | `ai/agents/orchestrator/decomposer.go` | LLM 分解 + fallback 机制 |
+| ✅ | Executor | `ai/agents/orchestrator/executor.go` | 并发控制、事件回调完整 |
+| ✅ | Aggregator | `ai/agents/orchestrator/aggregator.go` | 支持多语言、降级拼接 |
+| ✅ | ExpertRegistry | `ai/agents/orchestrator/expert_registry.go` | 通过 ParrotFactory 实现 |
+| ✅ | UniversalParrot | `ai/agents/universal/universal_parrot.go` | 支持多种执行策略 |
+| ❌ | **HandoffHandler** | 文件不存在 | 粘性路由 Handoff 机制完全缺失 |
+| ❌ | **CapabilityMap** | 文件不存在 | 能力映射未实现 |
+| ⚠️ | DAG 依赖执行 | `Task.Dependencies` 未使用 | 字段存在但执行逻辑未实现 |
+
+### 8.2 风险清单
+
+| 优先级 | 风险 | 严重度 | 缓解措施 |
+|:-------|:-----|:-------|:---------|
+| **P0** | Handoff 机制未实现 | High | 实现 MissingCapability 检测 + CapabilityMap |
+| **P0** | CapabilityMap 缺失 | High | 从专家配置聚合构建 |
+| **P1** | 任务依赖未实现 | Medium | executor.go 添加依赖拓扑排序 |
+| **P1** | 单任务无超时 | Medium | 添加 per-task context timeout |
+| **P2** | 阈值 0.8 硬编码 | Low | 配置化到 `config/routing.yaml` |
+
+### 8.3 核心接口定义（待实现）
+
+```go
+// HandoffHandler - 任务转交处理器
+type HandoffHandler interface {
+    HandleHandoff(ctx context.Context, request *HandoffRequest) (*HandoffResult, error)
+    CanHandoff(ctx context.Context, capability string) (bool, []string)
+}
+
+// CapabilityMap - 能力到专家映射
+type CapabilityMap interface {
+    Query(capability string) []string
+    Refresh(ctx context.Context) error
+    RegisterExpert(expert *ExpertCapability) error
+}
+
+// MissingCapability - 专家能力不足报告
+type MissingCapability struct {
+    Capability     string `json:"capability"`
+    Reason         string `json:"reason"`
+    SuggestedAgent string `json:"suggested_agent,omitempty"`
+}
+```
+
+### 8.4 实施路径
+
+```
+Phase 1 (核心)
+├── capability_map.go     # 从 config/parrots/*.yaml 聚合 capabilities
+├── handoff.go            # 实现 HandoffHandler 接口
+└── MissingCapability 集成 # 修改 UniversalParrot 支持能力边界报告
+
+Phase 2 (增强)
+├── DAG 依赖执行          # 拓扑排序执行
+└── Per-task 超时         # 防止单任务阻塞
+
+Phase 3 (优化)
+├── 阈值配置化            # config/routing.yaml
+├── Prometheus metrics    # 路由延迟、Handoff 次数
+└── OpenTelemetry 追踪    # 分布式追踪
+```
+
+### 8.5 验收标准
+
+| 阶段 | 验收项 |
+|:-----|:-------|
+| Phase 1 | 粘性路由场景下专家报告 MissingCapability 可触发 Handoff |
+| Phase 1 | Handoff 后任务正确转交到目标专家 |
+| Phase 2 | 有依赖的任务串行，无依赖并行 |
+| Phase 2 | 单个任务超时不阻塞整体计划 |
+| Phase 3 | 置信度阈值可配置 |
+| Phase 3 | Prometheus metrics 覆盖关键指标 |
+
+### 8.6 架构优点
+
+1. **SOLID 原则遵循**：ExpertRegistry 接口解耦，DIP 依赖注入
+2. **配置驱动**：专家通过 YAML 配置，扩展性好
+3. **降级完备**：Decomposer/Aggregator 均有 fallback
+4. **并发安全**：正确使用 sync 原语，context 传播正确
+5. **透明性**：EventCallback 机制支持前端实时展示
+
+---
+
 *更新日期: 2026-02-14*
