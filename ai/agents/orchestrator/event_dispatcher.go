@@ -33,8 +33,6 @@ func NewEventDispatcher(traceID string, callback EventCallback) *EventDispatcher
 	}
 
 	d.wg.Add(1)
-
-	d.wg.Add(1)
 	go d.dispatchLoop()
 
 	return d

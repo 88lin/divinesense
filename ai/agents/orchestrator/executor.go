@@ -96,11 +96,16 @@ func (e *Executor) ExecutePlan(ctx context.Context, plan *TaskPlan, callback Eve
 	// Collect results and errors
 	var results []string
 	for _, task := range plan.Tasks {
-		if task.Status == TaskStatusCompleted && task.Result != "" {
-			results = append(results, task.Result)
+		// Use safe accessors
+		status := task.GetStatus()
+		resultVal := task.GetResult()
+		errorVal := task.GetError()
+
+		if status == TaskStatusCompleted && resultVal != "" {
+			results = append(results, resultVal)
 		}
-		if task.Status == TaskStatusFailed && task.Error != "" {
-			result.Errors = append(result.Errors, fmt.Sprintf("Task %s: %s", task.ID, task.Error))
+		if status == TaskStatusFailed && errorVal != "" {
+			result.Errors = append(result.Errors, fmt.Sprintf("Task %s: %s", task.ID, errorVal))
 		}
 	}
 
@@ -131,13 +136,17 @@ func (e *Executor) executeTask(ctx context.Context, task *Task, index int, dispa
 // executeTaskWithHandoff executes a single task with handoff depth tracking.
 func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index int, dispatcher *EventDispatcher, depth int, traceID string) error {
 	startTime := time.Now()
-	task.Status = TaskStatusRunning
+	// Use safe accessor to mark running
+	if err := task.MarkRunning(); err != nil {
+		// Should not happen if logic is correct
+		slog.Error("executor: failed to mark task running", "error", err)
+	}
 
 	// Log task start
 	slog.Info("executor: task start",
 		"trace_id", traceID,
 		"task_id", task.ID,
-		"agent_id", task.Agent,
+		"agent", task.Agent,
 		"dependencies", task.Dependencies,
 	)
 
@@ -161,14 +170,39 @@ func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index
 	resultCollector := newResultCollector(dispatcher)
 	// defer resultCollector.close() // No longer needed
 
-	// Execute via expert registry
-	err := e.registry.ExecuteExpert(ctx, task.Agent, task.Input, resultCollector.onEvent)
+	// Execute via expert registry with retry logic
+	var err error
+	maxRetries := 3
+	backoff := 1 * time.Second
+
+	for i := 0; i <= maxRetries; i++ {
+		// Use resultCollector.onEvent as callback
+		err = e.registry.ExecuteExpert(ctx, task.Agent, task.Input, resultCollector.onEvent)
+		if err == nil {
+			break
+		}
+
+		// Check if error is transient.
+		// For MVP, we retry all errors up to maxRetries.
+		// TODO: refinements to only retry network/timeout/capacity errors.
+
+		if i < maxRetries {
+			slog.Warn("executor: task execution failed, retrying",
+				"trace_id", traceID,
+				"task_id", task.ID,
+				"attempt", i+1,
+				"error", err,
+			)
+			time.Sleep(backoff)
+			backoff *= 2 // Exponential backoff
+		}
+	}
 
 	if err != nil {
 		// Task status updated by caller (DAGScheduler) or here?
-		// Let's update here for consistency
-		task.Status = TaskStatusFailed
-		task.Error = err.Error()
+		// Let's update here for consistency using safe accessor
+		task.SetError(err.Error())
+
 		slog.Warn("executor: task failed",
 			"trace_id", traceID,
 			"task_id", task.ID,
@@ -199,7 +233,8 @@ func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index
 				// Execute with new expert
 				task.Agent = handoffResult.NewExpert
 				task.Input = handoffResult.NewTask.Input
-				task.Status = TaskStatusPending
+				// Reset status for retry/handoff
+				task.SetStatus(TaskStatusPending)
 
 				// Re-execute the task with new expert and updated context
 				return e.executeTaskWithHandoff(ctx, task, index, dispatcher, handoffResult.Depth, traceID)
@@ -212,13 +247,14 @@ func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index
 	}
 
 	// Success
-	task.Status = TaskStatusCompleted
-	task.Result = resultCollector.getResult()
+	// Use safe accessor
+	task.SetResult(resultCollector.getResult())
+
 	duration := time.Since(startTime)
 	slog.Info("executor: task complete",
 		"trace_id", traceID,
 		"task_id", task.ID,
-		"status", task.Status,
+		"status", task.GetStatus(),
 		"duration_ms", duration.Milliseconds(),
 	)
 
@@ -249,7 +285,7 @@ func (e *Executor) sendTaskStartEvent(task *Task, index int, dispatcher *EventDi
 		"index":   index, // -1 if unknown
 		"agent":   task.Agent,
 		"purpose": task.Purpose,
-		"status":  string(task.Status),
+		"status":  string(task.GetStatus()),
 	}
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
@@ -265,10 +301,10 @@ func (e *Executor) sendTaskEndEvent(task *Task, index int, dispatcher *EventDisp
 		"id":     task.ID,
 		"index":  index,
 		"agent":  task.Agent,
-		"status": string(task.Status),
+		"status": string(task.GetStatus()),
 	}
-	if task.Error != "" {
-		event["error"] = task.Error
+	if errVal := task.GetError(); errVal != "" {
+		event["error"] = errVal
 	}
 	eventJSON, err := json.Marshal(event)
 	if err != nil {

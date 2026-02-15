@@ -120,14 +120,19 @@ func (s *DAGScheduler) Run(ctx context.Context) error {
 								"panic", r)
 
 							// Mark task as failed and cascade
-							s.mu.Lock()
+							// Note: s.mu protects DAG state (tasks map, inDegree, etc)
+							// but Task internal state is protected by its own mutex.
+							// However, s.cascadeSkip reads/writes task status too.
+							// We need to be careful about lock ordering if we hold both.
+							// Here we hold s.mu.
+
 							task := s.tasks[tid]
-							if !task.Status.IsTerminal() {
-								task.Status = TaskStatusFailed
-								task.Error = fmt.Sprintf("Panic: %v", r)
+							// Use safe accessor - though we are holding s.mu, other goroutines (Executor)
+							// might be modifying Task without s.mu.
+							if !task.GetStatus().IsTerminal() {
+								task.SetError(fmt.Sprintf("Panic: %v", r))
 								s.cascadeSkip(tid)
 							}
-							s.mu.Unlock()
 						}
 
 						// Always decrement active workers
@@ -163,22 +168,28 @@ func (s *DAGScheduler) Run(ctx context.Context) error {
 			active := s.activeWorkers
 			completed := 0
 			for _, t := range s.tasks {
-				if t.Status.IsTerminal() {
+				// Use safe accessor - accessing Task status is safe, but iterating map needs s.mu?
+				// s.tasks map structure is immutable after Init? Yes.
+				// But we are holding s.mu here to protect activeWorkers and to consistent view?
+				// Actually s.mu protects the *Scheduler* state.
+				if t.GetStatus().IsTerminal() {
 					completed++
 				}
 			}
-			s.mu.Unlock()
 
 			if completed == len(s.tasks) {
+				s.mu.Unlock()
 				wg.Wait() // Ensure all workers fully exit
 				return nil
 			}
 
 			if active == 0 {
+				s.mu.Unlock()
 				// No active workers and ready queue is empty (implied by default case)
 				// This means we are stuck -> Cycle detected
 				return fmt.Errorf("cycle detected or deadlock: %d/%d tasks completed", completed, len(s.tasks))
 			}
+			s.mu.Unlock()
 
 			// Avoid hot loop
 			time.Sleep(10 * time.Millisecond)
@@ -190,17 +201,26 @@ func (s *DAGScheduler) Run(ctx context.Context) error {
 func (s *DAGScheduler) executeTask(ctx context.Context, taskID string) error {
 	task := s.tasks[taskID]
 
+	// Check if task is already terminal (e.g., skipped or previously completed)
+	// This avoids unnecessary processing and race conditions
+	if task.GetStatus().IsTerminal() {
+		return nil
+	}
+
 	// 1. Context Injection
 	resolvedInput, err := s.injector.ResolveInput(task.Input, s.tasks)
 	if err != nil {
 		// Injection failed (e.g. ref not found)
-		s.mu.Lock()
-		task.Status = TaskStatusFailed
-		task.Error = fmt.Sprintf("Context Injection Error: %v", err)
+		s.mu.Lock() // Consistently lock s.mu for coordination
+		task.SetError(fmt.Sprintf("Context Injection Error: %v", err))
 		s.cascadeSkip(taskID)
 		s.mu.Unlock()
 		return err
 	}
+
+	// Task.Input is not protected by mutex currently as it's modified only before execution
+	// But strictly speaking we should probably protect it or treat it as immutable once created,
+	// except here we are resolving it. Since only one worker processes this task, it's fine.
 	task.Input = resolvedInput
 
 	// 2. Execute
@@ -246,9 +266,9 @@ func (s *DAGScheduler) cascadeSkip(failedTaskID string) {
 
 		for _, downstream := range s.graph[curr] {
 			downTask := s.tasks[downstream]
-			if downTask.Status == TaskStatusPending {
-				downTask.Status = TaskStatusSkipped
-				downTask.Error = fmt.Sprintf("Skipped due to upstream failure in %s", curr)
+			// Use safe accessors
+			if downTask.GetStatus() == TaskStatusPending {
+				downTask.SetSkipped(fmt.Sprintf("Skipped due to upstream failure in %s", curr))
 				queue = append(queue, downstream)
 
 				// Also treat as "Done" for scheduler accounting logic?
