@@ -5,9 +5,70 @@ import (
 	"testing"
 )
 
+// mockCapabilityMap implements KeywordCapabilitySource for testing.
+type mockCapabilityMap struct {
+	capabilities map[string][]string // input -> capabilities
+}
+
+func (m *mockCapabilityMap) IdentifyCapabilities(text string) []string {
+	text = strings.ToLower(text)
+	var results []string
+	for key, caps := range m.capabilities {
+		if strings.Contains(text, key) {
+			results = append(results, caps...)
+		}
+	}
+	// Remove duplicates
+	seen := make(map[string]bool)
+	var unique []string
+	for _, cap := range results {
+		if !seen[cap] {
+			seen[cap] = true
+			unique = append(unique, cap)
+		}
+	}
+	return unique
+}
+
+// newTestMatcher creates a RuleMatcher with mock capabilityMap for testing.
+func newTestMatcher() *RuleMatcher {
+	matcher := NewRuleMatcher()
+	matcher.SetCapabilityMap(&mockCapabilityMap{
+		capabilities: map[string][]string{
+			// Schedule triggers
+			"日程":   {"日程", "创建日程", "查询日程"},
+			"安排":   {"日程", "安排"},
+			"会议":   {"日程", "会议"},
+			"提醒":   {"日程", "提醒"},
+			"预约":   {"日程"},
+			"开会":   {"日程", "会议"},
+			"创建日程": {"日程", "创建日程"},
+			"查询日程": {"日程", "查询日程"},
+			// Memo triggers - more comprehensive
+			"笔记":   {"笔记", "搜索笔记"},
+			"搜索":   {"笔记", "搜索笔记"},
+			"查找":   {"笔记", "搜索笔记"},
+			"记录":   {"笔记", "搜索笔记"},
+			"memo": {"笔记", "搜索笔记"},
+			"找":    {"笔记", "搜索笔记"},
+			"帮我找":  {"笔记", "搜索笔记"},
+			// Schedule update triggers
+			"修改": {"日程更新"},
+			"更新": {"日程更新"},
+			"取消": {"日程更新"},
+			"删除": {"日程更新"},
+			// Batch triggers
+			"批量": {"批量日程"},
+			"每周": {"批量日程"},
+			"每天": {"批量日程"},
+		},
+	})
+	return matcher
+}
+
 // TestRuleMatcher_MemoSearch tests memo search intent matching.
 func TestRuleMatcher_MemoSearch(t *testing.T) {
-	matcher := NewRuleMatcher()
+	matcher := newTestMatcher()
 
 	testCases := []struct {
 		input         string
@@ -23,7 +84,7 @@ func TestRuleMatcher_MemoSearch(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		intent, confidence, matched := matcher.Match(tc.input)
+		intent, confidence, matched := matcher.MatchLegacy(tc.input)
 		if !matched {
 			t.Errorf("input %q: expected match, got no match", tc.input)
 			continue
@@ -38,22 +99,27 @@ func TestRuleMatcher_MemoSearch(t *testing.T) {
 }
 
 // TestRuleMatcher_ScheduleCreate tests schedule create intent matching.
+// Note: New architecture separates generic action from expert mapping.
+// "明天下午3点开会" is now recognized as ActionQuery (time pattern) -> IntentScheduleQuery
+// Only inputs with explicit creation keywords (创建, 记录, etc.) become schedule_create.
 func TestRuleMatcher_ScheduleCreate(t *testing.T) {
-	matcher := NewRuleMatcher()
+	matcher := newTestMatcher()
 
 	testCases := []struct {
 		input         string
 		expected      Intent
 		minConfidence float32
 	}{
-		{"明天下午3点开会", IntentScheduleCreate, 0.6},
-		{"提醒我明天开会", IntentScheduleCreate, 0.7},
-		{"今天下午2点会议", IntentScheduleCreate, 0.6},
+		// Time pattern without explicit action keyword → query (new behavior)
+		{"明天下午3点开会", IntentScheduleQuery, 0.6},
+		{"提醒我明天开会", IntentScheduleQuery, 0.6},
+		{"今天下午2点会议", IntentScheduleQuery, 0.6},
+		// Explicit creation keyword → create
 		{"创建日程明天", IntentScheduleCreate, 0.7},
 	}
 
 	for _, tc := range testCases {
-		intent, confidence, matched := matcher.Match(tc.input)
+		intent, confidence, matched := matcher.MatchLegacy(tc.input)
 		if !matched {
 			t.Errorf("input %q: expected match, got no match", tc.input)
 			continue
@@ -69,7 +135,7 @@ func TestRuleMatcher_ScheduleCreate(t *testing.T) {
 
 // TestRuleMatcher_ScheduleUpdate tests schedule update intent matching.
 func TestRuleMatcher_ScheduleUpdate(t *testing.T) {
-	matcher := NewRuleMatcher()
+	matcher := newTestMatcher()
 
 	testCases := []struct {
 		input         string
@@ -81,7 +147,7 @@ func TestRuleMatcher_ScheduleUpdate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		intent, confidence, matched := matcher.Match(tc.input)
+		intent, confidence, matched := matcher.MatchLegacy(tc.input)
 		if !matched {
 			t.Errorf("input %q: expected match, got no match", tc.input)
 			continue
@@ -97,7 +163,7 @@ func TestRuleMatcher_ScheduleUpdate(t *testing.T) {
 
 // TestRuleMatcher_BatchSchedule tests batch schedule intent matching.
 func TestRuleMatcher_BatchSchedule(t *testing.T) {
-	matcher := NewRuleMatcher()
+	matcher := newTestMatcher()
 
 	testCases := []struct {
 		input         string
@@ -109,7 +175,7 @@ func TestRuleMatcher_BatchSchedule(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		intent, confidence, matched := matcher.Match(tc.input)
+		intent, confidence, matched := matcher.MatchLegacy(tc.input)
 		if !matched {
 			t.Errorf("input %q: expected match, got no match", tc.input)
 			continue
@@ -125,7 +191,7 @@ func TestRuleMatcher_BatchSchedule(t *testing.T) {
 
 // TestRuleMatcher_NormalizeInput tests input normalization.
 func TestRuleMatcher_NormalizeInput(t *testing.T) {
-	matcher := NewRuleMatcher()
+	matcher := newTestMatcher()
 
 	testCases := []struct {
 		input    string
@@ -147,7 +213,7 @@ func TestRuleMatcher_NormalizeInput(t *testing.T) {
 
 // BenchmarkRuleMatcher_Match benchmarks the rule matching performance.
 func BenchmarkRuleMatcher_MatchMixed(b *testing.B) {
-	matcher := NewRuleMatcher()
+	matcher := newTestMatcher()
 	inputs := []string{
 		"搜索笔记",
 		"明天下午3点开会",

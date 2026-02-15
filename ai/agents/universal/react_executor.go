@@ -239,35 +239,56 @@ func executeTool(ctx context.Context, tools []agent.ToolWithSchema, name, input 
 }
 
 // shouldEarlyStop checks if the agent should stop early based on tool results.
-// Returns true if a schedule was successfully created/updated or inability was reported.
+// Returns true if a tool executed successfully, or inability was reported.
+// Success is auto-detected by checking JSON response "success" or "error" fields.
 func shouldEarlyStop(toolResult string) bool {
 	if toolResult == "" {
 		return false
 	}
 
-	// Check for success indicators in Chinese and English
-	successIndicators := []string{
-		"✓ 已创建",
-		"✓ 已更新",
-		"已成功创建",
-		"成功创建日程",
-		"Successfully created",
-		"Successfully updated",
-		"schedule created",
-		"schedule updated",
-	}
-
-	lowerResult := strings.ToLower(toolResult)
-	for _, indicator := range successIndicators {
-		if strings.Contains(toolResult, indicator) || strings.Contains(lowerResult, strings.ToLower(indicator)) {
-			return true
-		}
+	// Auto-detect success from JSON response
+	if isSuccessFromJSON(toolResult) {
+		return true
 	}
 
 	// Check for inability report (for Handoff mechanism)
 	// When an expert reports inability, the agent should stop and let Orchestrator handle handoff
 	if strings.Contains(toolResult, "INABILITY_REPORTED:") {
 		return true
+	}
+
+	return false
+}
+
+// isSuccessFromJSON checks if the tool result indicates success by parsing JSON.
+// Returns true if:
+// - "success" field is true
+// - "error" field is null or empty
+func isSuccessFromJSON(toolResult string) bool {
+	// Try to parse as JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(toolResult), &result); err != nil {
+		return false
+	}
+
+	// Check for explicit success field
+	if success, ok := result["success"].(bool); ok && success {
+		return true
+	}
+
+	// Check for error field being null/empty
+	if err, ok := result["error"]; ok {
+		if err == nil {
+			return true
+		}
+		switch v := err.(type) {
+		case string:
+			if v == "" || v == "null" {
+				return true
+			}
+		case nil:
+			return true
+		}
 	}
 
 	return false

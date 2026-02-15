@@ -8,11 +8,10 @@ import (
 	"unicode"
 )
 
-// Pre-defined core keywords for each category (avoid map creation on every call).
-var coreKeywordsByCategory = map[string][]string{
-	"schedule": {"日程", "安排", "会议", "提醒", "预约", "开会"},
-	"memo":     {"笔记", "搜索", "查找", "记录", "memo"},
-	"amazing":  {"综合", "总结", "分析", "周报"},
+// KeywordCapabilitySource defines an interface for dynamic keyword loading.
+// This avoids import cycles between routing and orchestrator packages.
+type KeywordCapabilitySource interface {
+	IdentifyCapabilities(text string) []string
 }
 
 // Pre-compiled regex patterns for intent sub-classification.
@@ -27,44 +26,20 @@ var (
 // RuleMatcher implements Layer 1 rule-based intent matching.
 // Target: 0ms latency, handle 60%+ of requests.
 type RuleMatcher struct {
-	scheduleKeywords map[string]int
-	memoKeywords     map[string]int
-	amazingKeywords  map[string]int
-	timePatterns     []*regexp.Regexp
+	capabilityMap KeywordCapabilitySource // Dynamic capability map for keyword loading
+	timePatterns  []*regexp.Regexp
 	// User-specific custom weights (optional, for dynamic adjustment)
 	customWeights   map[int32]map[string]map[string]int // userID -> category -> keyword -> weight
 	customWeightsMu sync.RWMutex
+	keywordsMu      sync.RWMutex
+	keywordsLoaded  bool
 }
 
-// NewRuleMatcher creates a new rule matcher with predefined keyword weights.
+// NewRuleMatcher creates a new rule matcher.
+// Requires CapabilityMap to be set via SetCapabilityMap for keyword matching.
 func NewRuleMatcher() *RuleMatcher {
 	return &RuleMatcher{
 		customWeights: make(map[int32]map[string]map[string]int),
-		// Schedule keywords: weight +2 for core, +1 for supporting
-		scheduleKeywords: map[string]int{
-			// Core keywords (+2)
-			"日程": 2, "安排": 2, "会议": 2, "提醒": 2, "预约": 2,
-			"开会": 2, "约会": 2, "设置提醒": 3, "创建日程": 3,
-			// Supporting keywords (+1)
-			"今天": 2, "明天": 2, "后天": 2, "下周": 2, "本周": 2,
-			"上午": 2, "下午": 2, "晚上": 2, "点": 2,
-		},
-		// Memo keywords: weight +2 for core, +1 for supporting
-		memoKeywords: map[string]int{
-			// Core keywords (+2)
-			"笔记": 2, "搜索": 2, "查找": 2, "记录": 2, "写过": 2,
-			"找": 2, "memo": 2, "查": 2,
-			// Supporting keywords (+1)
-			"关于": 1, "提到": 1, "之前": 1, "有关": 1, "记": 1,
-		},
-		// Amazing (general assistant) keywords
-		amazingKeywords: map[string]int{
-			// Core keywords (+2)
-			"综合": 2, "总结": 2, "分析": 2, "周报": 2, "帮我": 2,
-			"怎么": 2, "什么": 2, "为什么": 2,
-			// Supporting keywords (+1)
-			"本周": 1, "工作": 1, "解释": 1, "说说": 1,
-		},
 		// Time patterns for schedule detection
 		timePatterns: []*regexp.Regexp{
 			regexp.MustCompile(`\d{1,2}[:\s时点]\d{0,2}`),       // 10:30, 10点, 10时30
@@ -75,50 +50,217 @@ func NewRuleMatcher() *RuleMatcher {
 	}
 }
 
-// Returns: intent, confidence, matched (true if rule matched).
-func (m *RuleMatcher) Match(input string) (Intent, float32, bool) {
-	// Fast path: normalize once
+// SetCapabilityMap sets the capability map for dynamic keyword loading.
+// This enables the RuleMatcher to load keywords from configured capabilities instead of hardcoded values.
+func (m *RuleMatcher) SetCapabilityMap(capMap KeywordCapabilitySource) {
+	m.capabilityMap = capMap
+}
+
+// Match performs rule-based pattern matching and returns generic action + matched keywords.
+// This is SOLID compliant: RuleMatcher only recognizes patterns, not expert types.
+// The mapping from GenericAction + Keywords to Expert is handled by IntentRegistry/ExpertRouter.
+func (m *RuleMatcher) Match(input string) *MatchResult {
+	// If no capabilityMap, still can do generic pattern matching
 	lower := m.normalizeInput(input)
 
-	// FAST PATH: Time pattern + query pattern → schedule query (e.g., "明天有什么事情要做")
-	// This handles common schedule queries without requiring core keywords like "日程" or "安排"
-	// IMPORTANT: Skip this fast path if input contains "笔记" keyword to avoid routing errors
-	// e.g., "查看今天的笔记" should route to memo, not schedule
-	if m.hasTimePattern(input) && queryPatternRegex.MatchString(lower) && !strings.Contains(lower, "笔记") {
-		return IntentScheduleQuery, 0.85, true
+	// 1. Detect generic action using pre-compiled regex patterns (domain-agnostic)
+	action := m.detectGenericAction(lower)
+
+	// 2. Get matched keywords from CapabilityMap (dynamic, config-driven)
+	keywords := m.getMatchedKeywords(input)
+
+	// 3. Calculate confidence based on matches
+	confidence := m.calculateMatchConfidence(action, keywords)
+
+	// 4. Return match result
+	// If no action detected and no keywords matched, return no match
+	if action == ActionNone && len(keywords) == 0 {
+		return &MatchResult{
+			Action:     ActionNone,
+			Keywords:   nil,
+			Confidence: 0,
+			Matched:    false,
+		}
 	}
 
-	// Calculate scores for each intent category
-	scheduleScore := m.calculateScore(lower, m.scheduleKeywords)
-	memoScore := m.calculateScore(lower, m.memoKeywords)
-	// Note: amazingScore removed - Orchestrator handles complex/ambiguous requests
+	return &MatchResult{
+		Action:     action,
+		Keywords:   keywords,
+		Confidence: confidence,
+		Matched:    true,
+	}
+}
 
-	// Time pattern adds score to schedule only if it has core schedule keywords
+// Legacy Match method for backward compatibility.
+// Returns: intent, confidence, matched (true if rule matched).
+// Deprecated: Use Match() which returns *MatchResult instead.
+func (m *RuleMatcher) MatchLegacy(input string) (Intent, float32, bool) {
+	result := m.Match(input)
+	if !result.Matched {
+		return IntentUnknown, 0, false
+	}
+
+	// Convert GenericAction to Intent using registry
+	// This is a fallback for backward compatibility
+	intent := m.GenericActionToIntent(result.Action, result.Keywords, input)
+	return intent, result.Confidence, true
+}
+
+// detectGenericAction detects the generic action type from input using regex patterns.
+// This is completely domain-agnostic - no hardcoded expert types.
+func (m *RuleMatcher) detectGenericAction(input string) GenericAction {
+	// Check patterns in order of specificity
+	if updatePatternRegex.MatchString(input) {
+		return ActionUpdate
+	}
+	if batchPatternRegex.MatchString(input) {
+		return ActionBatch
+	}
+	if searchPatternRegex.MatchString(input) {
+		return ActionSearch
+	}
+	if queryPatternRegex.MatchString(input) {
+		return ActionQuery
+	}
+	if createPatternRegex.MatchString(input) {
+		return ActionCreate
+	}
+
+	// If has time pattern but no action, default to query (common for schedule queries)
+	if m.hasTimePattern(input) {
+		return ActionQuery
+	}
+
+	return ActionNone
+}
+
+// getMatchedKeywords returns all matched trigger keywords from CapabilityMap.
+func (m *RuleMatcher) getMatchedKeywords(input string) []string {
+	if m.capabilityMap == nil {
+		return nil
+	}
+
+	capabilities := m.capabilityMap.IdentifyCapabilities(input)
+	// Capabilities are the matched keywords/categories from config
+	// Return them as-is for downstream routing
+	return capabilities
+}
+
+// calculateMatchConfidence calculates confidence based on matched patterns and keywords.
+func (m *RuleMatcher) calculateMatchConfidence(action GenericAction, keywords []string) float32 {
+	var confidence float32 = 0.5 // Base confidence
+
+	// Higher confidence if action detected
+	if action != ActionNone {
+		confidence += 0.3
+	}
+
+	// Higher confidence if keywords matched
+	if len(keywords) > 0 {
+		confidence += float32(len(keywords)) * 0.1
+	}
+
+	// Cap at 0.95
+	if confidence > 0.95 {
+		confidence = 0.95
+	}
+
+	return confidence
+}
+
+// GenericActionToIntent converts GenericAction to Intent for backward compatibility.
+// This is a temporary bridge - in the new architecture, routing is handled by IntentRegistry.
+// Input is provided to detect implicit schedule intent from time patterns.
+func (m *RuleMatcher) GenericActionToIntent(action GenericAction, keywords []string, input string) Intent {
+	// Check keywords for domain hints (this is the last remaining hardcoded part)
+	// In the new architecture, this should be handled by IntentRegistry
+	hasScheduleHint := false
+	hasMemoHint := false
+	for _, kw := range keywords {
+		kwLower := strings.ToLower(kw)
+		if strings.Contains(kwLower, "日程") || strings.Contains(kwLower, "schedule") ||
+			strings.Contains(kwLower, "会议") || strings.Contains(kwLower, "提醒") {
+			hasScheduleHint = true
+		}
+		if strings.Contains(kwLower, "笔记") || strings.Contains(kwLower, "memo") ||
+			strings.Contains(kwLower, "搜索") {
+			hasMemoHint = true
+		}
+	}
+
+	// Check for implicit schedule intent from time patterns
+	// If input has time pattern but no explicit action, assume schedule create
 	hasTimePattern := m.hasTimePattern(input)
-	hasCoreScheduleKeyword := m.hasCoreKeyword(lower, "schedule")
-	if hasTimePattern && hasCoreScheduleKeyword {
-		scheduleScore += 2
+
+	// Determine intent based on action and hints
+	// Priority: explicit hints (schedule/memo keywords) > default action mapping
+	switch action {
+	case ActionSearch:
+		// If has schedule hint, it's likely a schedule query/search
+		if hasScheduleHint {
+			return IntentScheduleQuery
+		}
+		if hasMemoHint {
+			return IntentMemoSearch
+		}
+		// Default to memo search for search action
+		return IntentMemoSearch
+	case ActionCreate:
+		if hasMemoHint {
+			return IntentMemoCreate
+		}
+		if hasScheduleHint || hasTimePattern {
+			return IntentScheduleCreate
+		}
+		return IntentScheduleCreate
+	case ActionQuery:
+		// If has time pattern but action is query, it's likely a schedule query
+		// But if no explicit schedule keywords, could be schedule query
+		if hasScheduleHint || hasTimePattern {
+			return IntentScheduleQuery
+		}
+		return IntentScheduleQuery
+	case ActionUpdate:
+		return IntentScheduleUpdate
+	case ActionBatch:
+		return IntentBatchSchedule
+	default:
+		// No explicit action, but has time pattern → schedule query
+		if hasTimePattern {
+			return IntentScheduleQuery
+		}
+		return IntentUnknown
+	}
+}
+
+// calculateDynamicScore calculates scores by matching input capabilities.
+// This is truly dynamic - RuleMatcher doesn't know about specific expert types.
+// Each expert defines its capabilities via configuration.
+func (m *RuleMatcher) calculateDynamicScore(input string) (scheduleScore, memoScore int) {
+	if m.capabilityMap == nil {
+		return 0, 0
 	}
 
-	// Memo takes priority if it has explicit memo keywords
-	if memoScore >= 3 || (memoScore >= 2 && m.hasCoreKeyword(lower, "memo")) {
-		intent := m.determineMemoIntent(lower)
-		confidence := m.normalizeConfidence(memoScore, 5)
-		return intent, confidence, true
+	// Get all capabilities from input
+	capabilities := m.capabilityMap.IdentifyCapabilities(input)
+
+	// Score based on capabilities matched - check if capability contains schedule/memo related terms
+	// This is still a hint but the capability names come from config, not hardcoded
+	for _, cap := range capabilities {
+		capLower := strings.ToLower(cap)
+		// Check if this capability is schedule-related (name from config)
+		if strings.Contains(capLower, "日程") || strings.Contains(capLower, "schedule") ||
+			strings.Contains(capLower, "会议") || strings.Contains(capLower, "提醒") ||
+			strings.Contains(capLower, "批量") || strings.Contains(capLower, "创建") {
+			scheduleScore += 2
+		}
+		// Check if this capability is memo-related (name from config)
+		if strings.Contains(capLower, "笔记") || strings.Contains(capLower, "memo") ||
+			strings.Contains(capLower, "搜索") || strings.Contains(capLower, "记录") {
+			memoScore += 2
+		}
 	}
-
-	// Schedule needs both high score AND core schedule keyword
-	if scheduleScore >= 2 && hasCoreScheduleKeyword {
-		intent := m.determineScheduleIntent(lower, scheduleScore)
-		confidence := m.normalizeConfidence(scheduleScore, 6)
-		return intent, confidence, true
-	}
-
-	// Amazing keywords removed - Orchestrator handles complex/ambiguous requests
-	// If no clear match, return false for higher layer processing
-
-	// No match - needs higher layer processing
-	return IntentUnknown, 0, false
+	return scheduleScore, memoScore
 }
 
 // normalizeInput normalizes input for faster matching.
@@ -159,14 +301,49 @@ func (m *RuleMatcher) normalizeInput(input string) string {
 }
 
 // hasCoreKeyword checks if input contains a core keyword for the given category.
-// Optimized: uses strings.Contains which is highly optimized in Go.
+// Uses dynamic capabilityMap to determine keywords.
 func (m *RuleMatcher) hasCoreKeyword(input, category string) bool {
-	keywords, ok := coreKeywordsByCategory[category]
-	if !ok {
+	if m.capabilityMap == nil {
 		return false
 	}
-	for _, kw := range keywords {
-		if strings.Contains(input, kw) {
+	capabilities := m.capabilityMap.IdentifyCapabilities(input)
+	for _, cap := range capabilities {
+		if m.capabilityMatchesCategory(cap, category) {
+			return true
+		}
+	}
+	return false
+}
+
+// capabilityMatchesCategory checks if a capability matches the given category.
+// This maps capability names to rule matcher categories.
+func (m *RuleMatcher) capabilityMatchesCategory(capability, category string) bool {
+	capLower := strings.ToLower(capability)
+
+	switch category {
+	case "schedule":
+		return strings.Contains(capLower, "日程") ||
+			strings.Contains(capLower, "schedule") ||
+			strings.Contains(capLower, "会议") ||
+			strings.Contains(capLower, "提醒")
+	case "memo":
+		return strings.Contains(capLower, "笔记") ||
+			strings.Contains(capLower, "memo") ||
+			strings.Contains(capLower, "搜索") ||
+			strings.Contains(capLower, "记录")
+	}
+	return false
+}
+
+// hasMemoKeyword checks if input contains memo-related keywords.
+// Uses dynamic capabilityMap to determine keywords.
+func (m *RuleMatcher) hasMemoKeyword(input string) bool {
+	if m.capabilityMap == nil {
+		return false
+	}
+	capabilities := m.capabilityMap.IdentifyCapabilities(input)
+	for _, cap := range capabilities {
+		if m.capabilityMatchesCategory(cap, "memo") {
 			return true
 		}
 	}
@@ -265,32 +442,15 @@ func (m *RuleMatcher) GetCustomWeights(userID int32) map[string]map[string]int {
 
 // getKeywordsForCategory returns the list of keywords for a given category.
 // This is used by the feedback collector to identify which keywords to adjust.
+// Returns empty if no capabilityMap is set.
 func (m *RuleMatcher) getKeywordsForCategory(category string) []string {
-	switch category {
-	case "schedule":
-		keys := make([]string, 0, len(m.scheduleKeywords))
-		for k := range m.scheduleKeywords {
-			keys = append(keys, k)
-		}
-		return keys
-	case "memo":
-		keys := make([]string, 0, len(m.memoKeywords))
-		for k := range m.memoKeywords {
-			keys = append(keys, k)
-		}
-		return keys
-	case "amazing":
-		keys := make([]string, 0, len(m.amazingKeywords))
-		for k := range m.amazingKeywords {
-			keys = append(keys, k)
-		}
-		return keys
-	default:
-		return nil
-	}
+	// Keywords are now dynamically loaded from capabilityMap
+	// This method kept for API compatibility but returns empty
+	return nil
 }
 
 // GetKeywordWeight returns the weight for a keyword, using custom weights if available.
+// Returns 0 if no custom weight is set and no capabilityMap is available.
 func (m *RuleMatcher) GetKeywordWeight(userID int32, category, keyword string) int {
 	m.customWeightsMu.RLock()
 	defer m.customWeightsMu.RUnlock()
@@ -304,43 +464,28 @@ func (m *RuleMatcher) GetKeywordWeight(userID int32, category, keyword string) i
 		}
 	}
 
-	// Fall back to default weight
-	switch category {
-	case "schedule":
-		return m.scheduleKeywords[keyword]
-	case "memo":
-		return m.memoKeywords[keyword]
-	case "amazing":
-		return m.amazingKeywords[keyword]
-	default:
-		return 1
-	}
+	// No default weight without capabilityMap
+	return 0
 }
 
 // MatchWithUser matches input with user-specific custom weights.
 // This is the enhanced version of Match that uses dynamic weights.
 func (m *RuleMatcher) MatchWithUser(input string, userID int32) (Intent, float32, bool) {
+	// Require capabilityMap for matching
+	if m.capabilityMap == nil {
+		return IntentUnknown, 0, false
+	}
+
 	// Fast path: normalize once
 	lower := m.normalizeInput(input)
 
-	// Get custom weights if available
-	var customSchedule, customMemo map[string]int
-	m.customWeightsMu.RLock()
-	if custom, ok := m.customWeights[userID]; ok {
-		customSchedule = custom["schedule"]
-		customMemo = custom["memo"]
-	}
-	m.customWeightsMu.RUnlock()
-
 	// FAST PATH: Time pattern + query pattern → schedule query
-	if m.hasTimePattern(input) && queryPatternRegex.MatchString(lower) {
+	if m.hasTimePattern(input) && queryPatternRegex.MatchString(lower) && !m.hasMemoKeyword(input) {
 		return IntentScheduleQuery, 0.85, true
 	}
 
-	// Calculate scores using custom or default weights
-	scheduleScore := m.calculateScoreWithWeights(lower, m.scheduleKeywords, customSchedule)
-	memoScore := m.calculateScoreWithWeights(lower, m.memoKeywords, customMemo)
-	// Note: amazingScore removed - Orchestrator handles complex/ambiguous requests
+	// Calculate scores dynamically from capabilityMap
+	scheduleScore, memoScore := m.calculateDynamicScore(lower)
 
 	// Time pattern adds score to schedule only if it has core schedule keywords
 	hasTimePattern := m.hasTimePattern(input)
