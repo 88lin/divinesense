@@ -32,7 +32,16 @@ func NewDecomposer(llmService llm.Service, config *OrchestratorConfig) *Decompos
 }
 
 // Decompose analyzes the user input and creates a task plan.
-func (d *Decomposer) Decompose(ctx context.Context, userInput string, registry ExpertRegistry) (*TaskPlan, error) {
+func (d *Decomposer) Decompose(ctx context.Context, userInput string, registry ExpertRegistry, traceID string) (*TaskPlan, error) {
+	startTime := time.Now()
+
+	// Log decomposition start
+	slog.Info("decomposer: start decompose",
+		"trace_id", traceID,
+		"user_input", userInput,
+		"timestamp", time.Now().UnixMilli(),
+	)
+
 	// Get available experts
 	experts := registry.GetAvailableExperts()
 	expertDescriptions := d.buildExpertDescriptions(experts, registry)
@@ -50,7 +59,9 @@ func (d *Decomposer) Decompose(ctx context.Context, userInput string, registry E
 
 	response, _, err := d.llm.Chat(ctx, messages)
 	if err != nil {
-		slog.Error("decomposer: LLM call failed", "error", err)
+		slog.Error("decomposer: LLM call failed",
+			"trace_id", traceID,
+			"error", err)
 		return nil, fmt.Errorf("LLM decomposition failed: %w", err)
 	}
 
@@ -58,6 +69,7 @@ func (d *Decomposer) Decompose(ctx context.Context, userInput string, registry E
 	plan, err := d.parseTaskPlan(response, experts)
 	if err != nil {
 		slog.Warn("decomposer: failed to parse plan, using fallback",
+			"trace_id", traceID,
 			"error", err,
 			"response_length", len(response))
 		plan := d.fallbackPlan(userInput, experts)
@@ -65,9 +77,13 @@ func (d *Decomposer) Decompose(ctx context.Context, userInput string, registry E
 		return plan, nil
 	}
 
-	slog.Info("decomposer: task plan created",
+	// Log decomposition complete
+	duration := time.Since(startTime)
+	slog.Info("decomposer: decompose complete",
+		"trace_id", traceID,
+		"task_count", len(plan.Tasks),
+		"duration_ms", duration.Milliseconds(),
 		"analysis", plan.Analysis,
-		"tasks", len(plan.Tasks),
 		"parallel", plan.Parallel)
 
 	return plan, nil
@@ -119,7 +135,7 @@ func (d *Decomposer) parseTaskPlan(response string, validAgents []string) (*Task
 		if !validSet[task.Agent] {
 			return nil, fmt.Errorf("invalid agent: %s (valid: %v)", task.Agent, validAgents)
 		}
-		task.Status = TaskStatusPending
+		task.SetStatus(TaskStatusPending)
 	}
 
 	return &plan, nil

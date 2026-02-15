@@ -5,6 +5,11 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
+	"time"
+
+	agents "github.com/hrygo/divinesense/ai/agents"
 )
 
 // Task represents a single task to be executed by an expert agent.
@@ -33,6 +38,9 @@ type Task struct {
 
 	// Status indicates the current status of the task
 	Status TaskStatus `json:"status"`
+
+	// mu protects concurrent access to Status, Result, and Error
+	mu sync.RWMutex
 }
 
 // NewTask creates a new task with validated fields and default status.
@@ -51,9 +59,65 @@ func NewTask(agent, input, purpose string) (*Task, error) {
 	}, nil
 }
 
+// Thread-safe accessors
+
+// SetStatus updates the task status thread-safely.
+func (t *Task) SetStatus(status TaskStatus) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Status = status
+}
+
+// GetStatus returns the current status thread-safely.
+func (t *Task) GetStatus() TaskStatus {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.Status
+}
+
+// SetResult updates the task result and status thread-safely.
+func (t *Task) SetResult(result string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Result = result
+	t.Status = TaskStatusCompleted
+}
+
+// GetResult returns the task result thread-safely.
+func (t *Task) GetResult() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.Result
+}
+
+// SetError updates the task error and status thread-safely.
+func (t *Task) SetError(err string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Error = err
+	t.Status = TaskStatusFailed
+}
+
+// GetError returns the task error thread-safely.
+func (t *Task) GetError() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.Error
+}
+
+// SetSkipped marks the task as skipped with a reason.
+func (t *Task) SetSkipped(reason string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Error = reason
+	t.Status = TaskStatusSkipped
+}
+
 // MarkRunning transitions the task to running state.
 // Returns an error if the transition is invalid.
 func (t *Task) MarkRunning() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.Status != TaskStatusPending {
 		return errors.New("can only mark pending task as running")
 	}
@@ -64,6 +128,8 @@ func (t *Task) MarkRunning() error {
 // Complete transitions the task to completed state with a result.
 // Returns an error if the transition is invalid.
 func (t *Task) Complete(result string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.Status != TaskStatusRunning {
 		return errors.New("can only complete running task")
 	}
@@ -75,6 +141,8 @@ func (t *Task) Complete(result string) error {
 // Fail transitions the task to failed state with an error message.
 // Returns an error if the transition is invalid.
 func (t *Task) Fail(errMsg string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.Status != TaskStatusRunning {
 		return errors.New("can only fail running task")
 	}
@@ -158,6 +226,9 @@ type OrchestratorConfig struct {
 
 	// AggregationModel is the model to use for result aggregation
 	AggregationModel string `json:"aggregation_model"`
+
+	// DefaultLanguage is the default language for aggregation
+	DefaultLanguage string `json:"default_language"`
 }
 
 // DefaultOrchestratorConfig returns the default configuration.
@@ -168,6 +239,7 @@ func DefaultOrchestratorConfig() *OrchestratorConfig {
 		EnableHandoff:      true, // Enable handoff by default for better expert coordination
 		DecompositionModel: "default",
 		AggregationModel:   "default",
+		DefaultLanguage:    "zh",
 	}
 }
 
@@ -179,6 +251,9 @@ type ExpertRegistry interface {
 
 	// GetExpertDescription returns a description of what an expert agent can do
 	GetExpertDescription(name string) string
+
+	// GetExpertConfig returns the self-cognition configuration of an expert agent
+	GetExpertConfig(name string) *agents.ParrotSelfCognition
 
 	// ExecuteExpert executes a task with the specified expert agent
 	ExecuteExpert(ctx context.Context, expertName string, input string, callback EventCallback) error
@@ -195,4 +270,33 @@ type HandoffHandlerInterface interface {
 
 	// HandleCannotComplete processes a cannot_complete event and determines next action.
 	HandleCannotComplete(ctx context.Context, task *Task, reason CannotCompleteReason, callback EventCallback, handOffContext *HandoffContext) *HandoffResult
+}
+
+// TaskContext holds the execution context for a task, including trace_id for observability.
+type TaskContext struct {
+	// TraceID is the unique identifier for tracing the entire request flow
+	TraceID string
+	// UserID is the user who initiated the request
+	UserID int32
+	// BlockID is the block ID associated with this task
+	BlockID int64
+	// ParentTaskID is the ID of the parent task (for subtasks)
+	ParentTaskID string
+}
+
+// GenerateTraceID generates a new trace ID for request tracing.
+func GenerateTraceID() string {
+	// Using simple UUID-like format: trace-{timestamp}-{random}
+	// In production, this could use proper distributed tracing
+	return fmt.Sprintf("trace-%d-%s", time.Now().UnixMilli(), randomString(12))
+}
+
+func randomString(n int) string {
+	const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+		time.Sleep(time.Nanosecond) // Ensure different values
+	}
+	return string(b)
 }

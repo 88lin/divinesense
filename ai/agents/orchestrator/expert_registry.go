@@ -102,6 +102,26 @@ func buildDescriptionFromSelfCognition(cog *agents.ParrotSelfCognition) string {
 	return strings.Join(parts, "。")
 }
 
+// GetExpertConfig returns the self-cognition configuration of an expert agent.
+func (r *ParrotExpertRegistry) GetExpertConfig(name string) *agents.ParrotSelfCognition {
+	config, ok := r.factory.GetConfig(name)
+	if !ok {
+		return nil
+	}
+	// Use SelfDescription if available
+	if config.SelfDescription != nil {
+		return config.SelfDescription
+	}
+
+	// Fallback: build minimal self-cognition from config fields
+	return &agents.ParrotSelfCognition{
+		Title:        config.DisplayName,
+		Name:         config.Name,
+		Emoji:        config.Emoji,
+		Capabilities: config.Tools,
+	}
+}
+
 // ExecuteExpert executes a task with the specified expert agent.
 func (r *ParrotExpertRegistry) ExecuteExpert(ctx context.Context, expertName string, input string, callback EventCallback) error {
 	// Create the expert agent

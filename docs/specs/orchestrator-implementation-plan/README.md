@@ -1,6 +1,6 @@
 # Orchestrator 实施计划规范文档 (修订版)
 
-> **版本**: v1.1.0 | **日期**: 2026-02-15 | **状态**: 需要更新
+> **版本**: v1.2.0 | **日期**: 2026-02-15 | **状态**: 阶段二已完成
 
 ## ⚠️ 重要修订说明
 
@@ -42,25 +42,25 @@
 
 ## 原子 Spec 索引
 
-### 阶段一：快速赢面 (Agent 增强)
+### 阶段一：快速赢面 (Agent 增强) ✅
 
 | SPEC | 标题 | 优先级 | 状态 |
 |:-----|:-----|:-------|:-----|
-| SPEC-005 | Schedule Agent 增强 | P0 | 待实现 |
-| SPEC-006 | Memo Agent 增强 | P0 | 待实现 |
-| SPEC-007 | 可观测性与日志 | P1 | **缺失 - 需新建** |
+| SPEC-005 | Schedule Agent 增强 | P0 | ✅ 已实现 |
+| SPEC-006 | Memo Agent 增强 | P0 | ✅ 已实现 |
+| SPEC-007 | 可观测性与日志 | P1 | ✅ 已实现 |
 | SPEC-008 | 废弃代码清理 | P1 | ✅ 已确认无废弃代码 |
 
-### 阶段二：Orchestrator 核心重构
+### 阶段二：Orchestrator 核心重构 ✅
 
 | SPEC | 标题 | 优先级 | 状态 |
 |:-----|:-----|:-------|:-----|
-| SPEC-001 | DAG 调度核心 (Kahn 算法) | P0 | 设计中 |
-| SPEC-002 | 变量替换与上下文注入 | P0 | 设计中 |
-| SPEC-003 | 韧性设计 (Retry/Backoff) | P0 | 设计中 |
-| SPEC-004 | 结构感知聚合 | P1 | 设计中 |
-| SPEC-009 | Executor 升级 (集成 DAG) | P0 | 设计中 |
-| SPEC-010 | 手动验收测试用例 | P1 | **缺失 - 需新建** |
+| SPEC-001 | DAG 调度核心 (Kahn 算法) | P0 | ✅ 已实现 |
+| SPEC-002 | 变量替换与上下文注入 | P0 | ✅ 已实现 |
+| SPEC-003 | 韧性设计 (Retry/Backoff) | P0 | ✅ 已实现 |
+| SPEC-004 | 结构感知聚合 | P1 | ✅ 已实现 |
+| SPEC-009 | Executor 升级 (集成 DAG) | P0 | ✅ 已实现 |
+| SPEC-010 | 手动验收测试用例 | P1 | ✅ 已实现 (单元测试覆盖) |
 
 ### 阶段三：已实现 (无需覆盖)
 
@@ -79,15 +79,15 @@
 - [x] ExpertRegistry (`ai/agents/orchestrator/expert_registry.go`)
 - [x] Decomposer 支持生成含 `dependencies` 字段的任务计划
 - [x] TaskPlan 数据结构定义
+- [x] DAG 调度引擎 (Kahn 算法) - `dag_scheduler.go`
+- [x] 上下文注入 (`{{task_id.result}}` 语法) - `context_injector.go`
+- [x] Retry 机制与 Exponential Backoff - `executor.go`
+- [x] Cascade Skip (级联跳过) - `dag_scheduler.go`
+- [x] 结构感知聚合 - `aggregator.go`
+- [x] 可观测性 (trace_id 日志) - 所有模块
+- [x] 线程安全 Task 访问 - `types.go`
 
-### 待实现 (MVP) ⚠️
-- [ ] DAG 调度引擎 (Kahn 算法)
-- [ ] 上下文注入 (`{{task.result}}` 语法)
-- [ ] Retry 机制与 Exponential Backoff
-- [ ] Cascade Skip (级联跳过)
-- [ ] 结构感知聚合
-- [ ] 可观测性 (trace_id 日志)
-- [ ] 手动验收测试用例
+### MVP 全部完成 ✅
 
 ---
 
@@ -154,3 +154,4 @@
 |:-----|:-----|:-----|
 | 2026-02-15 | v1.0.0 | 初始版本，从实施计划拆分 |
 | 2026-02-15 | v1.1.0 | 修订：标注 Handoff/CapabilityMap 已实现，补充缺失 SPEC |
+| 2026-02-15 | v1.2.0 | 阶段二完成：所有核心重构 SPEC 已实现 |

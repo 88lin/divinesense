@@ -38,9 +38,11 @@ func (a *Aggregator) Aggregate(ctx context.Context, result *ExecutionResult, cal
 	// Collect successful results
 	var successfulResults []string
 	for _, task := range result.Plan.Tasks {
-		if task.Status == TaskStatusCompleted && task.Result != "" {
+		status := task.GetStatus()
+		resultVal := task.GetResult()
+		if status == TaskStatusCompleted && resultVal != "" {
 			successfulResults = append(successfulResults,
-				fmt.Sprintf("【%s】\n%s", task.Agent, task.Result))
+				fmt.Sprintf("【%s】\n%s", task.Agent, resultVal))
 		}
 	}
 
@@ -53,7 +55,12 @@ func (a *Aggregator) Aggregate(ctx context.Context, result *ExecutionResult, cal
 	}
 
 	// Build aggregation prompt (default to Chinese, can be extended for language detection)
-	prompt := a.promptConfig.BuildAggregatorPrompt(result.Plan.Analysis, successfulResults, "zh")
+	// TODO: Detect language from user input or context
+	lang := a.config.DefaultLanguage
+	if lang == "" {
+		lang = "zh"
+	}
+	prompt := a.promptConfig.BuildAggregatorPrompt(result.Plan.Analysis, successfulResults, lang)
 
 	// Call LLM for aggregation
 	messages := []llm.Message{

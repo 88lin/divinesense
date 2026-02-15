@@ -52,24 +52,31 @@ func NewExecutorWithHandoff(registry ExpertRegistry, config *OrchestratorConfig,
 }
 
 // ExecutePlan executes all tasks in the plan using DAG scheduling and returns results.
-func (e *Executor) ExecutePlan(ctx context.Context, plan *TaskPlan, callback EventCallback) *ExecutionResult {
+func (e *Executor) ExecutePlan(ctx context.Context, plan *TaskPlan, callback EventCallback, traceID string) *ExecutionResult {
 	result := &ExecutionResult{
 		Plan:         plan,
 		IsAggregated: false,
 	}
 
 	startTime := time.Now()
+
+	// Initialize EventDispatcher
+	dispatcher := NewEventDispatcher(traceID, callback)
+	defer dispatcher.Close()
+
 	slog.Info("executor: starting DAG plan execution",
+		"trace_id", traceID,
 		"tasks", len(plan.Tasks),
 		"parallel", plan.Parallel)
 
 	// Send plan event to frontend
+	// Send plan event to frontend
 	if callback != nil {
-		e.sendPlanEvent(plan, callback)
+		e.sendPlanEvent(plan, dispatcher)
 	}
 
 	// Initialize DAG Scheduler
-	scheduler, err := NewDAGScheduler(e, plan.Tasks)
+	scheduler, err := NewDAGScheduler(e, plan.Tasks, traceID, dispatcher)
 	if err != nil {
 		slog.Error("executor: failed to initialize DAG scheduler", "error", err)
 		result.Errors = append(result.Errors, fmt.Sprintf("DAG Init Error: %v", err))
@@ -89,11 +96,16 @@ func (e *Executor) ExecutePlan(ctx context.Context, plan *TaskPlan, callback Eve
 	// Collect results and errors
 	var results []string
 	for _, task := range plan.Tasks {
-		if task.Status == TaskStatusCompleted && task.Result != "" {
-			results = append(results, task.Result)
+		// Use safe accessors
+		status := task.GetStatus()
+		resultVal := task.GetResult()
+		errorVal := task.GetError()
+
+		if status == TaskStatusCompleted && resultVal != "" {
+			results = append(results, resultVal)
 		}
-		if task.Status == TaskStatusFailed && task.Error != "" {
-			result.Errors = append(result.Errors, fmt.Sprintf("Task %s: %s", task.ID, task.Error))
+		if status == TaskStatusFailed && errorVal != "" {
+			result.Errors = append(result.Errors, fmt.Sprintf("Task %s: %s", task.ID, errorVal))
 		}
 	}
 
@@ -117,24 +129,32 @@ func (e *Executor) ExecutePlan(ctx context.Context, plan *TaskPlan, callback Eve
 }
 
 // executeTask executes a single task.
-func (e *Executor) executeTask(ctx context.Context, task *Task, index int, callback EventCallback) error {
-	return e.executeTaskWithHandoff(ctx, task, index, callback, 0)
+func (e *Executor) executeTask(ctx context.Context, task *Task, index int, dispatcher *EventDispatcher, traceID string) error {
+	return e.executeTaskWithHandoff(ctx, task, index, dispatcher, 0, traceID)
 }
 
 // executeTaskWithHandoff executes a single task with handoff depth tracking.
-func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index int, callback EventCallback, depth int) error {
+func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index int, dispatcher *EventDispatcher, depth int, traceID string) error {
 	startTime := time.Now()
-	task.Status = TaskStatusRunning
-
-	// Send task_start event
-	if callback != nil {
-		// We need index for event? TaskPlan has slice index, but Task struct might not know it.
-		// For backward compatibility, we might pass -1 or find index if strictly needed.
-		// The original code passed index. Let's try to assume index is not critical or 0.
-		e.sendTaskStartEvent(task, -1, callback)
+	// Use safe accessor to mark running
+	if err := task.MarkRunning(); err != nil {
+		// Should not happen if logic is correct
+		slog.Error("executor: failed to mark task running", "error", err)
 	}
 
+	// Log task start
+	slog.Info("executor: task start",
+		"trace_id", traceID,
+		"task_id", task.ID,
+		"agent", task.Agent,
+		"dependencies", task.Dependencies,
+	)
+
+	// Send task_start event
+	e.sendTaskStartEvent(task, -1, dispatcher)
+
 	slog.Debug("executor: executing task",
+		"trace_id", traceID,
 		"id", task.ID,
 		"agent", task.Agent,
 		"purpose", task.Purpose)
@@ -147,68 +167,104 @@ func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index
 	// So here we assume task.Input is already resolved.
 
 	// Create result collector with thread-safe event forwarding
-	resultCollector := newResultCollector(callback)
-	defer resultCollector.close()
+	resultCollector := newResultCollector(dispatcher)
+	// defer resultCollector.close() // No longer needed
 
-	// Execute via expert registry
-	err := e.registry.ExecuteExpert(ctx, task.Agent, task.Input, resultCollector.onEvent)
+	// Execute via expert registry with retry logic
+	var err error
+	maxRetries := 3
+	backoff := 1 * time.Second
+
+	for i := 0; i <= maxRetries; i++ {
+		// Use resultCollector.onEvent as callback
+		err = e.registry.ExecuteExpert(ctx, task.Agent, task.Input, resultCollector.onEvent)
+		if err == nil {
+			break
+		}
+
+		// Check if error is transient.
+		// For MVP, we retry all errors up to maxRetries.
+		// TODO: refinements to only retry network/timeout/capacity errors.
+
+		if i < maxRetries {
+			slog.Warn("executor: task execution failed, retrying",
+				"trace_id", traceID,
+				"task_id", task.ID,
+				"attempt", i+1,
+				"error", err,
+			)
+			time.Sleep(backoff)
+			backoff *= 2 // Exponential backoff
+		}
+	}
 
 	if err != nil {
 		// Task status updated by caller (DAGScheduler) or here?
-		// Let's update here for consistency
-		task.Status = TaskStatusFailed
-		task.Error = err.Error()
-		slog.Error("executor: task failed",
-			"id", task.ID,
-			"agent", task.Agent,
-			"error", err)
+		// Let's update here for consistency using safe accessor
+		task.SetError(err.Error())
+
+		slog.Warn("executor: task failed",
+			"trace_id", traceID,
+			"task_id", task.ID,
+			"error", err.Error(),
+			"retry_count", depth,
+		)
 
 		// Try handoff if handler is available
 		if e.handoffHandler != nil {
 			// Create handoff context with depth tracking
 			handOffCtx := NewHandoffContextWithDepth(depth, task.ID)
-			handoffResult := e.handoffHandler.HandleTaskFailure(ctx, task, err, callback, handOffCtx)
+			// Pass raw callback for now? Or adapt HandoffHandler?
+			// HandoffHandler expects EventCallback. We need to adapter dispatcher back to callback?
+			// Or update HandoffHandler signature.
+			// Ideally update HandoffHandler signature, but that affects interface.
+			// Let's create an adapter for now to keep interface stable, or update interface.
+			// Adapt:
+			cb := func(t, d string) { dispatcher.Send(t, d) }
+			handoffResult := e.handoffHandler.HandleTaskFailure(ctx, task, err, cb, handOffCtx)
 			if handoffResult.Success && handoffResult.NewTask != nil {
 				slog.Info("executor: attempting handoff",
-					"task", task.ID,
-					"from", task.Agent,
-					"to", handoffResult.NewExpert,
+					"trace_id", traceID,
+					"task_id", task.ID,
+					"from_agent", task.Agent,
+					"to_agent", handoffResult.NewExpert,
 					"depth", handoffResult.Depth)
 
 				// Execute with new expert
 				task.Agent = handoffResult.NewExpert
 				task.Input = handoffResult.NewTask.Input
-				task.Status = TaskStatusPending
+				// Reset status for retry/handoff
+				task.SetStatus(TaskStatusPending)
 
 				// Re-execute the task with new expert and updated context
-				return e.executeTaskWithHandoff(ctx, task, index, callback, handoffResult.Depth)
+				return e.executeTaskWithHandoff(ctx, task, index, dispatcher, handoffResult.Depth, traceID)
 			}
 		}
 
 		// Send task_end event with error
-		if callback != nil {
-			e.sendTaskEndEvent(task, -1, callback)
-		}
+		e.sendTaskEndEvent(task, -1, dispatcher)
 		return err
 	}
 
 	// Success
-	task.Status = TaskStatusCompleted
-	task.Result = resultCollector.getResult()
-	slog.Debug("executor: task completed",
-		"id", task.ID,
-		"agent", task.Agent,
-		"duration_ms", time.Since(startTime).Milliseconds())
+	// Use safe accessor
+	task.SetResult(resultCollector.getResult())
+
+	duration := time.Since(startTime)
+	slog.Info("executor: task complete",
+		"trace_id", traceID,
+		"task_id", task.ID,
+		"status", task.GetStatus(),
+		"duration_ms", duration.Milliseconds(),
+	)
 
 	// Send task_end event
-	if callback != nil {
-		e.sendTaskEndEvent(task, -1, callback)
-	}
+	e.sendTaskEndEvent(task, -1, dispatcher)
 	return nil
 }
 
 // sendPlanEvent sends the task plan to the frontend.
-func (e *Executor) sendPlanEvent(plan *TaskPlan, callback EventCallback) {
+func (e *Executor) sendPlanEvent(plan *TaskPlan, dispatcher *EventDispatcher) {
 	event := map[string]interface{}{
 		"analysis": plan.Analysis,
 		"tasks":    plan.Tasks,
@@ -219,43 +275,43 @@ func (e *Executor) sendPlanEvent(plan *TaskPlan, callback EventCallback) {
 		slog.Error("executor: failed to marshal plan event", "error", err)
 		return
 	}
-	callback(EventTypePlan, string(eventJSON))
+	dispatcher.Send(EventTypePlan, string(eventJSON))
 }
 
 // sendTaskStartEvent sends a task start event to the frontend.
-func (e *Executor) sendTaskStartEvent(task *Task, index int, callback EventCallback) {
+func (e *Executor) sendTaskStartEvent(task *Task, index int, dispatcher *EventDispatcher) {
 	event := map[string]interface{}{
 		"id":      task.ID,
 		"index":   index, // -1 if unknown
 		"agent":   task.Agent,
 		"purpose": task.Purpose,
-		"status":  string(task.Status),
+		"status":  string(task.GetStatus()),
 	}
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		slog.Error("executor: failed to marshal task_start event", "error", err, "id", task.ID)
 		return
 	}
-	callback(EventTypeTaskStart, string(eventJSON))
+	dispatcher.Send(EventTypeTaskStart, string(eventJSON))
 }
 
 // sendTaskEndEvent sends a task end event to the frontend.
-func (e *Executor) sendTaskEndEvent(task *Task, index int, callback EventCallback) {
+func (e *Executor) sendTaskEndEvent(task *Task, index int, dispatcher *EventDispatcher) {
 	event := map[string]interface{}{
 		"id":     task.ID,
 		"index":  index,
 		"agent":  task.Agent,
-		"status": string(task.Status),
+		"status": string(task.GetStatus()),
 	}
-	if task.Error != "" {
-		event["error"] = task.Error
+	if errVal := task.GetError(); errVal != "" {
+		event["error"] = errVal
 	}
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		slog.Error("executor: failed to marshal task_end event", "error", err, "id", task.ID)
 		return
 	}
-	callback(EventTypeTaskEnd, string(eventJSON))
+	dispatcher.Send(EventTypeTaskEnd, string(eventJSON))
 }
 
 // Max result size to prevent OOM (10MB)
@@ -263,52 +319,22 @@ const maxResultSize = 10 * 1024 * 1024
 
 // resultCollector collects results from event callbacks.
 type resultCollector struct {
-	mu        sync.Mutex
-	callback  EventCallback
-	result    strings.Builder
-	truncated bool
-	// eventCh is used to forward events without blocking the callback
-	eventCh chan struct {
-		eventType string
-		eventData string
-	}
+	mu         sync.Mutex
+	dispatcher *EventDispatcher
+	result     strings.Builder
+	truncated  bool
 }
 
-func newResultCollector(callback EventCallback) *resultCollector {
-	rc := &resultCollector{
-		callback: callback,
-		eventCh:  make(chan struct{ eventType, eventData string }, 100),
+func newResultCollector(dispatcher *EventDispatcher) *resultCollector {
+	return &resultCollector{
+		dispatcher: dispatcher,
 	}
-
-	// Start event forwarding goroutine
-	if callback != nil {
-		go func() {
-			for e := range rc.eventCh {
-				// Use recover to prevent panics from callback
-				func() {
-					defer func() {
-						if r := recover(); r != nil {
-							slog.Error("executor: callback panic in result collector", "panic", r)
-						}
-					}()
-					rc.callback(e.eventType, e.eventData)
-				}()
-			}
-		}()
-	}
-
-	return rc
 }
 
 func (rc *resultCollector) onEvent(eventType string, eventData string) {
-	// Forward event via channel to avoid blocking
-	if rc.callback != nil {
-		select {
-		case rc.eventCh <- struct{ eventType, eventData string }{eventType, eventData}:
-		default:
-			// Channel full, drop event to prevent blocking
-			slog.Warn("executor: event channel full, dropping event", "eventType", eventType)
-		}
+	// Forward event via dispatcher (thread-safe, sequential)
+	if rc.dispatcher != nil {
+		rc.dispatcher.Send(eventType, eventData)
 	}
 
 	// Collect text/content events as results with size limit
@@ -325,15 +351,9 @@ func (rc *resultCollector) onEvent(eventType string, eventData string) {
 	}
 }
 
+// getResult returns the collected result.
 func (rc *resultCollector) getResult() string {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 	return rc.result.String()
-}
-
-// close cleans up the result collector resources
-func (rc *resultCollector) close() {
-	if rc.eventCh != nil {
-		close(rc.eventCh)
-	}
 }

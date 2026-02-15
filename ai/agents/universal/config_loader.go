@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/hrygo/divinesense/ai/agents"
+	agent "github.com/hrygo/divinesense/ai/agents"
 	"gopkg.in/yaml.v3"
 )
 
@@ -83,7 +83,11 @@ Be concise and helpful in your responses.`,
 			Title:        "Memo Parrot",
 			Name:         "memo",
 			Emoji:        "📝",
-			Capabilities: []string{"memo_search"},
+			Capabilities: []string{"memo_search", "Note Search", "笔记搜索"},
+			CapabilityTriggers: map[string][]string{
+				"Note Search": {"笔记", "搜索", "note", "memo", "文档"},
+				"笔记搜索":        {"笔记", "搜索", "note", "memo", "文档"},
+			},
 		},
 	}
 }
@@ -123,7 +127,11 @@ Be concise and helpful in your responses.`,
 			Title:        "Schedule Parrot",
 			Name:         "schedule",
 			Emoji:        "📅",
-			Capabilities: []string{"schedule_add", "schedule_query", "schedule_update", "find_free_time"},
+			Capabilities: []string{"schedule_add", "schedule_query", "schedule_update", "find_free_time", "Schedule Management", "日程管理"},
+			CapabilityTriggers: map[string][]string{
+				"Schedule Management": {"日程", "安排", "calendar", "schedule", "会议"},
+				"日程管理":                {"日程", "安排", "calendar", "schedule", "会议"},
+			},
 		},
 	}
 }

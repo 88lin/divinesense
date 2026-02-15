@@ -25,17 +25,19 @@ type ExpertInfo struct {
 // CapabilityMap provides a thread-safe mapping from capabilities to expert agents.
 // It is used at runtime to build the capability-to-expert mapping.
 type CapabilityMap struct {
-	mu                  sync.RWMutex
-	capabilityToExperts map[Capability][]*ExpertInfo
-	experts             map[string]*ExpertInfo
+	mu                    sync.RWMutex
+	capabilityToExperts   map[Capability][]*ExpertInfo
+	keywordToCapabilities map[string][]Capability
+	experts               map[string]*ExpertInfo
 }
 
 // NewCapabilityMap creates an empty CapabilityMap.
 // NewCapabilityMap 创建一个空的 CapabilityMap。
 func NewCapabilityMap() *CapabilityMap {
 	return &CapabilityMap{
-		capabilityToExperts: make(map[Capability][]*ExpertInfo),
-		experts:             make(map[string]*ExpertInfo),
+		capabilityToExperts:   make(map[Capability][]*ExpertInfo),
+		keywordToCapabilities: make(map[string][]Capability),
+		experts:               make(map[string]*ExpertInfo),
 	}
 }
 
@@ -47,6 +49,7 @@ func (cm *CapabilityMap) BuildFromConfigs(configs []*agents.ParrotSelfCognition)
 
 	// Clear existing mappings
 	cm.capabilityToExperts = make(map[Capability][]*ExpertInfo)
+	cm.keywordToCapabilities = make(map[string][]Capability)
 	cm.experts = make(map[string]*ExpertInfo)
 
 	for _, config := range configs {
@@ -74,6 +77,25 @@ func (cm *CapabilityMap) BuildFromConfigs(configs []*agents.ParrotSelfCognition)
 				cm.capabilityToExperts[Capability(normalizedCap)],
 				expert,
 			)
+		}
+
+		// Add to keywordToCapabilities map
+		for capName, triggers := range config.CapabilityTriggers {
+			normalizedCap := cm.normalizeCapability(capName)
+			if normalizedCap == "" {
+				continue
+			}
+
+			for _, trigger := range triggers {
+				normalizedTrigger := cm.normalizeCapability(trigger) // Reuse normalization logic
+				if normalizedTrigger == "" {
+					continue
+				}
+				cm.keywordToCapabilities[normalizedTrigger] = append(
+					cm.keywordToCapabilities[normalizedTrigger],
+					Capability(normalizedCap),
+				)
+			}
 		}
 	}
 }
@@ -127,6 +149,84 @@ func (cm *CapabilityMap) FindAlternativeExperts(capability string, excludeExpert
 	}
 
 	return result
+}
+
+// IdentifyCapabilities identifies capabilities from a text based on registered triggers.
+// IdentifyCapabilities 根据注册的触发器从文本中识别能力。
+func (cm *CapabilityMap) IdentifyCapabilities(text string) []string {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	normalizedText := strings.ToLower(text)
+	var matchedCapabilities []string
+	seen := make(map[string]bool)
+
+	for trigger, caps := range cm.keywordToCapabilities {
+		if cm.matchesTrigger(normalizedText, trigger) {
+			for _, cap := range caps {
+				capStr := string(cap)
+				if !seen[capStr] {
+					seen[capStr] = true
+					matchedCapabilities = append(matchedCapabilities, capStr)
+				}
+			}
+		}
+	}
+
+	return matchedCapabilities
+}
+
+// matchesTrigger checks if the trigger exists in the text.
+// For ASCII triggers, it enforces word boundaries to avoid partial matches.
+// For non-ASCII triggers (e.g. Chinese), it uses simple containment.
+func (cm *CapabilityMap) matchesTrigger(text, trigger string) bool {
+	// 1. Basic containment check
+	idx := strings.Index(text, trigger)
+	if idx == -1 {
+		return false
+	}
+
+	// 2. If trigger contains non-ASCII characters (e.g. Chinese), containment is sufficient
+	if isNonASCII(trigger) {
+		return true
+	}
+
+	// 3. For ASCII triggers, verify word boundaries
+	// We must check all occurrences
+	for idx != -1 {
+		// Check left boundary
+		leftOk := (idx == 0) || !isWordChar(text[idx-1])
+
+		// Check right boundary
+		end := idx + len(trigger)
+		rightOk := (end == len(text)) || !isWordChar(text[end])
+
+		if leftOk && rightOk {
+			return true
+		}
+
+		// Find next occurrence
+		next := strings.Index(text[idx+1:], trigger)
+		if next == -1 {
+			break
+		}
+		idx += 1 + next
+	}
+
+	return false
+}
+
+func isNonASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 128 {
+			return true
+		}
+	}
+	return false
+}
+
+func isWordChar(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_'
 }
 
 // GetAllExperts returns all registered experts.
