@@ -234,3 +234,29 @@ func TestContextInjector_InvalidReference(t *testing.T) {
 	assert.NotEmpty(t, result.Errors)
 	// assert.Contains(t, result.Errors[0], "reference not found")
 }
+
+// Case 6: 菱形依赖失败 (A fails -> B,C skipped -> D skipped)
+func TestDAG_DiamondFailure(t *testing.T) {
+	registry := new(MockRegistry)
+	config := DefaultOrchestratorConfig()
+	config.MaxParallelTasks = 3
+	executor := NewExecutor(registry, config)
+
+	tA := createTask("A", "memo", "Root", nil)
+	tB := createTask("B", "memo", "Branch B", []string{"A"})
+	tC := createTask("C", "memo", "Branch C", []string{"A"})
+	tD := createTask("D", "memo", "Join", []string{"B", "C"})
+
+	plan := &TaskPlan{Tasks: []*Task{tA, tB, tC, tD}}
+
+	// Mock A failing
+	registry.On("ExecuteExpert", mock.Anything, "memo", "Root", mock.Anything).Return(fmt.Errorf("root error"))
+
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-diamond-fail")
+
+	assert.NotEmpty(t, result.Errors)
+	assert.Equal(t, TaskStatusFailed, tA.Status)
+	assert.Equal(t, TaskStatusSkipped, tB.Status)
+	assert.Equal(t, TaskStatusSkipped, tC.Status)
+	assert.Equal(t, TaskStatusSkipped, tD.Status)
+}
