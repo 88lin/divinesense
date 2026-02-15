@@ -4,8 +4,12 @@ package orchestrator
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
+	"math/big"
 	"sync"
 	"time"
 
@@ -229,6 +233,12 @@ type OrchestratorConfig struct {
 
 	// DefaultLanguage is the default language for aggregation
 	DefaultLanguage string `json:"default_language"`
+
+	// MaxRetries is the maximum number of retries for transient errors
+	MaxRetries int `json:"max_retries"`
+
+	// RetryBackoff is the initial backoff duration for retries
+	RetryBackoff time.Duration `json:"retry_backoff"`
 }
 
 // DefaultOrchestratorConfig returns the default configuration.
@@ -240,6 +250,8 @@ func DefaultOrchestratorConfig() *OrchestratorConfig {
 		DecompositionModel: "default",
 		AggregationModel:   "default",
 		DefaultLanguage:    "zh",
+		MaxRetries:         3,
+		RetryBackoff:       time.Second,
 	}
 }
 
@@ -284,19 +296,32 @@ type TaskContext struct {
 	ParentTaskID string
 }
 
-// GenerateTraceID generates a new trace ID for request tracing.
-func GenerateTraceID() string {
-	// Using simple UUID-like format: trace-{timestamp}-{random}
-	// In production, this could use proper distributed tracing
-	return fmt.Sprintf("trace-%d-%s", time.Now().UnixMilli(), randomString(12))
-}
-
 func randomString(n int) string {
 	const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	b := make([]byte, n)
+	letterLen := big.NewInt(int64(len(letters)))
 	for i := range b {
-		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
-		time.Sleep(time.Nanosecond) // Ensure different values
+		// Use crypto/rand for cryptographically secure random number
+		num, err := rand.Int(rand.Reader, letterLen)
+		if err != nil {
+			// Fallback to time-based if crypto/rand fails (should never happen)
+			slog.Warn("randomString: crypto rand failed, using fallback", "error", err)
+			b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+			continue
+		}
+		b[i] = letters[num.Int64()]
 	}
 	return string(b)
+}
+
+// GenerateTraceID generates a new trace ID using crypto/rand for secure random bytes.
+func GenerateTraceID() string {
+	// Generate 16 bytes of random data for secure trace ID
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback if crypto/rand fails
+		slog.Warn("GenerateTraceID: crypto rand failed, using fallback", "error", err)
+		return fmt.Sprintf("trace-%d-%s", time.Now().UnixMilli(), randomString(12))
+	}
+	return fmt.Sprintf("trace-%d-%s", time.Now().UnixMilli(), hex.EncodeToString(bytes)[:12])
 }
