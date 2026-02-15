@@ -161,6 +161,9 @@ func (t *MemoSearchTool) Run(ctx context.Context, input string) (string, error) 
 		strategy = intent.ToStrategy()
 	}
 
+	// Extract tags from query for tag filtering
+	tags := t.classifier.ExtractTags(searchInput.Query)
+
 	// Execute search
 	opts := &retrieval.RetrievalOptions{
 		Query:    searchInput.Query,
@@ -168,9 +171,10 @@ func (t *MemoSearchTool) Run(ctx context.Context, input string) (string, error) 
 		Strategy: strategy,
 		Limit:    searchInput.Limit,
 		MinScore: searchInput.MinScore,
+		Tags:     tags,
 	}
 
-	// Add time range for filter queries
+	// Add time range and tags for filter queries
 	if strategy == "memo_filter_only" {
 		start, end, ok := t.classifier.ExtractTimeFilter(searchInput.Query)
 		if ok {

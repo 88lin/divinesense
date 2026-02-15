@@ -48,6 +48,7 @@ type RetrievalOptions struct {
 	UserID            int32
 	MinScore          float32
 	ScheduleQueryMode queryengine.ScheduleQueryMode
+	Tags              []string // 标签过滤
 }
 
 // NewAdaptiveRetriever 创建自适应检索器.
@@ -295,6 +296,21 @@ func (r *AdaptiveRetriever) memoFilterOnly(ctx context.Context, opts *RetrievalO
 		return nil, fmt.Errorf("failed to filter memos: %w", err)
 	}
 
+	// 过滤标签（内存过滤）
+	if len(opts.Tags) > 0 {
+		opts.Logger.InfoContext(ctx, "Filtering by tags",
+			"request_id", opts.RequestID,
+			"tags", opts.Tags,
+		)
+		var filteredMemos []*store.Memo
+		for _, memo := range memos {
+			if memoHasAnyTag(memo, opts.Tags) {
+				filteredMemos = append(filteredMemos, memo)
+			}
+		}
+		memos = filteredMemos
+	}
+
 	// 转换为 SearchResult
 	results := make([]*SearchResult, 0, len(memos))
 	for _, memo := range memos {
@@ -436,6 +452,30 @@ func (r *AdaptiveRetriever) memoSemanticOnly(ctx context.Context, opts *Retrieva
 			opts.Logger.DebugContext(ctx, "Expanded results",
 				"request_id", opts.RequestID,
 				"new_count", len(results),
+			)
+		}
+	}
+
+	// 如果语义搜索质量低，尝试 BM25 fallback
+	if quality == LowQuality && len(results) > 0 {
+		opts.Logger.InfoContext(ctx, "Semantic quality low, trying BM25 fallback",
+			"request_id", opts.RequestID,
+			"semantic_count", len(results),
+		)
+
+		// 使用原始查询（不含 LLM 扩展）执行 BM25 搜索
+		bm25Results, err := r.memoBM25Only(ctx, opts)
+		if err == nil && len(bm25Results) > 0 {
+			opts.Logger.InfoContext(ctx, "BM25 fallback returned results",
+				"request_id", opts.RequestID,
+				"bm25_count", len(bm25Results),
+			)
+
+			// 合并语义和 BM25 结果
+			results = r.mergeResults(results, bm25Results, opts.Limit)
+			opts.Logger.InfoContext(ctx, "Merged semantic and BM25 results",
+				"request_id", opts.RequestID,
+				"merged_count", len(results),
 			)
 		}
 	}
@@ -920,6 +960,38 @@ func (r *AdaptiveRetriever) isSimpleKeywordQuery(query string) bool {
 	}
 
 	return true
+}
+
+// memoHasAnyTag checks if the memo has any of the specified tags.
+// Returns true if the memo contains at least one tag from the tags slice.
+func memoHasAnyTag(memo *store.Memo, tags []string) bool {
+	if memo == nil || len(tags) == 0 {
+		return false
+	}
+
+	// Get memo tags from payload
+	memoTags := getMemoTags(memo)
+	if len(memoTags) == 0 {
+		return false
+	}
+
+	// Check if any of the query tags match memo tags
+	for _, queryTag := range tags {
+		for _, memoTag := range memoTags {
+			if strings.EqualFold(queryTag, memoTag) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// getMemoTags extracts tags from the memo's payload.
+func getMemoTags(memo *store.Memo) []string {
+	if memo == nil || memo.Payload == nil {
+		return nil
+	}
+	return memo.Payload.Tags
 }
 
 // filterByScore 过滤低分结果.

@@ -82,7 +82,9 @@ func (m *RuleMatcher) Match(input string) (Intent, float32, bool) {
 
 	// FAST PATH: Time pattern + query pattern → schedule query (e.g., "明天有什么事情要做")
 	// This handles common schedule queries without requiring core keywords like "日程" or "安排"
-	if m.hasTimePattern(input) && queryPatternRegex.MatchString(lower) {
+	// IMPORTANT: Skip this fast path if input contains "笔记" keyword to avoid routing errors
+	// e.g., "查看今天的笔记" should route to memo, not schedule
+	if m.hasTimePattern(input) && queryPatternRegex.MatchString(lower) && !strings.Contains(lower, "笔记") {
 		return IntentScheduleQuery, 0.85, true
 	}
 

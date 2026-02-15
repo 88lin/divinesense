@@ -259,6 +259,67 @@ func (r *ChatRouter) RouteAndExecute(ctx context.Context, input string, sessionC
 	select {
 	case result := <-resultChan:
 		routeResult.ExecutionResult = result
+
+		// Check if result contains INABILITY_REPORTED (for Handoff mechanism)
+		// When an expert reports inability via report_inability tool, we need to trigger handoff
+		if strings.Contains(result, "INABILITY_REPORTED:") && r.handoffHandler != nil {
+			slog.Info("chatrouter: INABILITY_REPORTED detected in result, triggering handoff",
+				"expert", expertName,
+				"result_preview", result[:min(len(result), 100)])
+
+			// Parse the inability report to extract capability and reason
+			capability, reason := parseInabilityReport(result)
+
+			// Create a simplified handoff request
+			req := SimpleHandoffRequest{
+				TaskID:   "task_" + strings.ReplaceAll(expertName, " ", "_"),
+				Agent:    expertName,
+				Input:    input,
+				Capacity: capability,
+				Reason:   reason,
+			}
+
+			// Handle handoff
+			handoffResult := r.handoffHandler.HandleSimpleHandoff(req)
+
+			// Convert to ChatRouter.HandoffResult
+			routeResult.Handoff = true
+			routeResult.HandoffResult = &HandoffResult{
+				Success:         handoffResult.Success,
+				FromExpert:      expertName,
+				ToExpert:        handoffResult.ToExpert,
+				Error:           handoffResult.Error,
+				FallbackMessage: handoffResult.FallbackMessage,
+			}
+
+			// If handoff succeeded, execute with the new expert
+			if handoffResult.Success && handoffResult.NewTaskInput != "" {
+				slog.Info("chatrouter: handoff succeeded, executing with new expert",
+					"from", expertName,
+					"to", handoffResult.ToExpert)
+
+				// Execute with new expert
+				var newResult strings.Builder
+				newCallback := func(eventType string, eventData string) error {
+					if eventType == "content" || eventType == "text" || eventType == "response" {
+						newResult.WriteString(eventData)
+					}
+					return nil
+				}
+
+				newErr := r.expertRegistry.ExecuteExpert(ctx, handoffResult.ToExpert, handoffResult.NewTaskInput, newCallback)
+				if newErr != nil {
+					slog.Error("chatrouter: failed to execute with handoff expert", "error", newErr)
+					routeResult.ExecutionResult = handoffResult.FallbackMessage
+				} else {
+					routeResult.ExecutionResult = newResult.String()
+				}
+			} else {
+				// Handoff failed, use fallback message
+				routeResult.ExecutionResult = handoffResult.FallbackMessage
+			}
+		}
+
 		return routeResult, nil
 	case err := <-errChan:
 		// Check for MissingCapability error
@@ -352,4 +413,29 @@ func mapIntentToRouteType(intent routerpkg.Intent) ChatRouteType {
 	default:
 		return "" // Empty indicates unknown - needs orchestration
 	}
+}
+
+// parseInabilityReport parses the INABILITY_REPORTED message to extract capability and reason.
+func parseInabilityReport(report string) (capability, reason string) {
+	// Format: "INABILITY_REPORTED: <capability> - <reason> (suggested_agent: <agent>)"
+	prefix := "INABILITY_REPORTED:"
+	if !strings.HasPrefix(report, prefix) {
+		return "", report
+	}
+
+	content := strings.TrimPrefix(report, prefix)
+	content = strings.TrimSpace(content)
+
+	// Split by " - " to separate capability and reason
+	if idx := strings.Index(content, " - "); idx != -1 {
+		capability = strings.TrimSpace(content[:idx])
+		reason = strings.TrimSpace(content[idx+3:])
+		// Remove suggested_agent part if present
+		if idx := strings.Index(reason, " (suggested_agent:"); idx != -1 {
+			reason = strings.TrimSpace(reason[:idx])
+		}
+		return capability, reason
+	}
+
+	return "", content
 }
