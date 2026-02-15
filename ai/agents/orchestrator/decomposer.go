@@ -135,7 +135,7 @@ func (d *Decomposer) parseTaskPlan(response string, validAgents []string) (*Task
 		if !validSet[task.Agent] {
 			return nil, fmt.Errorf("invalid agent: %s (valid: %v)", task.Agent, validAgents)
 		}
-		task.Status = TaskStatusPending
+		task.SetStatus(TaskStatusPending)
 	}
 
 	return &plan, nil
