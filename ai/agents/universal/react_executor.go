@@ -281,13 +281,10 @@ func isSuccessFromJSON(toolResult string) bool {
 		if err == nil {
 			return true
 		}
-		switch v := err.(type) {
-		case string:
+		if v, ok := err.(string); ok {
 			if v == "" || v == "null" {
 				return true
 			}
-		case nil:
-			return true
 		}
 	}
 

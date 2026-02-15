@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/hrygo/divinesense/ai"
-	agentpkg "github.com/hrygo/divinesense/ai/agents"
 	agents "github.com/hrygo/divinesense/ai/agents"
 	"github.com/hrygo/divinesense/ai/agents/tools"
 	scheduletools "github.com/hrygo/divinesense/ai/agents/tools/schedule"
@@ -136,7 +135,7 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 
 	// memo_search tool factory
 	if f.retriever != nil {
-		factories["memo_search"] = func(userID int32) (agentpkg.ToolWithSchema, error) {
+		factories["memo_search"] = func(userID int32) (agents.ToolWithSchema, error) {
 			userIDGetter := func(ctx context.Context) int32 {
 				return userID
 			}
@@ -144,7 +143,7 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 			if err != nil {
 				return nil, err
 			}
-			return agentpkg.NewNativeTool(
+			return agents.NewNativeTool(
 				tool.Name(),
 				tool.Description(),
 				func(ctx context.Context, input string) (string, error) {
@@ -176,13 +175,13 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 	// Note: Each schedule tool has its own InputType() method
 	// We create closures that capture the tool and its InputType method
 	if f.store != nil {
-		factories["schedule_add"] = func(userID int32) (agentpkg.ToolWithSchema, error) {
+		factories["schedule_add"] = func(userID int32) (agents.ToolWithSchema, error) {
 			userIDGetter := func(ctx context.Context) int32 {
 				return userID
 			}
 			scheduleSvc := schedule.NewService(f.store)
 			tool := scheduletools.NewScheduleAddTool(scheduleSvc, userIDGetter)
-			return agentpkg.ToolFromLegacy(
+			return agents.ToolFromLegacy(
 				tool.Name(),
 				tool.Description(),
 				func(ctx context.Context, input string) (string, error) {
@@ -192,13 +191,13 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 			), nil
 		}
 
-		factories["schedule_query"] = func(userID int32) (agentpkg.ToolWithSchema, error) {
+		factories["schedule_query"] = func(userID int32) (agents.ToolWithSchema, error) {
 			userIDGetter := func(ctx context.Context) int32 {
 				return userID
 			}
 			scheduleSvc := schedule.NewService(f.store)
 			tool := scheduletools.NewScheduleQueryTool(scheduleSvc, userIDGetter)
-			return agentpkg.ToolFromLegacy(
+			return agents.ToolFromLegacy(
 				tool.Name(),
 				tool.Description(),
 				func(ctx context.Context, input string) (string, error) {
@@ -208,13 +207,13 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 			), nil
 		}
 
-		factories["schedule_update"] = func(userID int32) (agentpkg.ToolWithSchema, error) {
+		factories["schedule_update"] = func(userID int32) (agents.ToolWithSchema, error) {
 			userIDGetter := func(ctx context.Context) int32 {
 				return userID
 			}
 			scheduleSvc := schedule.NewService(f.store)
 			tool := scheduletools.NewScheduleUpdateTool(scheduleSvc, userIDGetter)
-			return agentpkg.ToolFromLegacy(
+			return agents.ToolFromLegacy(
 				tool.Name(),
 				tool.Description(),
 				func(ctx context.Context, input string) (string, error) {
@@ -224,13 +223,13 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 			), nil
 		}
 
-		factories["find_free_time"] = func(userID int32) (agentpkg.ToolWithSchema, error) {
+		factories["find_free_time"] = func(userID int32) (agents.ToolWithSchema, error) {
 			userIDGetter := func(ctx context.Context) int32 {
 				return userID
 			}
 			scheduleSvc := schedule.NewService(f.store)
 			tool := scheduletools.NewFindFreeTimeTool(scheduleSvc, userIDGetter)
-			return agentpkg.ToolFromLegacy(
+			return agents.ToolFromLegacy(
 				tool.Name(),
 				tool.Description(),
 				func(ctx context.Context, input string) (string, error) {
@@ -243,9 +242,9 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 
 	// report_inability tool factory
 	// Allows experts to report when they cannot handle a task (Handoff mechanism)
-	factories["report_inability"] = func(userID int32) (agentpkg.ToolWithSchema, error) {
+	factories["report_inability"] = func(userID int32) (agents.ToolWithSchema, error) {
 		tool := tools.NewReportInabilityTool()
-		return agentpkg.ToolFromLegacy(
+		return agents.ToolFromLegacy(
 			tool.Name(),
 			tool.Description(),
 			func(ctx context.Context, input string) (string, error) {
@@ -259,7 +258,7 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 }
 
 // Create creates an agent based on the configuration.
-func (f *AgentFactory) Create(ctx context.Context, cfg *CreateConfig) (agentpkg.ParrotAgent, error) {
+func (f *AgentFactory) Create(ctx context.Context, cfg *CreateConfig) (agents.ParrotAgent, error) {
 	f.mu.RLock()
 	initialized := f.initialized
 	pf := f.parrotFactory
@@ -285,7 +284,7 @@ func (f *AgentFactory) Create(ctx context.Context, cfg *CreateConfig) (agentpkg.
 }
 
 // createMemoParrot creates a UniversalParrot configured as memo agent.
-func (f *AgentFactory) createMemoParrot(cfg *CreateConfig) (agentpkg.ParrotAgent, error) {
+func (f *AgentFactory) createMemoParrot(cfg *CreateConfig) (agents.ParrotAgent, error) {
 	if f.retriever == nil {
 		return nil, fmt.Errorf("retriever is required for memo parrot")
 	}
@@ -293,7 +292,7 @@ func (f *AgentFactory) createMemoParrot(cfg *CreateConfig) (agentpkg.ParrotAgent
 }
 
 // createScheduleParrot creates a UniversalParrot configured as schedule agent.
-func (f *AgentFactory) createScheduleParrot(_ context.Context, cfg *CreateConfig) (agentpkg.ParrotAgent, error) {
+func (f *AgentFactory) createScheduleParrot(_ context.Context, cfg *CreateConfig) (agents.ParrotAgent, error) {
 	if f.store == nil {
 		return nil, fmt.Errorf("store is required for schedule parrot")
 	}

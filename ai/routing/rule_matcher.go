@@ -31,8 +31,6 @@ type RuleMatcher struct {
 	// User-specific custom weights (optional, for dynamic adjustment)
 	customWeights   map[int32]map[string]map[string]int // userID -> category -> keyword -> weight
 	customWeightsMu sync.RWMutex
-	keywordsMu      sync.RWMutex
-	keywordsLoaded  bool
 }
 
 // NewRuleMatcher creates a new rule matcher.
@@ -93,6 +91,7 @@ func (m *RuleMatcher) Match(input string) *MatchResult {
 
 // Legacy Match method for backward compatibility.
 // Returns: intent, confidence, matched (true if rule matched).
+//
 // Deprecated: Use Match() which returns *MatchResult instead.
 func (m *RuleMatcher) MatchLegacy(input string) (Intent, float32, bool) {
 	result := m.Match(input)
@@ -350,22 +349,6 @@ func (m *RuleMatcher) hasMemoKeyword(input string) bool {
 	return false
 }
 
-// calculateScore calculates the weighted score for a keyword set.
-// Optimized: single pass over keywords, early exit on max score.
-func (m *RuleMatcher) calculateScore(input string, keywords map[string]int) int {
-	score := 0
-	for keyword, weight := range keywords {
-		if strings.Contains(input, keyword) {
-			score += weight
-			// Early exit: max reasonable score is 6-7
-			if score >= 7 {
-				return score
-			}
-		}
-	}
-	return score
-}
-
 // hasTimePattern checks if input contains time patterns.
 // Optimized: returns early on first match.
 func (m *RuleMatcher) hasTimePattern(input string) bool {
@@ -513,26 +496,4 @@ func (m *RuleMatcher) MatchWithUser(input string, userID int32) (Intent, float32
 
 	// No match - needs higher layer processing
 	return IntentUnknown, 0, false
-}
-
-// calculateScoreWithWeights calculates score using custom weights if available.
-func (m *RuleMatcher) calculateScoreWithWeights(input string, defaultKeywords, customWeights map[string]int) int {
-	score := 0
-
-	// Use custom weights if available, otherwise use defaults
-	keywords := defaultKeywords
-	if len(customWeights) > 0 {
-		keywords = customWeights
-	}
-
-	for keyword, weight := range keywords {
-		if strings.Contains(input, keyword) {
-			score += weight
-			// Early exit: max reasonable score is 6-7
-			if score >= 7 {
-				return score
-			}
-		}
-	}
-	return score
 }
