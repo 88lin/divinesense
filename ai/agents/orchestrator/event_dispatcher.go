@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"log/slog"
 	"sync"
 )
 
@@ -46,11 +47,7 @@ func (d *EventDispatcher) dispatchLoop() {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					// Log capability missing here, just ignore
-					// Use slog if available, or just standard log
-					// Assuming slog is imported in executor.go, not here?
-					// This file package is orchestrator, so slog should be available if imported.
-					// But we need to import "log/slog" in this file.
+					slog.Error("event dispatcher: recovered from panic", "panic", r, "trace_id", d.traceID)
 				}
 			}()
 			d.callback(e.Type, e.Data)

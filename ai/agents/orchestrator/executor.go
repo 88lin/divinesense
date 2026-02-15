@@ -321,8 +321,3 @@ func (rc *resultCollector) getResult() string {
 	defer rc.mu.Unlock()
 	return rc.result.String()
 }
-
-// close cleans up the result collector resources.
-func (rc *resultCollector) close() {
-	// No resources to clean up as dispatcher handles channel
-}
