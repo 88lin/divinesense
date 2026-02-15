@@ -22,8 +22,9 @@ const (
 
 // Executor executes tasks by dispatching them to expert agents.
 type Executor struct {
-	registry ExpertRegistry
-	config   *OrchestratorConfig
+	registry       ExpertRegistry
+	config         *OrchestratorConfig
+	handoffHandler HandoffHandlerInterface // Use interface for dependency injection
 }
 
 // NewExecutor creates a new task executor.
@@ -32,8 +33,21 @@ func NewExecutor(registry ExpertRegistry, config *OrchestratorConfig) *Executor 
 		config = DefaultOrchestratorConfig()
 	}
 	return &Executor{
-		registry: registry,
-		config:   config,
+		registry:       registry,
+		config:         config,
+		handoffHandler: nil,
+	}
+}
+
+// NewExecutorWithHandoff creates a new task executor with handoff support.
+func NewExecutorWithHandoff(registry ExpertRegistry, config *OrchestratorConfig, handoffHandler HandoffHandlerInterface) *Executor {
+	if config == nil {
+		config = DefaultOrchestratorConfig()
+	}
+	return &Executor{
+		registry:       registry,
+		config:         config,
+		handoffHandler: handoffHandler,
 	}
 }
 
@@ -102,8 +116,13 @@ func (e *Executor) ExecutePlan(ctx context.Context, plan *TaskPlan, callback Eve
 	return result
 }
 
-// executeSingleTask executes a single task. Used by DAGScheduler.
-func (e *Executor) executeSingleTask(ctx context.Context, task *Task, callback EventCallback) error {
+// executeTask executes a single task.
+func (e *Executor) executeTask(ctx context.Context, task *Task, index int, callback EventCallback) error {
+	return e.executeTaskWithHandoff(ctx, task, index, callback, 0)
+}
+
+// executeTaskWithHandoff executes a single task with handoff depth tracking.
+func (e *Executor) executeTaskWithHandoff(ctx context.Context, task *Task, index int, callback EventCallback, depth int) error {
 	startTime := time.Now()
 	task.Status = TaskStatusRunning
 
@@ -127,8 +146,9 @@ func (e *Executor) executeSingleTask(ctx context.Context, task *Task, callback E
 	// BETTER DESIGN: DAGScheduler calls ContextInjector BEFORE calling executeSingleTask.
 	// So here we assume task.Input is already resolved.
 
-	// Create result collector
-	resultCollector := &resultCollector{callback: callback}
+	// Create result collector with thread-safe event forwarding
+	resultCollector := newResultCollector(callback)
+	defer resultCollector.close()
 
 	// Execute via expert registry
 	err := e.registry.ExecuteExpert(ctx, task.Agent, task.Input, resultCollector.onEvent)
@@ -142,6 +162,28 @@ func (e *Executor) executeSingleTask(ctx context.Context, task *Task, callback E
 			"id", task.ID,
 			"agent", task.Agent,
 			"error", err)
+
+		// Try handoff if handler is available
+		if e.handoffHandler != nil {
+			// Create handoff context with depth tracking
+			handOffCtx := NewHandoffContextWithDepth(depth, task.ID)
+			handoffResult := e.handoffHandler.HandleTaskFailure(ctx, task, err, callback, handOffCtx)
+			if handoffResult.Success && handoffResult.NewTask != nil {
+				slog.Info("executor: attempting handoff",
+					"task", task.ID,
+					"from", task.Agent,
+					"to", handoffResult.NewExpert,
+					"depth", handoffResult.Depth)
+
+				// Execute with new expert
+				task.Agent = handoffResult.NewExpert
+				task.Input = handoffResult.NewTask.Input
+				task.Status = TaskStatusPending
+
+				// Re-execute the task with new expert and updated context
+				return e.executeTaskWithHandoff(ctx, task, index, callback, handoffResult.Depth)
+			}
+		}
 
 		// Send task_end event with error
 		if callback != nil {
@@ -225,12 +267,48 @@ type resultCollector struct {
 	callback  EventCallback
 	result    strings.Builder
 	truncated bool
+	// eventCh is used to forward events without blocking the callback
+	eventCh chan struct {
+		eventType string
+		eventData string
+	}
+}
+
+func newResultCollector(callback EventCallback) *resultCollector {
+	rc := &resultCollector{
+		callback: callback,
+		eventCh:  make(chan struct{ eventType, eventData string }, 100),
+	}
+
+	// Start event forwarding goroutine
+	if callback != nil {
+		go func() {
+			for e := range rc.eventCh {
+				// Use recover to prevent panics from callback
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							slog.Error("executor: callback panic in result collector", "panic", r)
+						}
+					}()
+					rc.callback(e.eventType, e.eventData)
+				}()
+			}
+		}()
+	}
+
+	return rc
 }
 
 func (rc *resultCollector) onEvent(eventType string, eventData string) {
-	// Forward event to original callback
+	// Forward event via channel to avoid blocking
 	if rc.callback != nil {
-		rc.callback(eventType, eventData)
+		select {
+		case rc.eventCh <- struct{ eventType, eventData string }{eventType, eventData}:
+		default:
+			// Channel full, drop event to prevent blocking
+			slog.Warn("executor: event channel full, dropping event", "eventType", eventType)
+		}
 	}
 
 	// Collect text/content events as results with size limit
@@ -251,4 +329,11 @@ func (rc *resultCollector) getResult() string {
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 	return rc.result.String()
+}
+
+// close cleans up the result collector resources
+func (rc *resultCollector) close() {
+	if rc.eventCh != nil {
+		close(rc.eventCh)
+	}
 }

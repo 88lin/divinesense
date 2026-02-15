@@ -150,6 +150,9 @@ type OrchestratorConfig struct {
 	// EnableAggregation determines whether to aggregate multi-agent results
 	EnableAggregation bool `json:"enable_aggregation"`
 
+	// EnableHandoff determines whether to enable expert handoff on capability mismatch
+	EnableHandoff bool `json:"enable_handoff"`
+
 	// DecompositionModel is the model to use for task decomposition
 	DecompositionModel string `json:"decomposition_model"`
 
@@ -162,6 +165,7 @@ func DefaultOrchestratorConfig() *OrchestratorConfig {
 	return &OrchestratorConfig{
 		MaxParallelTasks:   3,
 		EnableAggregation:  true,
+		EnableHandoff:      true, // Enable handoff by default for better expert coordination
 		DecompositionModel: "default",
 		AggregationModel:   "default",
 	}
@@ -182,3 +186,13 @@ type ExpertRegistry interface {
 
 // EventCallback is the callback function for streaming events to the frontend.
 type EventCallback func(eventType string, eventData string)
+
+// HandoffHandlerInterface defines the interface for handling task handoff between experts.
+// This enables dependency injection for better testability.
+type HandoffHandlerInterface interface {
+	// HandleTaskFailure handles task failure and determines if handoff is appropriate.
+	HandleTaskFailure(ctx context.Context, task *Task, err error, callback EventCallback, handOffContext *HandoffContext) *HandoffResult
+
+	// HandleCannotComplete processes a cannot_complete event and determines next action.
+	HandleCannotComplete(ctx context.Context, task *Task, reason CannotCompleteReason, callback EventCallback, handOffContext *HandoffContext) *HandoffResult
+}

@@ -19,6 +19,7 @@ tools:
   - schedule_query
   - schedule_update
   - find_free_time
+  - report_inability
 
 # System prompt for guiding LLM behavior
 system_prompt: |
@@ -104,19 +105,18 @@ long_term_memory:
     min_similarity: 0.0
     embedding_model: "BAAI/bge-m3"
 
-# Self-description for Orchestrator routing
+# Self-description for Orchestrator routing (Handoff mechanism)
+# NOTE: Experts only declare capabilities, NOT limitations.
+# Limitations are discovered at runtime and trigger Handoff.
 self_description:
   name: schedule
   emoji: "📅"
   title: "日程管理专家"
   capabilities:
-    - "创建、查询、更新日程安排"
-    - "智能处理时间冲突"
-    - "查找空闲时间段"
-    - "解析自然语言时间表达"
-  limitations:
-    - "不能处理跨时区日程"
-    - "不能发送会议邀请"
+    - "创建日程"
+    - "查询日程"
+    - "更新日程"
+    - "查找空闲时间"
   working_style: "适用场景：时间管理、会议安排、查看日程、修改已有安排、查找空闲时间"
   personality:
     - "严谨"

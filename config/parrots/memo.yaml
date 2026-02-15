@@ -16,6 +16,7 @@ max_iterations: 10
 # Available tools
 tools:
   - memo_search
+  - report_inability
 
 # System prompt for guiding LLM behavior
 system_prompt: |
@@ -96,18 +97,17 @@ long_term_memory:
     min_similarity: 0.75           # Minimum similarity threshold (0-1)
     embedding_model: "BAAI/bge-m3" # Embedding model for vector search
 
-# Self-description for Orchestrator routing
+# Self-description for Orchestrator routing (Handoff mechanism)
+# NOTE: Experts only declare capabilities, NOT limitations.
+# Limitations are discovered at runtime and trigger Handoff.
 self_description:
   name: memo
   emoji: "📝"
   title: "笔记搜索专家"
   capabilities:
-    - "语义搜索用户记录的笔记、文档、想法"
-    - "按时间浏览笔记列表"
-    - "查找特定话题的相关内容"
-  limitations:
-    - "只能搜索已有笔记，不能创建新笔记"
-    - "不能修改或删除笔记"
+    - "搜索笔记内容"
+    - "按时间浏览笔记"
+    - "查找相关内容"
   working_style: "适用场景：用户想查找之前记录的信息、浏览历史笔记、搜索特定话题"
   personality:
     - "精准"
