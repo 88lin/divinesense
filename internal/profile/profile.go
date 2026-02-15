@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ type Profile struct {
 	ALLMAPIKey   string // Unified LLM API key
 	ALLMBaseURL  string // Unified LLM base URL (optional, has default per provider)
 	ALLMModel    string // Model name: glm-4.7, deepseek-chat, gpt-4o, etc.
+	ALLMTimeout  int    // LLM request timeout in seconds (default: 120)
 
 	// Embedding configuration
 	AIEmbeddingProvider string
@@ -110,6 +112,16 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+// getEnvOrDefaultInt returns environment variable value as int or default value.
+func getEnvOrDefaultInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
+	}
+	return defaultValue
+}
+
 // FromEnv loads configuration from environment variables.
 func (p *Profile) FromEnv() {
 	// Unified LLM configuration
@@ -117,6 +129,7 @@ func (p *Profile) FromEnv() {
 	p.ALLMAPIKey = getEnvOrDefault("DIVINESENSE_AI_LLM_API_KEY", "")
 	p.ALLMBaseURL = getEnvOrDefault("DIVINESENSE_AI_LLM_BASE_URL", "")
 	p.ALLMModel = getEnvOrDefault("DIVINESENSE_AI_LLM_MODEL", "")
+	p.ALLMTimeout = getEnvOrDefaultInt("DIVINESENSE_AI_LLM_TIMEOUT_SECONDS", 120)
 
 	// AI is enabled if API key is configured
 	p.AIEnabled = p.ALLMAPIKey != ""

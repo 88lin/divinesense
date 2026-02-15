@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/hrygo/divinesense/ai/core/llm"
@@ -105,6 +106,13 @@ func (tg *TitleGenerator) Generate(ctx context.Context, userMessage, aiResponse 
 	if content == "" {
 		return "", fmt.Errorf("empty response from LLM")
 	}
+
+	// Strip markdown code block wrapper if present (LLM may return ```json ... ```)
+	content = strings.TrimSpace(content)
+	content = strings.TrimPrefix(content, "```json")
+	content = strings.TrimPrefix(content, "```")
+	content = strings.TrimSuffix(content, "```")
+	content = strings.TrimSpace(content)
 
 	var result struct {
 		Title string `json:"title"`

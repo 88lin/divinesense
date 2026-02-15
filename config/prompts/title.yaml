@@ -12,7 +12,7 @@ system_prompt: |
   3. 问题可直接用问题本身，任务可用任务描述
   4. 保持中立客观
 
-  返回JSON格式：{"title": "标题"}
+  直接返回JSON，不要使用代码块：{"title": "标题"}
 
 # 会话标题模板（AI Chat 场景）
 # 参数: UserMessage, AIResponse
@@ -36,6 +36,6 @@ memo_template: |
 params:
   max_tokens: 50
   temperature: 0.1
-  timeout_seconds: 10
+  timeout_seconds: 30
   input_truncate_chars: 500
   max_runes: 50

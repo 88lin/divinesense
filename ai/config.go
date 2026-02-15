@@ -42,6 +42,7 @@ type LLMConfig struct {
 	BaseURL     string
 	MaxTokens   int     // default: 2048
 	Temperature float32 // default: 0.7
+	Timeout     int     // Request timeout in seconds (default: 120)
 }
 
 // IntentClassifierConfig represents intent classification LLM configuration.
@@ -96,6 +97,7 @@ func NewConfigFromProfile(p *profile.Profile) *Config {
 		BaseURL:     p.ALLMBaseURL,
 		MaxTokens:   2048,
 		Temperature: 0.7,
+		Timeout:     p.ALLMTimeout,
 	}
 
 	// Intent Classifier configuration

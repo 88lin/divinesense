@@ -74,6 +74,13 @@ func (s *llmSummarizer) Summarize(ctx context.Context, req *SummarizeRequest) (*
 }
 
 func parseSummary(content string) string {
+	// Strip markdown code block wrapper if present
+	content = strings.TrimSpace(content)
+	content = strings.TrimPrefix(content, "```json")
+	content = strings.TrimPrefix(content, "```")
+	content = strings.TrimSuffix(content, "```")
+	content = strings.TrimSpace(content)
+
 	var result struct {
 		Summary string `json:"summary"`
 	}

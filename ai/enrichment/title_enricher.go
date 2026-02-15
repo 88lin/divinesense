@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/hrygo/divinesense/ai"
@@ -102,6 +103,13 @@ func (e *TitleEnricher) Enrich(ctx context.Context, content *MemoContent) *Enric
 	}
 
 	// Parse response
+	// Strip markdown code block wrapper if present
+	response = strings.TrimSpace(response)
+	response = strings.TrimPrefix(response, "```json")
+	response = strings.TrimPrefix(response, "```")
+	response = strings.TrimSuffix(response, "```")
+	response = strings.TrimSpace(response)
+
 	var result struct {
 		Title string `json:"title"`
 	}

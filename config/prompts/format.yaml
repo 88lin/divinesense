@@ -23,5 +23,5 @@ user_prompt_template: |
 params:
   max_tokens: 2000
   temperature: 0.1
-  timeout_seconds: 10
+  timeout_seconds: 30
   input_truncate_chars: 5000

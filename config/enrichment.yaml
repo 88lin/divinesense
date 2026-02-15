@@ -15,7 +15,7 @@ enrichment:
     # Format configuration
     format:
       enabled: true
-      timeout_seconds: 10
+      timeout_seconds: 30
 
   # Post-save (asynchronous) enrichment
   post_save:
@@ -28,21 +28,21 @@ enrichment:
     # Summary configuration
     summary:
       enabled: true
-      timeout_seconds: 15
+      timeout_seconds: 30
       max_chars: 200        # Maximum summary length
       fallback_enabled: true # Enable fallback on LLM failure
 
     # Tags configuration
     tags:
       enabled: true
-      timeout_seconds: 5
+      timeout_seconds: 30
       max_tags: 5           # Maximum tags to generate
       min_confidence: 0.5   # Minimum confidence threshold
 
     # Title configuration
     title:
       enabled: true
-      timeout_seconds: 10
+      timeout_seconds: 30
       max_runes: 50         # Maximum title length in runes
 
 # Fallback strategy configuration

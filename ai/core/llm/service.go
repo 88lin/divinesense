@@ -99,6 +99,7 @@ type Config struct {
 	BaseURL     string
 	MaxTokens   int     // default: 2048
 	Temperature float32 // default: 0.7
+	Timeout     int     // Request timeout in seconds (default: 120)
 }
 
 type service struct {
@@ -107,6 +108,7 @@ type service struct {
 	provider    string
 	maxTokens   int
 	temperature float32
+	timeout     int // Request timeout in seconds
 }
 
 // NewService creates a new LLM Service.
@@ -195,18 +197,25 @@ func NewService(cfg *Config) (Service, error) {
 
 	client := openai.NewClientWithConfig(clientConfig)
 
+	// Set default timeout if not configured
+	timeout := cfg.Timeout
+	if timeout <= 0 {
+		timeout = 120 // Default 120 seconds
+	}
+
 	return &service{
 		client:      client,
 		model:       cfg.Model,
 		provider:    cfg.Provider,
 		maxTokens:   cfg.MaxTokens,
 		temperature: cfg.Temperature,
+		timeout:     timeout,
 	}, nil
 }
 
 func (s *service) Chat(ctx context.Context, messages []Message) (string, *LLMCallStats, error) {
-	// Add timeout protection - shorter than HTTP client timeout for context cancellation
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	// Add timeout protection using configured timeout
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.timeout)*time.Second)
 	defer cancel()
 
 	slog.Debug("LLM: Chat request",
@@ -261,8 +270,8 @@ func (s *service) Chat(ctx context.Context, messages []Message) (string, *LLMCal
 }
 
 func (s *service) ChatWithTools(ctx context.Context, messages []Message, tools []ToolDescriptor) (*ChatResponse, *LLMCallStats, error) {
-	// Add timeout protection
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	// Add timeout protection using configured timeout
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.timeout)*time.Second)
 	defer cancel()
 
 	openaiTools := make([]openai.Tool, len(tools))

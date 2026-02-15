@@ -13,7 +13,7 @@ system_prompt: |
   5. 如果笔记是列表/清单格式，摘要应概述主题和要点数量
   6. 直接输出摘要文本，不要添加"摘要："等前缀
 
-  请直接返回JSON格式：{"summary": "生成的摘要"}
+  直接返回JSON，不要使用代码块：{"summary": "生成的摘要"}
 
 user_prompt_template: |
   请为以下笔记生成不超过 {{.MaxLen}} 字的摘要：
@@ -23,5 +23,5 @@ user_prompt_template: |
 params:
   max_tokens: 300
   temperature: 0.3
-  timeout_seconds: 15
+  timeout_seconds: 30
   input_truncate_chars: 3000
