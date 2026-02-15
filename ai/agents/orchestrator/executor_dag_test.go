@@ -260,3 +260,44 @@ func TestDAG_DiamondFailure(t *testing.T) {
 	assert.Equal(t, TaskStatusSkipped, tC.Status)
 	assert.Equal(t, TaskStatusSkipped, tD.Status)
 }
+
+// Case 7: 重试后成功 (Retry Success)
+func TestDAG_RetrySuccess(t *testing.T) {
+	registry := new(MockRegistry)
+	config := DefaultOrchestratorConfig()
+	config.MaxParallelTasks = 3
+	executor := NewExecutor(registry, config)
+
+	t1 := createTask("t1", "memo", "FlakyTask", nil)
+	plan := &TaskPlan{Tasks: []*Task{t1}}
+
+	// Mock flaky behavior: fail once, then succeed
+	// We use .Once() to enforce order if using strict mocks, or a counter closure
+	attempts := 0
+	mockExec := func(args mock.Arguments) {
+		attempts++
+	}
+
+	registry.On("ExecuteExpert", mock.Anything, "memo", "FlakyTask", mock.Anything).
+		Return(fmt.Errorf("transient error")).
+		Run(mockExec).
+		Once()
+
+	registry.On("ExecuteExpert", mock.Anything, "memo", "FlakyTask", mock.Anything).
+		Return(nil).
+		Run(func(args mock.Arguments) {
+			attempts++
+			cb := args.Get(3).(EventCallback)
+			if cb != nil {
+				cb("content", "success_result")
+			}
+		}).
+		Once()
+
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-retry-success")
+
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, TaskStatusCompleted, t1.Status)
+	assert.Equal(t, "success_result", t1.Result)
+	assert.Equal(t, 2, attempts, "Should have executed twice")
+}
