@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 )
 
@@ -141,7 +140,7 @@ func (h *HandoffHandler) HandleCannotComplete(
 	callback EventCallback,
 	handOffContext *HandoffContext,
 ) *HandoffResult {
-
+	// Note: trace_id is not available here directly, but we log what we can
 	slog.Info("handoff: processing cannot_complete",
 		"task_id", task.ID,
 		"agent", task.Agent,
@@ -304,58 +303,17 @@ func (h *HandoffHandler) HandleTaskFailure(
 }
 
 // analyzeFailureReason analyzes an error to determine missing capabilities.
-// This is a simple keyword-based implementation that can be extended
-// with LLM-based analysis for more sophisticated error understanding.
+// This implementation uses the dynamic CapabilityMap to find registered triggers
+// in the error message, ensuring the logic is decoupled from specific agent details.
 func (h *HandoffHandler) analyzeFailureReason(_ string, err error) CannotCompleteReason {
 	errMsg := err.Error()
 	reason := CannotCompleteReason{
 		OriginalError: errMsg,
 	}
 
-	// Keyword to capability mapping
-	// These keywords indicate which capabilities might be needed
-	capabilityKeywords := map[string][]string{
-		// Schedule-related keywords
-		"日程":       {"日程管理", "创建日程", "calendar", "schedule", "event", "会议", "安排"},
-		"安排":       {"日程管理", "创建日程", "calendar", "schedule", "event"},
-		"calendar": {"日程管理", "calendar", "schedule"},
-		"schedule": {"日程管理", "calendar", "schedule"},
-		"会议":       {"日程管理", "创建日程", "calendar", "schedule"},
-
-		// Memo-related keywords
-		"笔记":   {"笔记搜索", "搜索笔记", "note", "memo", "文档"},
-		"搜索":   {"笔记搜索", "搜索笔记", "note", "memo", "文档"},
-		"note": {"笔记搜索", "note", "memo"},
-		"memo": {"笔记搜索", "note", "memo"},
-		"文档":   {"笔记搜索", "note", "memo", "文档"},
-
-		// Generic "cannot handle" patterns
-		"无法处理":                {},
-		"cannot handle":       {},
-		"unable to":           {},
-		"不在能力范围内":             {},
-		"超出能力":                {},
-		"not in capabilities": {},
-	}
-
-	for keyword, caps := range capabilityKeywords {
-		if strings.Contains(strings.ToLower(errMsg), strings.ToLower(keyword)) {
-			reason.MissingCapabilities = append(reason.MissingCapabilities, caps...)
-		}
-	}
-
-	// Remove duplicates
-	if len(reason.MissingCapabilities) > 0 {
-		seen := make(map[string]bool)
-		var unique []string
-		for _, cap := range reason.MissingCapabilities {
-			if !seen[cap] {
-				seen[cap] = true
-				unique = append(unique, cap)
-			}
-		}
-		reason.MissingCapabilities = unique
-	}
+	// Identify capabilities dynamically from the registered map
+	// The CapabilityMap contains triggers registered by each agent
+	reason.MissingCapabilities = h.capabilityMap.IdentifyCapabilities(errMsg)
 
 	return reason
 }

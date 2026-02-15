@@ -12,9 +12,10 @@ import (
 // It implements Kahn's Algorithm for dynamic task dispatching.
 type DAGScheduler struct {
 	// Task management
-	tasks    map[string]*Task
-	graph    map[string][]string // upstream -> downstreams
-	inDegree map[string]int      // task -> remaining dependencies count
+	tasks       map[string]*Task
+	graph       map[string][]string // upstream -> downstreams
+	inDegree    map[string]int      // task -> remaining dependencies count
+	taskIndices map[string]int      // taskID -> original index
 
 	// Execution state
 	readyQueue chan string // Tasks ready to run (inDegree = 0)
@@ -24,23 +25,31 @@ type DAGScheduler struct {
 	activeWorkers int
 
 	// Component access
-	executor *Executor
-	injector *ContextInjector
+	executor   *Executor
+	injector   *ContextInjector
+	dispatcher *EventDispatcher
+
+	// Observability
+	traceID string
 }
 
-func NewDAGScheduler(executor *Executor, tasks []*Task) (*DAGScheduler, error) {
+func NewDAGScheduler(executor *Executor, tasks []*Task, traceID string, dispatcher *EventDispatcher) (*DAGScheduler, error) {
 	s := &DAGScheduler{
-		tasks:      make(map[string]*Task),
-		graph:      make(map[string][]string),
-		inDegree:   make(map[string]int),
-		readyQueue: make(chan string, len(tasks)), // Buffer large enough for all tasks
-		executor:   executor,
-		injector:   NewContextInjector(),
+		tasks:       make(map[string]*Task),
+		graph:       make(map[string][]string),
+		inDegree:    make(map[string]int),
+		taskIndices: make(map[string]int),
+		readyQueue:  make(chan string, len(tasks)), // Buffer large enough for all tasks
+		executor:    executor,
+		injector:    NewContextInjector(),
+		traceID:     traceID,
+		dispatcher:  dispatcher,
 	}
 
 	// Initialize state
-	for _, task := range tasks {
+	for i, task := range tasks {
 		s.tasks[task.ID] = task
+		s.taskIndices[task.ID] = i
 		s.inDegree[task.ID] = 0 // Init to 0
 	}
 
@@ -74,6 +83,13 @@ func (s *DAGScheduler) Run(ctx context.Context) error {
 	// For MVP, we use a dispatcher loop that feeds a semaphore-controlled worker pool.
 	sem := make(chan struct{}, s.executor.config.MaxParallelTasks)
 
+	// Log DAG schedule start
+	slog.Info("executor: dag schedule",
+		"trace_id", s.traceID,
+		"ready_tasks", len(s.tasks),
+		"active_tasks", 0,
+	)
+
 	// Orchestration loop
 	for {
 		select {
@@ -93,19 +109,52 @@ func (s *DAGScheduler) Run(ctx context.Context) error {
 				sem <- struct{}{}        // Acquire token (blocks if full)
 				defer func() { <-sem }() // Release token
 
-				err := s.executeTask(ctx, tid)
+				// Wrap execution in a function to handle panics and state updates safely
+				func() {
+					defer func() {
+						// Handle panic
+						if r := recover(); r != nil {
+							slog.Error("executor: panic in task execution",
+								"trace_id", s.traceID,
+								"task_id", tid,
+								"panic", r)
 
-				s.mu.Lock()
-				s.activeWorkers--
-				s.mu.Unlock()
+							// Mark task as failed and cascade
+							s.mu.Lock()
+							task := s.tasks[tid]
+							if !task.Status.IsTerminal() {
+								task.Status = TaskStatusFailed
+								task.Error = fmt.Sprintf("Panic: %v", r)
+								s.cascadeSkip(tid)
+							}
+							s.mu.Unlock()
+						}
 
-				if err != nil {
-					// Log error but don't stop the world unless strict mode
-					// This allows partial failure in DAG execution
-					slog.Warn("DAG task execution failed",
-						"task_id", tid,
-						"error", err.Error())
-				}
+						// Always decrement active workers
+						s.mu.Lock()
+						s.activeWorkers--
+
+						// Log DAG schedule state after task completion
+						readyCount := len(s.readyQueue)
+						slog.Info("executor: dag schedule",
+							"trace_id", s.traceID,
+							"ready_tasks", readyCount,
+							"active_tasks", s.activeWorkers,
+						)
+						s.mu.Unlock()
+					}()
+
+					// Execute task
+					err := s.executeTask(ctx, tid)
+					if err != nil {
+						// Log error but don't stop the world unless strict mode
+						// This allows partial failure in DAG execution
+						slog.Warn("DAG task execution failed",
+							"trace_id", s.traceID,
+							"task_id", tid,
+							"error", err.Error())
+					}
+				}()
 			}(taskID)
 
 		default:
@@ -155,13 +204,9 @@ func (s *DAGScheduler) executeTask(ctx context.Context, taskID string) error {
 	task.Input = resolvedInput
 
 	// 2. Execute
-	// We pass nil callback for now, assuming outer executor handles events if needed
-	// BUT Executor.executeSingleTask emits start/end events, so we should allow that.
-	// We can pass the original callback from Executor if we stored it?
-	// For now kept nil to satisfy test mock which expects nil?
-	// Executor tests use mock executor? No, Executor struct.
-	// Let's rely on Executor logging/events.
-	err = s.executor.executeTask(ctx, task, 0, nil)
+	// Use the event dispatcher for safe event emission
+	taskIndex := s.taskIndices[taskID]
+	err = s.executor.executeTask(ctx, task, taskIndex, s.dispatcher, s.traceID)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

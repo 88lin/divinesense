@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	agents "github.com/hrygo/divinesense/ai/agents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -29,6 +30,14 @@ func (m *MockRegistry) GetExpertDescription(name string) string {
 func (m *MockRegistry) ExecuteExpert(ctx context.Context, expertName string, input string, callback EventCallback) error {
 	args := m.Called(ctx, expertName, input, callback)
 	return args.Error(0)
+}
+
+func (m *MockRegistry) GetExpertConfig(name string) *agents.ParrotSelfCognition {
+	args := m.Called(name)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*agents.ParrotSelfCognition)
 }
 
 // Helper to create a task
@@ -82,7 +91,7 @@ func TestDAG_LinearExecution(t *testing.T) {
 	registry.On("ExecuteExpert", mock.Anything, "memo", "task 3 result2", mock.Anything).Return(nil).Run(mockExec("result3", t3))
 
 	// Execute
-	result := executor.ExecutePlan(context.Background(), plan, nil)
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-trace-id")
 
 	// Assertions
 	assert.Empty(t, result.Errors)
@@ -156,7 +165,7 @@ func TestDAG_DiamondExecution(t *testing.T) {
 	// specific "Join ResB ResC" assumes replacement order.
 	// For now we assume implementation does consistent replacement.
 
-	result := executor.ExecutePlan(context.Background(), plan, nil)
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-trace-id")
 	assert.Empty(t, result.Errors)
 }
 
@@ -175,7 +184,7 @@ func TestDAG_CascadeSkip(t *testing.T) {
 	// T1 fails
 	registry.On("ExecuteExpert", mock.Anything, "memo", "FailTask", mock.Anything).Return(fmt.Errorf("random error"))
 
-	result := executor.ExecutePlan(context.Background(), plan, nil)
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-trace-id")
 
 	// In the new design, partial failure doesn't necessarily return error for ExecutePlan if handled gracefully,
 	// but here we expect the function to return the results map.
@@ -199,7 +208,7 @@ func TestDAG_CircularDependency(t *testing.T) {
 
 	plan := &TaskPlan{Tasks: []*Task{t1, t2}}
 
-	result := executor.ExecutePlan(context.Background(), plan, nil)
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-trace-id")
 
 	assert.NotEmpty(t, result.Errors, "Should report cycle error")
 	// assert.Contains(t, result.Errors[0], "cycle detected") // Exact message might vary
@@ -221,7 +230,7 @@ func TestContextInjector_InvalidReference(t *testing.T) {
 	// Mock execution attempts if it gets that far, but likely fails at injection
 	// registry.On("ExecuteExpert", ...).Return(nil)
 
-	result := executor.ExecutePlan(context.Background(), plan, nil)
+	result := executor.ExecutePlan(context.Background(), plan, nil, "test-trace-id")
 	assert.NotEmpty(t, result.Errors)
 	// assert.Contains(t, result.Errors[0], "reference not found")
 }

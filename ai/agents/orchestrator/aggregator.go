@@ -53,7 +53,12 @@ func (a *Aggregator) Aggregate(ctx context.Context, result *ExecutionResult, cal
 	}
 
 	// Build aggregation prompt (default to Chinese, can be extended for language detection)
-	prompt := a.promptConfig.BuildAggregatorPrompt(result.Plan.Analysis, successfulResults, "zh")
+	// TODO: Detect language from user input or context
+	lang := a.config.DefaultLanguage
+	if lang == "" {
+		lang = "zh"
+	}
+	prompt := a.promptConfig.BuildAggregatorPrompt(result.Plan.Analysis, successfulResults, lang)
 
 	// Call LLM for aggregation
 	messages := []llm.Message{

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	agents "github.com/hrygo/divinesense/ai/agents"
 )
 
 // TestHandoffContext_Operations tests HandoffContext methods.
@@ -163,6 +165,17 @@ func TestHandoffHandler_HandleCannotComplete_NoMatchingExpert(t *testing.T) {
 // TestHandoffHandler_HandleTaskFailure tests task failure handling.
 func TestHandoffHandler_HandleTaskFailure(t *testing.T) {
 	capabilityMap := NewCapabilityMap()
+
+	// Register an expert with capability triggers
+	config := &agents.ParrotSelfCognition{
+		Name:         "ScheduleParrot",
+		Capabilities: []string{"Schedule Management"},
+		CapabilityTriggers: map[string][]string{
+			"Schedule Management": {"日程", "会议"},
+		},
+	}
+	capabilityMap.BuildFromConfigs([]*agents.ParrotSelfCognition{config})
+
 	handler := NewHandoffHandler(capabilityMap, 2)
 
 	task, _ := NewTask("MemoParrot", "search for notes", "find information")
@@ -171,12 +184,12 @@ func TestHandoffHandler_HandleTaskFailure(t *testing.T) {
 	ctx := NewHandoffContext()
 	result := handler.HandleTaskFailure(context.Background(), task, testErr, nil, ctx)
 
-	// Should recognize the error and attempt handoff
-	if result.Reason != FailNoMatchingExpert && result.Reason != "" && !result.Success {
-		// Either it found an expert or it correctly set failure reason
-		if result.Success && result.NewExpert == "" {
-			t.Error("expected either success with expert or failure with reason")
-		}
+	// Should recognize the error and attempt handoff to ScheduleParrot
+	if !result.Success {
+		t.Errorf("expected success with new expert, got failure: %v", result.Error)
+	}
+	if result.NewExpert != "ScheduleParrot" {
+		t.Errorf("expected NewExpert = ScheduleParrot, got %v", result.NewExpert)
 	}
 }
 

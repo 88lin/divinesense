@@ -32,7 +32,9 @@ package orchestrator
 import (
 	"context"
 	"log/slog"
+	"time"
 
+	agents "github.com/hrygo/divinesense/ai/agents"
 	"github.com/hrygo/divinesense/ai/core/llm"
 )
 
@@ -57,6 +59,16 @@ func NewOrchestrator(llmService llm.Service, registry ExpertRegistry, opts ...Op
 	if config.EnableHandoff {
 		// Create capability map and handoff handler
 		capabilityMap := NewCapabilityMap()
+
+		// Populate capability map from registry
+		var configs []*agents.ParrotSelfCognition
+		for _, name := range registry.GetAvailableExperts() {
+			if config := registry.GetExpertConfig(name); config != nil {
+				configs = append(configs, config)
+			}
+		}
+		capabilityMap.BuildFromConfigs(configs)
+
 		handoffHandler := NewHandoffHandler(capabilityMap, 2)
 		executor = NewExecutorWithHandoff(registry, config, handoffHandler)
 	} else {
@@ -102,24 +114,34 @@ func WithHandoff(enabled bool) Option {
 // Process handles a user request by decomposing, executing, and aggregating.
 // This is the main entry point for the orchestrator.
 func (o *Orchestrator) Process(ctx context.Context, userInput string, callback EventCallback) (*ExecutionResult, error) {
+	startTime := time.Now()
+
+	// Generate trace_id for request tracing
+	traceID := GenerateTraceID()
+
 	slog.Info("orchestrator: processing request",
+		"trace_id", traceID,
 		"input_length", len(userInput))
 
 	// Step 1: Decompose the request into tasks
-	plan, err := o.decomposer.Decompose(ctx, userInput, o.executor.registry)
+	plan, err := o.decomposer.Decompose(ctx, userInput, o.executor.registry, traceID)
 	if err != nil {
-		slog.Error("orchestrator: decomposition failed", "error", err)
+		slog.Error("orchestrator: decomposition failed",
+			"trace_id", traceID,
+			"error", err)
 		return nil, err
 	}
 
 	// Step 2: Execute the tasks
-	result := o.executor.ExecutePlan(ctx, plan, callback)
+	result := o.executor.ExecutePlan(ctx, plan, callback, traceID)
 
 	// Step 3: Aggregate results if needed
 	if result.IsAggregated && o.config.EnableAggregation {
 		aggregated, err := o.aggregator.Aggregate(ctx, result, callback)
 		if err != nil {
-			slog.Warn("orchestrator: aggregation failed, using concatenated results", "error", err)
+			slog.Warn("orchestrator: aggregation failed, using concatenated results",
+				"trace_id", traceID,
+				"error", err)
 			result.IsAggregated = false
 		} else {
 			result.FinalResponse = aggregated
@@ -127,9 +149,12 @@ func (o *Orchestrator) Process(ctx context.Context, userInput string, callback E
 		}
 	}
 
+	duration := time.Since(startTime)
 	slog.Info("orchestrator: processing completed",
+		"trace_id", traceID,
 		"tasks", len(plan.Tasks),
-		"aggregated", result.IsAggregated)
+		"aggregated", result.IsAggregated,
+		"duration_ms", duration.Milliseconds())
 
 	return result, nil
 }

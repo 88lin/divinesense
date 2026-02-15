@@ -337,13 +337,14 @@ type ParrotAgent interface {
 // ParrotSelfCognition represents the metacognitive information about a parrot agent.
 // ParrotSelfCognition 表示鹦鹉代理的元认知信息。
 type ParrotSelfCognition struct {
-	Name         string   `json:"name"`
-	Emoji        string   `json:"emoji"`
-	Title        string   `json:"title"`
-	Personality  []string `json:"personality"`
-	Capabilities []string `json:"capabilities"`
-	Limitations  []string `json:"limitations"`
-	WorkingStyle string   `json:"working_style"`
+	Name               string              `json:"name"`
+	Emoji              string              `json:"emoji"`
+	Title              string              `json:"title"`
+	Personality        []string            `json:"personality"`
+	Capabilities       []string            `json:"capabilities"`
+	CapabilityTriggers map[string][]string `json:"capability_triggers,omitempty"` // Capability -> Triggers/Keywords
+	Limitations        []string            `json:"limitations"`
+	WorkingStyle       string              `json:"working_style"`
 }
 
 // ParrotError represents an error that occurred during parrot execution.

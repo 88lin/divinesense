@@ -5,6 +5,10 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
+
+	agents "github.com/hrygo/divinesense/ai/agents"
 )
 
 // Task represents a single task to be executed by an expert agent.
@@ -158,6 +162,9 @@ type OrchestratorConfig struct {
 
 	// AggregationModel is the model to use for result aggregation
 	AggregationModel string `json:"aggregation_model"`
+
+	// DefaultLanguage is the default language for aggregation
+	DefaultLanguage string `json:"default_language"`
 }
 
 // DefaultOrchestratorConfig returns the default configuration.
@@ -168,6 +175,7 @@ func DefaultOrchestratorConfig() *OrchestratorConfig {
 		EnableHandoff:      true, // Enable handoff by default for better expert coordination
 		DecompositionModel: "default",
 		AggregationModel:   "default",
+		DefaultLanguage:    "zh",
 	}
 }
 
@@ -179,6 +187,9 @@ type ExpertRegistry interface {
 
 	// GetExpertDescription returns a description of what an expert agent can do
 	GetExpertDescription(name string) string
+
+	// GetExpertConfig returns the self-cognition configuration of an expert agent
+	GetExpertConfig(name string) *agents.ParrotSelfCognition
 
 	// ExecuteExpert executes a task with the specified expert agent
 	ExecuteExpert(ctx context.Context, expertName string, input string, callback EventCallback) error
@@ -195,4 +206,33 @@ type HandoffHandlerInterface interface {
 
 	// HandleCannotComplete processes a cannot_complete event and determines next action.
 	HandleCannotComplete(ctx context.Context, task *Task, reason CannotCompleteReason, callback EventCallback, handOffContext *HandoffContext) *HandoffResult
+}
+
+// TaskContext holds the execution context for a task, including trace_id for observability.
+type TaskContext struct {
+	// TraceID is the unique identifier for tracing the entire request flow
+	TraceID string
+	// UserID is the user who initiated the request
+	UserID int32
+	// BlockID is the block ID associated with this task
+	BlockID int64
+	// ParentTaskID is the ID of the parent task (for subtasks)
+	ParentTaskID string
+}
+
+// GenerateTraceID generates a new trace ID for request tracing.
+func GenerateTraceID() string {
+	// Using simple UUID-like format: trace-{timestamp}-{random}
+	// In production, this could use proper distributed tracing
+	return fmt.Sprintf("trace-%d-%s", time.Now().UnixMilli(), randomString(12))
+}
+
+func randomString(n int) string {
+	const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[time.Now().UnixNano()%int64(len(letters))]
+		time.Sleep(time.Nanosecond) // Ensure different values
+	}
+	return string(b)
 }

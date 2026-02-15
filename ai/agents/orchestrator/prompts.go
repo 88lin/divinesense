@@ -30,6 +30,7 @@ type DecomposerPrompts struct {
 	OutputFormat         string `yaml:"output_format"`
 	Rules                string `yaml:"rules"`
 	UserRequestTemplate  string `yaml:"user_request_template"`
+	TimeContextTemplate  string `yaml:"time_context_template"`
 }
 
 // AggregatorPrompts holds prompts for result aggregation.
@@ -169,6 +170,10 @@ func defaultPromptConfig() *PromptConfig {
 - 多专家独立时 parallel=true, aggregate=true
 - 任务输入要具体、可执行`,
 			UserRequestTemplate: "## 用户请求\n%s",
+			TimeContextTemplate: `## Current Time Context
+%s
+
+**Important**: Use the above time context to resolve relative dates (e.g., "明天" = %s, "下周三" = calculate from this week).`,
 		},
 		Aggregator: AggregatorPrompts{
 			SystemContext: "你是 DivineSense 的结果整合助手。将多个专家的结果合并为连贯回复。",
@@ -194,13 +199,12 @@ func (c *PromptConfig) BuildDecomposerPrompt(userInput, expertDescriptions strin
 	d := c.Decomposer
 
 	// Build time context section
+	// Build time context section
 	timeContextSection := ""
-	if timeContext != nil {
-		timeContextSection = fmt.Sprintf(`## Current Time Context
-%s
-
-**Important**: Use the above time context to resolve relative dates (e.g., "明天" = %s, "下周三" = calculate from this week).
-`, timeContext.FormatAsJSONBlock(), timeContext.Relative.Tomorrow)
+	if timeContext != nil && d.TimeContextTemplate != "" {
+		timeContextSection = fmt.Sprintf(d.TimeContextTemplate,
+			timeContext.FormatAsJSONBlock(),
+			timeContext.Relative.Tomorrow)
 	}
 
 	return fmt.Sprintf(`%s
