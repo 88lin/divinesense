@@ -21,6 +21,17 @@ const (
 	MinSegmentTokens      = 100
 )
 
+// Dynamic budget adjustment thresholds (Issue #211: Phase 3)
+const (
+	// HistoryLengthThreshold is the number of turns after which dynamic adjustment kicks in
+	// Triggers when historyLength > 20 (i.e., at 21+ turns)
+	HistoryLengthThreshold = 20
+	// ShortTermReductionRatio is how much to reduce ShortTerm when conversation is long
+	ShortTermReductionRatio = 0.375 // Reduce from 40% to 25% (40% * 0.375 = 15% reduction)
+	// LongTermIncreaseRatio is how much to increase LongTerm/Retrieval when conversation is long
+	LongTermIncreaseRatio = 0.333 // Increase from 15% to 20% (15% * 0.333 ≈ 5% increase)
+)
+
 // TokenBudget represents the token allocation plan.
 type TokenBudget struct {
 	Total           int
@@ -159,4 +170,68 @@ func (a *BudgetAllocator) AllocateForAgent(total int, hasRetrieval bool, agentTy
 // AllocateBudget is a convenience function.
 func AllocateBudget(total int, hasRetrieval bool) *TokenBudget {
 	return NewBudgetAllocator().Allocate(total, hasRetrieval)
+}
+
+// AllocateForAgentWithHistory allocates token budget based on agent type and conversation length.
+// Issue #211: Phase 3 - Dynamic budget adjustment based on conversation turns
+// When conversation exceeds 20 turns (historyLength > 20, i.e., 21+ turns), it compresses ShortTerm
+// and increases LongTerm/Retrieval to handle long conversations more efficiently.
+// Note: Has a maximum adjustment cap to prevent over-compression for extremely long conversations.
+func (a *BudgetAllocator) AllocateForAgentWithHistory(total int, hasRetrieval bool, agentType string, historyLength int) *TokenBudget {
+	budget := a.AllocateForAgent(total, hasRetrieval, agentType)
+
+	// Apply dynamic adjustment only if conversation exceeds threshold
+	if historyLength > HistoryLengthThreshold {
+		slog.Debug("Applying dynamic budget adjustment for long conversation",
+			"history_length", historyLength,
+			"threshold", HistoryLengthThreshold)
+
+		// Calculate effective adjustment factor with cap
+		// Cap at 100 turns to prevent over-compression for extremely long conversations
+		const maxAdjustmentTurns = 100
+		effectiveTurns := historyLength
+		if effectiveTurns > maxAdjustmentTurns {
+			effectiveTurns = maxAdjustmentTurns
+		}
+		adjustmentFactor := float64(effectiveTurns-HistoryLengthThreshold) / float64(maxAdjustmentTurns-HistoryLengthThreshold)
+		if adjustmentFactor > 1.0 {
+			adjustmentFactor = 1.0
+		}
+
+		// Calculate reduction/increase amounts with cap
+		shortTermReduction := int(float64(budget.ShortTermMemory) * ShortTermReductionRatio * adjustmentFactor)
+		longTermIncrease := int(float64(budget.LongTermMemory) * LongTermIncreaseRatio * adjustmentFactor)
+		retrievalIncrease := int(float64(budget.Retrieval) * LongTermIncreaseRatio * adjustmentFactor)
+
+		// Apply adjustments
+		budget.ShortTermMemory -= shortTermReduction
+		budget.LongTermMemory += longTermIncrease
+
+		// For retrieval, we increase it only if retrieval is enabled
+		if hasRetrieval {
+			budget.Retrieval += retrievalIncrease
+		} else {
+			// If no retrieval, redistribute to long-term memory
+			budget.LongTermMemory += retrievalIncrease
+		}
+
+		// Ensure minimum values
+		if budget.ShortTermMemory < MinSegmentTokens {
+			budget.ShortTermMemory = MinSegmentTokens
+		}
+		if budget.LongTermMemory < MinSegmentTokens {
+			budget.LongTermMemory = MinSegmentTokens
+		}
+
+		slog.Debug("Dynamic budget adjustment applied",
+			"history_length", historyLength,
+			"effective_turns", effectiveTurns,
+			"adjustment_factor", adjustmentFactor,
+			"short_term_before", budget.ShortTermMemory+shortTermReduction,
+			"short_term_after", budget.ShortTermMemory,
+			"long_term_before", budget.LongTermMemory-longTermIncrease,
+			"long_term_after", budget.LongTermMemory)
+	}
+
+	return budget
 }

@@ -343,7 +343,7 @@ func (h *ParrotHandler) Handle(ctx context.Context, req *ChatRequest, stream Cha
 	logger.Info("ai.chat.started",
 		slog.String("user_input", req.Message),
 		slog.Int(observability.LogFieldMessageLen, len(req.Message)),
-		slog.Int("history_count", len(req.History)),
+		slog.Int("history_count", 0), // History now built by backend (context-engineering.md Phase 1)
 	)
 
 	// Create agent using factory
@@ -390,7 +390,7 @@ func (h *ParrotHandler) handleGeekMode(
 		slog.String("mode", "geek"),
 		slog.String("user_input", req.Message),
 		slog.Int(observability.LogFieldMessageLen, len(req.Message)),
-		slog.Int("history_count", len(req.History)),
+		slog.Int("history_count", 0), // History now built by backend (context-engineering.md Phase 1)
 	)
 
 	// Send received event for immediate feedback (Task 1.2: Progress Feedback)
@@ -460,7 +460,7 @@ func (h *ParrotHandler) handleEvolutionMode(
 		slog.String("mode", "evolution"),
 		slog.String("user_input", req.Message),
 		slog.Int(observability.LogFieldMessageLen, len(req.Message)),
-		slog.Int("history_count", len(req.History)),
+		slog.Int("history_count", 0), // History now built by backend (context-engineering.md Phase 1)
 	)
 
 	// Send received event for immediate feedback (Task 1.2: Progress Feedback)
@@ -528,7 +528,7 @@ func (h *ParrotHandler) executeWithOrchestrator(
 		slog.String("mode", "orchestrator"),
 		slog.String("user_input", req.Message),
 		slog.Int(observability.LogFieldMessageLen, len(req.Message)),
-		slog.Int("history_count", len(req.History)),
+		slog.Int("history_count", 0), // History now built by backend (context-engineering.md Phase 1)
 	)
 
 	// Create callback adapter for streaming events
@@ -915,27 +915,52 @@ func (h *ParrotHandler) executeAgent(
 	// Execute agent
 	defer close(heartbeatDone) // Ensure heartbeat stops even on panic
 
-	// P0-2: Use backend-driven context construction if contextBuilder is available
-	// This implements context-engineering.md Phase 1: Backend as Source of Truth
-	history := req.History
+	// Backend-driven context: use contextBuilder to build history
+	// No longer accept req.History from frontend (Backend as Source of Truth)
+	// This implements context-engineering.md Phase 1
+	// Issue #211: Phase 3 - Get conversation length for dynamic budget adjustment
+	var history []string
 	if h.contextBuilder != nil && req.ConversationID > 0 {
 		sessionID := fmt.Sprintf("conv_%d", req.ConversationID)
+
+		// Get conversation length for dynamic budget adjustment (Issue #211: Phase 3)
+		historyLength := 0
+		if historyLen, err := h.contextBuilder.GetHistoryLength(ctx, sessionID); err == nil {
+			historyLength = historyLen
+		}
+
 		ctxReq := &ctxpkg.ContextRequest{
-			SessionID:    sessionID,
-			CurrentQuery: req.Message,
-			AgentType:    req.AgentType.String(),
-			UserID:       req.UserID,
+			SessionID:     sessionID,
+			CurrentQuery:  req.Message,
+			AgentType:     req.AgentType.String(),
+			UserID:        req.UserID,
+			HistoryLength: historyLength,
 		}
 		builtHistory, err := h.contextBuilder.BuildHistory(ctx, ctxReq)
 		if err != nil {
-			logger.Warn("Failed to build history from context engine, falling back to req.History",
-				slog.String("error", err.Error()))
-		} else if builtHistory != nil {
-			history = builtHistory
-			logger.Debug("Using backend-driven context",
-				slog.Int("history_count", len(history)),
-				slog.String("source", "context_builder"))
+			logger.Error("Failed to build history from context engine", err)
+			// Return error instead of falling back to req.History
+			return err
 		}
+		// Handle nil history gracefully
+		if builtHistory == nil {
+			logger.Warn("BuildHistory returned nil, using empty history")
+			builtHistory = []string{}
+		}
+		history = builtHistory
+		logger.Debug("Using backend-driven context",
+			slog.Int("history_count", len(history)),
+			slog.Int("history_length", historyLength),
+			slog.String("source", "context_builder"))
+	} else if req.ConversationID <= 0 {
+		// Temporary conversation: use empty history
+		history = []string{}
+		logger.Debug("Using empty history for temp conversation")
+	} else {
+		// contextBuilder not initialized: this should not happen in production
+		err := fmt.Errorf("context builder not initialized for conversation %d", req.ConversationID)
+		logger.Error("Context builder not initialized", err)
+		return err
 	}
 
 	execErr := agent.Execute(ctx, req.Message, history, callback)
@@ -1238,10 +1263,10 @@ func (h *RoutingHandler) Handle(ctx context.Context, req *ChatRequest, stream Ch
 }
 
 // ToChatRequest converts a protobuf request to an internal ChatRequest.
+// Note: History field removed - backend-driven context construction
 func ToChatRequest(pbReq *v1pb.ChatRequest) *ChatRequest {
 	return &ChatRequest{
 		Message:            pbReq.Message,
-		History:            pbReq.History,
 		AgentType:          AgentTypeFromProto(pbReq.AgentType),
 		Timezone:           pbReq.UserTimezone,
 		ConversationID:     pbReq.ConversationId,

@@ -75,7 +75,7 @@ export function useParrotChat() {
     streamChat: async (params: ParrotChatParams, callbacks?: ParrotChatCallbacks) => {
       const request = create(ChatRequestSchema, {
         message: params.message,
-        history: params.history ?? [], // Deprecated: will be removed after migration
+        // history field removed - backend-driven context construction (context-engineering.md Phase 1)
         agentType: parrotToProtoAgentType(params.agentType),
         userTimezone: params.userTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
         conversationId: params.conversationId ?? 0,
@@ -234,9 +234,9 @@ function handleParrotEvent(eventType: string, eventData: string, eventMeta?: Pro
 
 /**
  * Query keys factory for parrot-related queries
+ * Note: history key removed - history now built by backend (context-engineering.md Phase 1)
  */
 export const parrotKeys = {
   all: ["parrot"] as const,
   chat: (agentType: ParrotAgentType) => [...parrotKeys.all, "chat", agentType] as const,
-  history: (agentType: ParrotAgentType) => [...parrotKeys.all, "history", agentType] as const,
 };
