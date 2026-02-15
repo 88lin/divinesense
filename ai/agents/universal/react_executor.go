@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/hrygo/divinesense/ai"
@@ -200,6 +201,15 @@ func (e *ReActExecutor) Execute(
 			messages = append(messages,
 				ai.Message{Role: "user", Content: fmt.Sprintf("[Result from %s]: %s", toolName, toolResult)},
 			)
+
+			// Check for early stopping (for Handoff mechanism)
+			// When report_inability is called, we should stop and return the result to trigger handoff
+			if shouldEarlyStop(toolResult) {
+				slog.Info("react: early stopping due to tool result",
+					"tool", toolName,
+					"reason", "shouldEarlyStop returned true")
+				return toolResult, stats, nil
+			}
 			if response.Content != "" {
 				// Insert assistant message before user message if there was thinking content
 				messages = append(messages[:len(messages)-1],
@@ -226,4 +236,39 @@ func executeTool(ctx context.Context, tools []agent.ToolWithSchema, name, input 
 		}
 	}
 	return "", fmt.Errorf("unknown tool: %s", name)
+}
+
+// shouldEarlyStop checks if the agent should stop early based on tool results.
+// Returns true if a schedule was successfully created/updated or inability was reported.
+func shouldEarlyStop(toolResult string) bool {
+	if toolResult == "" {
+		return false
+	}
+
+	// Check for success indicators in Chinese and English
+	successIndicators := []string{
+		"✓ 已创建",
+		"✓ 已更新",
+		"已成功创建",
+		"成功创建日程",
+		"Successfully created",
+		"Successfully updated",
+		"schedule created",
+		"schedule updated",
+	}
+
+	lowerResult := strings.ToLower(toolResult)
+	for _, indicator := range successIndicators {
+		if strings.Contains(toolResult, indicator) || strings.Contains(lowerResult, strings.ToLower(indicator)) {
+			return true
+		}
+	}
+
+	// Check for inability report (for Handoff mechanism)
+	// When an expert reports inability, the agent should stop and let Orchestrator handle handoff
+	if strings.Contains(toolResult, "INABILITY_REPORTED:") {
+		return true
+	}
+
+	return false
 }
