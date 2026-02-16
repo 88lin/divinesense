@@ -9,28 +9,41 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]
+## [v0.100.0] - 2026-02-16 🐴 喜迎马年春节
 
-### Added
-- **Memory Extension Point** (`ai/memory/`): 抽象记忆生成扩展点
-  - `memory.Generator` 接口定义，支持多种实现
-  - `NoOpGenerator` 默认实现（无操作，生产安全）
-  - `simple.Generator` 简化实现（开发/测试用，非生产级）
-  - 文档化专业方案集成指南（Mem0, Letta）
+### 🚀 AI 搜索体验全面升级
 
-### Changed
-- **Memory Architecture Refactoring**: 记忆工程架构重构
-  - 移动 `ai/services/memory/` → `ai/memory/simple/`
-  - 记忆生成默认禁用（NoOpGenerator），需显式配置启用
-  - 理由：记忆工程是专业领域，当前实现过于简化
+#### 混合检索架构 (Phase 1 & 2)
+- **Memo Search 混合检索**：向量检索 + 全文检索 + Rerank 重排三阶段架构
+- **智能质量过滤**：修复 Low 质量结果被 minScore 过度过滤的问题
+- **topK 截断修复**：修复 Rerank 后 topK 正确截断
+- **移除分数列**：搜索结果直接使用 Rerank 排序，移除分数显示
+
+#### 路由系统重构
+- **配置驱动路由**：从代码迁移到 YAML 配置，支持 HILT 反馈优化
+- **两层架构**：简化为意图识别 + 路由两层
+- **工具描述精简**：优化工具描述 + 移除提示词分数显示
+
+### 🎨 UI/UX 优化
+
+- **MemoBlockV3 展开状态**：修复多个展开/收起状态问题
+- **全屏模式滚动**：修复全屏模式滚动问题
+- **笔记列表性能**：优化笔记列表加载性能与用户体验
+
+### 🏗️ 架构改进
+
+- **Memory Extension Point**：抽象记忆生成扩展点
+  - `memory.Generator` 接口，支持多种实现
+  - `NoOpGenerator` 默认实现（生产安全）
+  - `simple.Generator` 简化实现（开发/测试）
+- **Memory 架构重构**：移动 `ai/services/memory/` → `ai/memory/simple/`
 - **AI 模型文档更新**：统一采用供应商无关的通用描述
-  - README: 将对话 LLM 从 DeepSeek 更新为 Z.AI GLM
-  - 架构文档：对话 LLM 使用通用描述"支持多提供商切换，通过环境变量配置"
-  - 规格文档：成本计算、会话定位等文档同步更新
-  - 向量 Embedding、意图分类、重排 Rerank 保持通用描述
 
-### Fixed
-- （待添加）
+### 🐛 Bug Fixes
+
+- 修复日志描述"三层"改为"两层"
+- 修复 LLM JSON 解析失败 & 超时配置化
+- 修复多个搜索质量和路由问题
 
 ---
 
