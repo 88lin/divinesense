@@ -106,15 +106,15 @@ type ExpertRegistryInterface interface {
 }
 
 // ChatRouter routes user input to the appropriate Parrot agent.
-// It is a thin adapter over routing.Service (three-layer routing).
+// It is a thin adapter over routing.Service (two-layer: cache -> rule).
 type ChatRouter struct {
-	routerService  *routerpkg.Service      // Three-layer router service (required)
+	routerService  *routerpkg.Service      // Two-layer router service (cache -> rule)
 	handoffHandler SimpleHandoffHandler    // For handoff support
 	expertRegistry ExpertRegistryInterface // For expert execution
 }
 
 // NewChatRouter creates a new chat router.
-// routerSvc is required and provides the three-layer routing (cache -> rule -> history -> LLM).
+// routerSvc is required and provides the two-layer routing (cache -> rule).
 func NewChatRouter(routerSvc *routerpkg.Service) *ChatRouter {
 	if routerSvc == nil {
 		panic("routing.Service is required for ChatRouter")
@@ -125,7 +125,7 @@ func NewChatRouter(routerSvc *routerpkg.Service) *ChatRouter {
 }
 
 // NewChatRouterWithHandoff creates a new chat router with handoff support.
-// routerSvc is required and provides the three-layer routing.
+// routerSvc is required and provides the two-layer routing.
 // handoffHandler is optional - when provided, enables handoff on MissingCapability errors.
 // expertRegistry is required when handoffHandler is provided.
 func NewChatRouterWithHandoff(routerSvc *routerpkg.Service, handoffHandler SimpleHandoffHandler, expertRegistry ExpertRegistryInterface) *ChatRouter {

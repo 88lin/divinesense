@@ -1262,7 +1262,7 @@ func HandleError(err error) error {
 }
 
 // NewChatRouter creates a new chat router for auto-routing based on intent classification.
-// routerSvc is required and provides three-layer routing (cache → rule → history → LLM).
+// routerSvc is required and provides two-layer routing (cache → rule).
 func NewChatRouter(routerSvc *routing.Service) *agentpkg.ChatRouter {
 	return agentpkg.NewChatRouter(routerSvc)
 }

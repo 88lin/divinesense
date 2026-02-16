@@ -218,12 +218,12 @@ func (s *AIService) createChatHandler() aichat.Handler {
 	parrotHandler := aichat.NewParrotHandler(factory, s.LLMService, s.persister, blockManager, s.TitleGenerator)
 
 	// Configure chat router for auto-routing.
-	// routerSvc provides three-layer routing (cache → rule → history → LLM).
-	// LLM layer is only active when IntentClassifierConfig is enabled.
+	// routerSvc provides two-layer routing (cache → rule).
+	// Orchestrator handles LLM-based task decomposition when needed.
 	routerSvc := s.getRouterService()
 	chatRouter := aichat.NewChatRouter(routerSvc)
 	if s.IntentClassifierConfig != nil && s.IntentClassifierConfig.Enabled {
-		slog.Info("Chat router enabled with three-layer routing (rule + history + LLM)",
+		slog.Info("Chat router enabled with cache + rule routing",
 			"model", s.IntentClassifierConfig.Model,
 		)
 	} else {
