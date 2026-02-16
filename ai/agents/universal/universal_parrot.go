@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,7 +43,7 @@ type UniversalParrot struct {
 	cache *cache.StringLRUCache
 
 	// Statistics
-	stats *NormalSessionStats
+	stats *agent.NormalSessionStats
 
 	// User context
 	userID   int32
@@ -169,7 +170,7 @@ func (p *UniversalParrot) SelfDescribe() *agent.ParrotSelfCognition {
 }
 
 // GetSessionStats returns the accumulated session statistics.
-func (p *UniversalParrot) GetSessionStats() *NormalSessionStats {
+func (p *UniversalParrot) GetSessionStats() *agent.NormalSessionStats {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.stats.GetStatsSnapshot()
@@ -254,15 +255,14 @@ func (p *UniversalParrot) buildTimeContext() *TimeContext {
 }
 
 // enhanceSystemPromptWithDate injects structured current date context into the system prompt.
-// The JSON format is more reliably parsed by LLMs than free-form text (20%+ accuracy boost).
+// Also replaces {{.BaseURL}} placeholder with the configured base URL.
 func (p *UniversalParrot) enhanceSystemPromptWithDate(basePrompt string, tc *TimeContext) string {
 	// If no timeContext provided, build one
 	if tc == nil {
 		tc = p.buildTimeContext()
 	}
 
-	// Minimal instruction: JSON context + one-line pattern guide
-	// Based on 2025 research:简洁优于复杂，LLM可从结构化数据推断规则
+	// Build time context
 	dateContext := fmt.Sprintf(`
 
 <time_context>
@@ -274,7 +274,14 @@ Use the JSON above for time calculations. Output format: ISO8601 (YYYY-MM-DDTHH:
 		tc.FormatAsJSONBlock(),
 	)
 
-	return basePrompt + dateContext
+	result := basePrompt + dateContext
+
+	// Replace {{.BaseURL}} placeholder with configured base URL
+	if p.config.BaseURL != "" {
+		result = strings.ReplaceAll(result, "{{.BaseURL}}", p.config.BaseURL)
+	}
+
+	return result
 }
 
 // resolveTools resolves tool names to ToolWithSchema instances.
@@ -307,6 +314,7 @@ func (p *UniversalParrot) accumulateStats(execStats *ExecutionStats, startTime t
 	p.stats.CacheReadTokens += execStats.CacheReadTokens
 	p.stats.CacheWriteTokens += execStats.CacheWriteTokens
 	p.stats.ToolCallCount += execStats.ToolCalls
+	p.stats.ToolDurationMs += execStats.ToolDurationMs
 	p.stats.TotalDurationMs += duration.Milliseconds()
 }
 
@@ -323,69 +331,11 @@ func hashString(s string) string {
 	return hex.EncodeToString(hash[:]) // Use full hash for better distribution
 }
 
-// NormalSessionStats represents accumulated session statistics.
-type NormalSessionStats struct {
-	mu sync.Mutex
-
-	// Session identification
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	AgentType string    `json:"agent_type"`
-	ModelUsed string    `json:"model_used"`
-
-	// Token usage
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
-	CacheReadTokens  int `json:"cache_read_tokens,omitempty"`
-	CacheWriteTokens int `json:"cache_write_tokens,omitempty"`
-
-	// Timing (milliseconds)
-	ThinkingDurationMs   int64 `json:"thinking_duration_ms"`
-	GenerationDurationMs int64 `json:"generation_duration_ms"`
-	TotalDurationMs      int64 `json:"total_duration_ms"`
-
-	// Tool usage
-	ToolCallCount int      `json:"tool_call_count"`
-	ToolsUsed     []string `json:"tools_used,omitempty"`
-
-	// Cost estimation
-	TotalCostMilliCents int64 `json:"total_cost_milli_cents"`
-}
-
 // NewNormalSessionStats creates a new session stats.
-func NewNormalSessionStats(agentType string) *NormalSessionStats {
-	return &NormalSessionStats{
+func NewNormalSessionStats(agentType string) *agent.NormalSessionStats {
+	return &agent.NormalSessionStats{
 		StartTime: time.Now(),
 		AgentType: agentType,
 		ToolsUsed: make([]string, 0),
-	}
-}
-
-// GetStatsSnapshot returns a thread-safe snapshot.
-func (s *NormalSessionStats) GetStatsSnapshot() *NormalSessionStats {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Deep copy ToolsUsed slice to prevent external modification
-	toolsUsed := make([]string, len(s.ToolsUsed))
-	copy(toolsUsed, s.ToolsUsed)
-
-	return &NormalSessionStats{
-		StartTime:            s.StartTime,
-		EndTime:              s.EndTime,
-		AgentType:            s.AgentType,
-		ModelUsed:            s.ModelUsed,
-		PromptTokens:         s.PromptTokens,
-		CompletionTokens:     s.CompletionTokens,
-		TotalTokens:          s.TotalTokens,
-		CacheReadTokens:      s.CacheReadTokens,
-		CacheWriteTokens:     s.CacheWriteTokens,
-		ThinkingDurationMs:   s.ThinkingDurationMs,
-		GenerationDurationMs: s.GenerationDurationMs,
-		TotalDurationMs:      s.TotalDurationMs,
-		ToolCallCount:        s.ToolCallCount,
-		ToolsUsed:            toolsUsed,
-		TotalCostMilliCents:  s.TotalCostMilliCents,
 	}
 }
