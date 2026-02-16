@@ -11,39 +11,56 @@ All notable changes to this project will be documented in this file.
 
 ## [v0.100.0] - 2026-02-16 🐴 喜迎马年春节
 
-### 🚀 AI 搜索体验全面升级
+> 这是一个重要的功能增强版本，带来了 AI 搜索、UI 体验和架构的全面升级。
 
-#### 混合检索架构 (Phase 1 & 2)
-- **Memo Search 混合检索**：向量检索 + 全文检索 + Rerank 重排三阶段架构
+### ✨ New Features
+
+#### 🤖 AI 智能增强
+- **AI Memo 摘要生成**：实现 AI Memo 摘要生成与内容增强架构，自动为笔记生成智能摘要
+- **Schedule 日程删除**：实现 ScheduleParrot 日程删除功能，完整日程管理
+- **Expert Agent Handoff**：实现专家代理之间的高效切换机制
+- **Context Engineering**：完整实现 Context Engineering 三阶段架构，增强长期记忆能力
+
+#### 🔍 智能搜索升级
+- **混合检索架构 (Phase 1 & 2)**：向量检索 + 全文检索 + Rerank 重排三阶段架构
 - **智能质量过滤**：修复 Low 质量结果被 minScore 过度过滤的问题
 - **topK 截断修复**：修复 Rerank 后 topK 正确截断
 - **移除分数列**：搜索结果直接使用 Rerank 排序，移除分数显示
 
-#### 路由系统重构
-- **配置驱动路由**：从代码迁移到 YAML 配置，支持 HILT 反馈优化
-- **两层架构**：简化为意图识别 + 路由两层
-- **工具描述精简**：优化工具描述 + 移除提示词分数显示
-
 ### 🎨 UI/UX 优化
 
+- **彩色便签设计**：全新的彩色便签样式，视觉体验更丰富
+- **Zen Kanban 布局**：支持禅意看板布局，专注写作
+- **统一侧边栏折叠**：侧边栏折叠状态全局统一
+- **FixedEditor 折叠**：编辑器支持折叠/展开
 - **MemoBlockV3 展开状态**：修复多个展开/收起状态问题
 - **全屏模式滚动**：修复全屏模式滚动问题
 - **笔记列表性能**：优化笔记列表加载性能与用户体验
 
 ### 🏗️ 架构改进
 
+- **路由系统重构**：配置驱动路由，从代码迁移到 YAML 配置，支持 HILT 反馈优化
 - **Memory Extension Point**：抽象记忆生成扩展点
   - `memory.Generator` 接口，支持多种实现
   - `NoOpGenerator` 默认实现（生产安全）
   - `simple.Generator` 简化实现（开发/测试）
 - **Memory 架构重构**：移动 `ai/services/memory/` → `ai/memory/simple/`
+- **SOLID/DRY 重构**：多轮代码重构，提升代码质量和可维护性
 - **AI 模型文档更新**：统一采用供应商无关的通用描述
+
+### 🧪 测试增强
+
+- **E2E 测试基础设施**：搭建完整的端到端测试体系
+- **测试用例完善**：添加多个回归测试用例
+- **手动验收测试**：完善手动验收测试用例文档
 
 ### 🐛 Bug Fixes
 
 - 修复日志描述"三层"改为"两层"
 - 修复 LLM JSON 解析失败 & 超时配置化
 - 修复多个搜索质量和路由问题
+- 修复 Orchestrator 并发、依赖注入和弹性问题
+- 修复 golangci-lint 问题
 
 ---
 
