@@ -99,10 +99,10 @@ INPUT FORMAT:
 OUTPUT FORMAT (text):
 Found N memo(s) matching query: xxx
 
-1. [Score: 0.85] memo content...
+1. memo content...
    UID: xxxxx
 
-2. [Score: 0.72] another memo...
+2. another memo...
    UID: yyyyy
 
 NO RESULTS: "No memos found matching query: xxx"
@@ -212,7 +212,7 @@ func (t *MemoSearchTool) Run(ctx context.Context, input string) (string, error) 
 	fmt.Fprintf(&response, "Found %d memo(s) matching query: %s\n\n", len(memoResults), searchInput.Query)
 
 	for i, result := range memoResults {
-		fmt.Fprintf(&response, "%d. [Score: %.2f] %s\n", i+1, result.Score, result.Content)
+		fmt.Fprintf(&response, "%d. %s\n", i+1, result.Content)
 
 		// Add memo UID if available
 		if result.Memo != nil && result.Memo.UID != "" {

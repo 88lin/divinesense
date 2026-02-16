@@ -741,7 +741,8 @@ func (r *AdaptiveRetriever) fullPipelineWithReranker(ctx context.Context, opts *
 		documents[i] = ""
 	}
 
-	return reordered, nil
+	// Rerank 后截断到 Top K
+	return r.truncateResults(reordered, opts.Limit), nil
 }
 
 // 使用 RRF (Reciprocal Rank Fusion) 融合 BM25 和向量检索结果.
