@@ -58,6 +58,15 @@ export const HeroSection = memo(function HeroSection({ className }: HeroSectionP
   const [hasAnimated, setHasAnimated] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
+  // Debounce search query for performance (300ms delay)
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -67,13 +76,13 @@ export const HeroSection = memo(function HeroSection({ className }: HeroSectionP
     userName: currentUser?.name,
   });
 
-  // AI Semantic Search
+  // AI Semantic Search with debounce for performance
   const {
     data: semanticResults,
     isLoading,
     isError,
-  } = useSemanticSearch(searchQuery, {
-    enabled: isSemantic && searchQuery.length > 1,
+  } = useSemanticSearch(debouncedSearchQuery, {
+    enabled: isSemantic && debouncedSearchQuery.length > 1,
   });
 
   // Time-based greeting with poetic touch

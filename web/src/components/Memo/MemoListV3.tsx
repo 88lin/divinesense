@@ -15,7 +15,7 @@
  */
 
 import { Filter, Inbox, Search } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MemoBlockV3 } from "@/components/Memo/MemoBlockV3";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
@@ -35,6 +35,122 @@ export interface MemoListV3Props {
   pageSize?: number;
   onEdit?: (memo: Memo) => void;
   className?: string;
+}
+
+// ============================================================================
+// Masonry Layout Hook - Fix render order (left-to-right, top-to-bottom)
+// ============================================================================
+
+/**
+ * useMasonryColumns - Distributes items into columns for true masonry layout
+ * Fixes CSS columns vertical-fill problem: items now render left-to-right, top-to-bottom
+ */
+function useMasonryColumns<T>(items: T[], columnCount: number): T[][] {
+  return useMemo(() => {
+    if (columnCount <= 1) {
+      return [items];
+    }
+
+    const columns: T[][] = Array.from({ length: columnCount }, () => []);
+    // Use estimated height ratio to distribute items more evenly
+    // Real height measurement would require DOM access, using estimation for perf
+    const estimatedHeights = items.map(() => Math.random() * 0.5 + 0.75); // 0.75-1.25 ratio
+
+    items.forEach((item, _index) => {
+      // Find the shortest column (with least accumulated height)
+      let shortestColumnIndex = 0;
+      let shortestColumnHeight = columns[0].reduce((sum, _, i) => sum + estimatedHeights[i] || 1, 0);
+
+      for (let i = 1; i < columns.length; i++) {
+        const columnHeight = columns[i].reduce((sum, _, j) => sum + estimatedHeights[j] || 1, 0);
+        if (columnHeight < shortestColumnHeight) {
+          shortestColumnHeight = columnHeight;
+          shortestColumnIndex = i;
+        }
+      }
+
+      columns[shortestColumnIndex].push(item);
+    });
+
+    return columns;
+  }, [items, columnCount]);
+}
+
+/**
+ * useColumnCount - Responsive column count based on viewport width
+ */
+function useColumnCount(): number {
+  const [columnCount, setColumnCount] = useState(() => {
+    if (typeof window === "undefined") return 2;
+    return window.innerWidth < 640 ? 1 : 2;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setColumnCount(window.innerWidth < 640 ? 1 : 2);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return columnCount;
+}
+
+// ============================================================================
+// Infinite Scroll Hook - Use IntersectionObserver for better performance
+// ============================================================================
+
+/**
+ * useInfiniteScroll - Fetch more when element enters viewport
+ * Replaces scroll event listener with IntersectionObserver for better performance
+ */
+function useInfiniteScroll({
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+}: {
+  hasNextPage: boolean | undefined;
+  isFetchingNextPage: boolean;
+  fetchNextPage: () => Promise<unknown>;
+}) {
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  useEffect(() => {
+    if (!hasNextPage) return;
+
+    // Disconnect previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "200px",
+        threshold: 0.1,
+      },
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  return loadMoreRef;
 }
 
 // ============================================================================
@@ -212,6 +328,12 @@ export const MemoListV3 = memo(function MemoListV3({
   // Flatten pages into single array
   const memos = useMemo(() => data?.pages.flatMap((page) => page.memos) || [], [data?.pages]);
 
+  // Responsive column count
+  const columnCount = useColumnCount();
+
+  // Masonry layout: distribute items into columns
+  const columns = useMasonryColumns(memos, columnCount);
+
   // Auto-fetch when page isn't scrollable
   useAutoFetchWhenNotScrollable({
     hasNextPage,
@@ -220,20 +342,12 @@ export const MemoListV3 = memo(function MemoListV3({
     onFetchNext: fetchNextPage,
   });
 
-  // Infinite scroll: fetch more when near bottom
-  useEffect(() => {
-    if (!hasNextPage) return;
-
-    const handleScroll = () => {
-      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
-      if (nearBottom && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  // Infinite scroll with IntersectionObserver (better performance than scroll event)
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  });
 
   // Handle edit action
   const handleEdit = useCallback(
@@ -243,7 +357,7 @@ export const MemoListV3 = memo(function MemoListV3({
     [onEdit],
   );
 
-  // Animation delay for staggered reveal
+  // Animation delay for staggered reveal - based on original index
   const getAnimationDelay = (index: number): number => {
     // Faster cascade for first few, then slower
     return index < 6 ? index * 60 : 360 + (index - 6) * 30;
@@ -264,24 +378,35 @@ export const MemoListV3 = memo(function MemoListV3({
     <div className={cn("flex flex-col w-full", className)}>
       {/* Initial loading skeleton */}
       {isLoading ? (
-        <KanbanSkeleton columns={2} />
+        <KanbanSkeleton columns={columnCount} />
       ) : (
         <>
-          {/* Kanban Masonry - Responsive 1/2 columns (CSS columns for true masonry) */}
-          <div className="columns-1 sm:columns-2 gap-4 w-full">
-            {memos.map((memo, index) => (
-              <div
-                key={memo.name}
-                className="break-inside-avoid mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500 ease-out"
-                style={{
-                  animationDelay: `${getAnimationDelay(index)}ms`,
-                  animationFillMode: "both",
-                }}
-              >
-                <MemoBlockV3 memo={memo} onEdit={handleEdit} />
+          {/* Kanban Masonry - Responsive 1/2 columns with left-to-right, top-to-bottom render order */}
+          <div className="flex gap-4 w-full">
+            {columns.map((columnMemos, colIndex) => (
+              <div key={colIndex} className="flex-1 flex flex-col gap-4">
+                {columnMemos.map((memo) => {
+                  // Calculate original index for animation
+                  const originalIndex = memos.indexOf(memo);
+                  return (
+                    <div
+                      key={memo.name}
+                      className="animate-in fade-in slide-in-from-bottom-3 duration-500 ease-out"
+                      style={{
+                        animationDelay: `${getAnimationDelay(originalIndex)}ms`,
+                        animationFillMode: "both",
+                      }}
+                    >
+                      <MemoBlockV3 memo={memo} onEdit={handleEdit} />
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
+
+          {/* Intersection observer target */}
+          <div ref={loadMoreRef} className="h-px w-full" />
 
           {/* Loading more indicator */}
           {isFetchingNextPage && (

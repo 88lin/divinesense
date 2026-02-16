@@ -54,6 +54,11 @@ ON memo USING gin(to_tsvector('simple', COALESCE(content, '')));
 
 COMMENT ON INDEX idx_memo_content_gin IS 'GIN index for BM25 full-text search on memo.content';
 
+-- Memo list query optimization indexes (V1.0.0)
+-- Composite index for creator_id + visibility filter + pinned/created_ts sort
+CREATE INDEX IF NOT EXISTS idx_memo_creator_visibility_pinned_ts
+ON memo (creator_id, visibility, pinned DESC, created_ts DESC);
+
 -- memo_relation
 CREATE TABLE memo_relation (
   memo_id INTEGER NOT NULL,
@@ -61,6 +66,11 @@ CREATE TABLE memo_relation (
   type TEXT NOT NULL,
   UNIQUE(memo_id, related_memo_id, type)
 );
+
+-- Partial index for comment filtering (V1.0.0)
+CREATE INDEX IF NOT EXISTS idx_memo_relation_comment_memo
+ON memo_relation (memo_id, related_memo_id)
+WHERE type = 'COMMENT';
 
 -- attachment
 CREATE TABLE attachment (
