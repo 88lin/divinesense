@@ -1,9 +1,9 @@
 # E2E 用户测试手册
 
-> **测试范围**: MemoParrot (灰灰) + ScheduleParrot (时巧)
-> **系统版本**: 基于 2026-02-15 架构
-> **测试级别**: L2 真实 E2E（需要真实数据库和 LLM）
-> **注意**: 本文档基于实际系统实现编写，SQL 示例已验证语法正确性
+> **测试范围**: MemoParrot (灰灰) + ScheduleParrot (时巧) + Orchestrator
+> **系统版本**: 基于 2026-02-16 架构
+> **测试级别**: L1 逻辑集成 + L2 真实 E2E（需要真实数据库和 LLM）
+> **测试策略**: 完整覆盖核心功能、编排协作、上下文工程、可观测性
 
 ---
 
@@ -255,11 +255,12 @@ export CI=  # 确保 CI 未设置
 **前置条件**: 已有待删除的日程
 
 **操作步骤**:
-1. 输入: `删除 test_sched_001` 或通过 schedule_query 获取日程 ID 后删除
+1. 输入: `删除今天下午三点的项目评审`
+2. 确认删除
 
 **预期结果**:
 - 删除指定的日程
-- 返回删除确认: `Deleted schedule ID: X`
+- 返回删除确认
 
 **验证点**:
 - [ ] 指定日程被删除
@@ -389,6 +390,95 @@ export CI=  # 确保 CI 未设置
 
 ---
 
+### 第五部分：上下文工程测试
+
+#### TC-CTX-001: 长期记忆检索
+
+**测试目标**: 验证从 episodic memory 检索历史交互
+
+**前置条件**: 已存在历史交互记录
+
+**操作步骤**:
+1. 预先插入历史交互记录
+2. 触发新的查询
+3. 验证历史相关记录被检索
+
+**预期结果**: 返回与当前查询相关的历史交互
+
+---
+
+#### TC-CTX-002: 用户偏好提取
+
+**测试目标**: 验证用户偏好被正确加载
+
+**预期输出**: 返回用户时区设置、通信风格偏好
+
+---
+
+#### TC-CTX-003: 对话历史提取
+
+**测试目标**: 验证最近 N 轮对话被正确加载
+
+**操作步骤**: 多轮对话后，输入新查询
+
+**预期输出**: 返回最近 10 轮对话（默认配置）
+
+---
+
+### 第六部分：可观测性测试
+
+#### TC-OBS-001: 追踪链路完整性
+
+**测试目标**: 验证完整调用链被追踪
+
+**验证点**: Span 包含操作名称、开始/结束时间、元数据
+
+---
+
+#### TC-OBS-002: 请求指标记录
+
+**测试目标**: 验证请求指标被正确记录
+
+**验证点**: TotalRequests、AvgLatencyMs 正确
+
+---
+
+#### TC-OBS-003: 工具调用统计
+
+**测试目标**: 验证工具调用次数被记录
+
+**验证点**: CallCount、AvgLatencyMs 正确
+
+---
+
+### 第七部分：集成场景测试
+
+#### TC-JOURNEY-001: 笔记搜索完整流程
+
+**测试步骤**:
+1. 用户输入: "查找我之前记录的 Go 学习笔记"
+2. 上下文工程加载历史偏好
+3. 检索相关笔记
+4. 返回结果
+5. 记录指标和日志
+
+**验证点**: Tracer 包含完整链路、Metrics 记录请求
+
+---
+
+#### TC-JOURNEY-002: 复杂任务编排
+
+**测试步骤**:
+1. 用户输入: "帮我搜索上次项目会议的纪要，然后安排下周一的项目跟进会"
+2. 任务分解为 2 个子任务
+3. DAG 调度执行
+4. 结果聚合
+5. 返回综合响应
+
+**验证点**: 正确分解为 2 个任务、依赖关系正确 (memo → schedule)
+
+---
+
 ### 第四部分：交互体验测试
 
 #### TC-INTERACT-001: 多轮澄清
@@ -456,28 +546,140 @@ export CI=  # 确保 CI 未设置
 
 ## 测试数据准备
 
-### 创建测试笔记
+> **重要**: 测试数据是 E2E 测试的基础，必须预埋充足的数据才能覆盖所有测试场景。
 
-> **注意**: PostgreSQL 中 `EXTRACT(EPOCH FROM NOW())` 返回浮点数，必须转换为 BIGINT
+### 数据概览
 
-```sql
--- 在 PostgreSQL 中创建测试笔记（使用实际 creator_id = 1）
-INSERT INTO memo (uid, creator_id, content, visibility, row_status, created_ts, updated_ts)
-VALUES
-  ('test_memo_001', 1, 'Go 语言学习笔记：今天学习了 Go 的并发编程，包括 goroutine 和 channel 的使用。', 'PRIVATE', 'N', (EXTRACT(EPOCH FROM NOW()))::BIGINT, (EXTRACT(EPOCH FROM NOW()))::BIGINT),
-  ('test_memo_002', 1, 'Python 入门指南：变量、数据类型、条件语句和循环的基础用法。', 'PRIVATE', 'N', (EXTRACT(EPOCH FROM NOW()))::BIGINT, (EXTRACT(EPOCH FROM NOW()))::BIGINT),
-  ('test_memo_003', 1, '会议纪要：Q1 规划会议，讨论了产品路线图和技术债务。', 'PRIVATE', 'N', (EXTRACT(EPOCH FROM NOW()))::BIGINT, (EXTRACT(EPOCH FROM NOW()))::BIGINT);
+| 数据类型 | 数量 | 用途 |
+|----------|------|------|
+| 用户 | 1 | 测试用户 (ID=1) |
+| 笔记 (Memo) | 50+ | 关键词搜索、语义搜索、混合检索、时间过滤、标签过滤 |
+| 日程 (Schedule) | 30+ | 日程创建、查询、修改、删除、冲突检测、空闲时间查找 |
+| 标签 (MemoTags) | 50+ | 标签过滤测试 |
+| 长期记忆 (EpisodicMemory) | 20+ | 上下文工程测试 |
+| 对话历史 (AIMessage) | 10+ | 短期记忆测试 |
+
+### 快速开始：使用测试数据脚本
+
+```bash
+# 方式 1：使用 SQL 脚本（推荐）
+make db-shell
+\i docs/testing/fixtures/test_data.sql
+
+# 方式 2：使用 Go Fixtures 运行测试
+ENABLE_MANUAL_E2E=true go test -tags=e2e_manual ./ai/e2e/... -v
 ```
 
-### 创建测试日程
-
-> **注意**: 使用实际存在的 creator_id（通常为 1），时间戳使用 BIGINT
+### 创建测试笔记（50+ 条）
 
 ```sql
--- 创建测试日程（时间设置为可配置的相对时间）
-INSERT INTO schedule (uid, creator_id, title, start_ts, end_ts, all_day, timezone, row_status, created_ts, updated_ts)
+-- 在 PostgreSQL 中创建测试笔记
+INSERT INTO memo (uid, creator_id, content, visibility, row_status, created_ts, updated_ts)
 VALUES
-  ('test_sched_001', 1, '团队周会', (EXTRACT(EPOCH FROM NOW()))::BIGINT + 86400, (EXTRACT(EPOCH FROM NOW()))::BIGINT + 86400 + 3600, false, 'Asia/Shanghai', 'N', (EXTRACT(EPOCH FROM NOW()))::BIGINT, (EXTRACT(EPOCH FROM NOW()))::BIGINT);
+  -- Go 相关笔记
+  ('test_memo_001', 1, 'Go 语言学习笔记：今天学习了 Go 的并发编程，包括 goroutine 和 channel 的使用。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_002', 1, 'Go 进阶：深入理解 Go 的调度器、GMP 模型和垃圾回收机制。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_003', 1, 'Go 项目架构：DDD 领域驱动设计在 Go 项目中的实践。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- Python 相关笔记
+  ('test_memo_004', 1, 'Python 入门指南：变量、数据类型、条件语句和循环的基础用法。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_005', 1, 'Python 进阶：装饰器、生成器、上下文管理器的使用。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_006', 1, 'Python 数据分析：Pandas、NumPy、Matplotlib 使用笔记。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 会议纪要
+  ('test_memo_007', 1, '会议纪要：Q1 规划会议，讨论了产品路线图和技术债务。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_008', 1, '项目会议：Sprint 3 评审会议纪要，总结本周完成的工作和下週计划。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_009', 1, '团队例会：关于代码审查规范的讨论，最终确定了审查清单。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 读书笔记
+  ('test_memo_010', 1, '《代码整洁之道》读书笔记：代码可读性的重要性及实践方法。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_011', 1, '《架构整洁之道》笔记：分层架构、依赖倒置原则的理解。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_012', 1, '《人月神话》笔记：软件项目管理的心得体会。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 学习笔记
+  ('test_memo_013', 1, '学习笔记：HTTP 协议详解，包括请求方法、状态码、缓存机制。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_014', 1, '学习笔记：Git 工作流最佳实践，Gitflow vs Trunk-based。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_015', 1, '学习笔记：Docker 容器化技术，镜像构建和网络配置。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 工作相关
+  ('test_memo_016', 1, '工作日志：本周完成了用户认证模块的重构，优化了登录流程。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_017', 1, 'TODO：处理线上工单 #1234，用户反馈登录失败问题。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_018', 1, '项目文档：API 接口文档 v2.0，包含所有新增接口。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 生活记录
+  ('test_memo_019', 1, '周末计划：学习新技术 Terraform，实践基础设施即代码。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_020', 1, '读书计划：准备阅读《深入理解计算机系统》。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 更多笔记（用于边界测试）
+  ('test_memo_021', 1, '短内容：A', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_memo_022', 1, '中等长度内容：这是一个包含多个关键词的测试笔记，用于验证搜索功能的各种场景。关键词包括：测试、搜索、功能、验证、场景等。', 'PRIVATE', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW()));
+```
+
+> **提示**: 完整测试数据脚本请参考 `docs/testing/fixtures/test_data.sql`
+
+### 创建测试日程（30+ 条）
+
+```sql
+-- 创建测试日程（分散在不同日期）
+INSERT INTO schedule (uid, creator_id, title, description, location, start_ts, end_ts, all_day, timezone, row_status, created_ts, updated_ts)
+VALUES
+  -- 今日日程
+  ('test_sched_001', 1, '团队周会', '每周例会，讨论本周进展', '会议室A', EXTRACT(EPOCH FROM NOW()) + 3600, EXTRACT(EPOCH FROM NOW()) + 7200, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_sched_002', 1, '代码审查', 'Review PR #123', '线上', EXTRACT(EPOCH FROM NOW()) + 10800, EXTRACT(EPOCH FROM NOW()) + 14400, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 明日日程
+  ('test_sched_003', 1, '项目评审', 'Q2 项目规划评审', '会议室B', EXTRACT(EPOCH FROM NOW()) + 86400 + 3600, EXTRACT(EPOCH FROM NOW()) + 86400 + 7200, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 本周其他日程
+  ('test_sched_004', 1, '技术分享', 'Go 并发编程实践', '会议室C', EXTRACT(EPOCH FROM NOW()) + 172800 + 3600, EXTRACT(EPOCH FROM NOW()) + 172800 + 7200, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_sched_005', 1, '一对一沟通', '与产品经理同步需求', '办公室', EXTRACT(EPOCH FROM NOW()) + 259200 + 3600, EXTRACT(EPOCH FROM NOW()) + 259200 + 5400, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 下周日程（用于测试"下周"查询）
+  ('test_sched_006', 1, 'Sprint 计划会', 'Sprint 4 计划会议', '会议室A', EXTRACT(EPOCH FROM NOW()) + 604800 + 3600, EXTRACT(EPOCH FROM NOW()) + 604800 + 7200, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+  ('test_sched_007', 1, '客户演示', '产品演示会议', '线上', EXTRACT(EPOCH FROM NOW()) + 691200 + 3600, EXTRACT(EPOCH FROM NOW()) + 691200 + 5400, false, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW())),
+
+  -- 全天日程
+  ('test_sched_008', 1, '专注工作日', '封闭开发日', '', EXTRACT(EPOCH FROM NOW()) + 86400, NULL, true, 'Asia/Shanghai', 'NORMAL', EXTRACT(EPOCH FROM NOW()), EXTRACT(EPOCH FROM NOW()));
+```
+
+### 创建测试标签
+
+```sql
+-- 为笔记创建标签
+INSERT INTO memo_tags (memo_id, tag, confidence, source, created_ts)
+SELECT id, 'go', 1.0, 'user', EXTRACT(EPOCH FROM NOW())
+FROM memo WHERE content LIKE '%Go%' OR content LIKE '%go%';
+
+INSERT INTO memo_tags (memo_id, tag, confidence, source, created_ts)
+SELECT id, 'python', 1.0, 'user', EXTRACT(EPOCH FROM NOW())
+FROM memo WHERE content LIKE '%Python%' OR content LIKE '%python%';
+
+INSERT INTO memo_tags (memo_id, tag, confidence, source, created_ts)
+SELECT id, '编程', 1.0, 'user', EXTRACT(EPOCH FROM NOW())
+FROM memo WHERE content LIKE '%编程%' OR content LIKE '%代码%';
+
+INSERT INTO memo_tags (memo_id, tag, confidence, source, created_ts)
+SELECT id, '会议', 1.0, 'user', EXTRACT(EPOCH FROM NOW())
+FROM memo WHERE content LIKE '%会议%';
+
+INSERT INTO memo_tags (memo_id, tag, confidence, source, created_ts)
+SELECT id, '学习', 1.0, 'user', EXTRACT(EPOCH FROM NOW())
+FROM memo WHERE content LIKE '%学习%' OR content LIKE '%笔记%';
+
+INSERT INTO memo_tags (memo_id, tag, confidence, source, created_ts)
+SELECT id, '工作', 1.0, 'user', EXTRACT(EPOCH FROM NOW())
+FROM memo WHERE content LIKE '%工作%' OR content LIKE '%项目%';
+```
+
+### 创建长期记忆（可选，用于上下文工程测试）
+
+```sql
+-- 创建历史交互记录
+INSERT INTO episodic_memory (user_id, agent_type, user_input, outcome, summary, importance, created_ts)
+VALUES
+  (1, 'memo', '搜索 Go 学习笔记', 'success', '用户搜索了 Go 语言相关的学习笔记', 0.8, EXTRACT(EPOCH FROM NOW()) - 86400),
+  (1, 'schedule', '安排团队周会', 'success', '用户创建了每周一次的团队周会', 0.9, EXTRACT(EPOCH FROM NOW()) - 172800),
+  (1, 'memo', '查找会议纪要', 'success', '用户查找了 Q1 规划会议的纪要', 0.7, EXTRACT(EPOCH FROM NOW()) - 259200);
 ```
 
 ---
@@ -487,15 +689,52 @@ VALUES
 ### 每日冒烟测试
 
 - [ ] TC-MEMO-001: 关键词搜索
+- [ ] TC-MEMO-002: 语义向量搜索
 - [ ] TC-SCHEDULE-001: 创建日程
 - [ ] TC-SCHEDULE-003: 查询今日日程
+- [ ] TC-ORCH-001: 简单任务路由
 
 ### 完整回归测试
 
-- [ ] 所有 MemoParrot 测试用例
-- [ ] 所有 ScheduleParrot 测试用例
-- [ ] 多 Agent 协作测试
-- [ ] 交互体验测试
+#### 核心功能测试
+- [ ] TC-MEMO-001: 关键词搜索
+- [ ] TC-MEMO-002: 语义向量搜索
+- [ ] TC-MEMO-003: 时间过滤搜索
+- [ ] TC-MEMO-004: 标签过滤搜索
+- [ ] TC-MEMO-005: 无结果处理
+- [ ] TC-SCHEDULE-001: 创建日程（简单）
+- [ ] TC-SCHEDULE-002: 创建日程（含冲突检测）
+- [ ] TC-SCHEDULE-003: 查询今日日程
+- [ ] TC-SCHEDULE-004: 查询本周日程
+- [ ] TC-SCHEDULE-005: 修改日程
+- [ ] TC-SCHEDULE-006: 删除日程
+- [ ] TC-SCHEDULE-007: 查找空闲时间
+- [ ] TC-SCHEDULE-008: 相对时间解析
+
+#### 编排与协作测试
+- [ ] TC-ORCH-001: 简单任务路由
+- [ ] TC-ORCH-002: 复杂任务分解
+- [ ] TC-ORCH-003: 并行任务执行
+- [ ] TC-ORCH-004: 自动转交 (Handoff)
+
+#### 交互体验测试
+- [ ] TC-INTERACT-001: 多轮澄清
+- [ ] TC-INTERACT-002: 流式响应
+- [ ] TC-INTERACT-003: 错误处理
+
+#### 上下文工程测试
+- [ ] TC-CTX-001: 长期记忆检索
+- [ ] TC-CTX-002: 用户偏好提取
+- [ ] TC-CTX-003: 对话历史提取
+
+#### 可观测性测试
+- [ ] TC-OBS-001: 追踪链路完整性
+- [ ] TC-OBS-002: 请求指标记录
+- [ ] TC-OBS-003: 工具调用统计
+
+#### 集成场景测试
+- [ ] TC-JOURNEY-001: 笔记搜索完整流程
+- [ ] TC-JOURNEY-002: 复杂任务编排
 
 ---
 
@@ -556,40 +795,6 @@ VALUES
 | 问题 | 严重程度 | 状态 |
 |------|---------|------|
 | 问题描述 | P0/P1/P2/P3 | Open/Resolved |
-```
-
----
-
-## 附录：工具输入格式参考
-
-### memo_search
-```json
-{"query": "关键词", "limit": 10, "min_score": 0.5}
-```
-
-### schedule_add
-```json
-{"title": "会议标题", "start_time": "2026-02-20T15:00:00+08:00", "end_time": "2026-02-20T16:00:00+08:00", "description": "描述", "location": "地点"}
-```
-
-### schedule_query
-```json
-{"start_time": "2026-02-20T00:00:00+08:00", "end_time": "2026-02-21T00:00:00+08:00"}
-```
-
-### schedule_update
-```json
-{"id": 123, "title": "新标题", "start_time": "2026-02-21T10:00:00+08:00"}
-```
-
-### schedule_delete
-```json
-{"id": 123}
-```
-
-### find_free_time
-```json
-{"date": "2026-02-20"}
 ```
 
 ---

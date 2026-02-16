@@ -5,6 +5,7 @@ package e2e_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -35,9 +36,10 @@ func TestMemoParrot_KeywordSearch(t *testing.T) {
 // TestMemoParrot_SemanticSearch corresponds to TC-MEMO-002
 // 验证语义搜索能力
 func TestMemoParrot_SemanticSearch(t *testing.T) {
-	// This test requires real embedding service in L2
-	// For L1, we verify the tool call pattern
-	t.Skip("Requires real embedding service - run with L2 tag")
+	// Skip in L1 mode, run manually in L2 with real embedding service
+	if os.Getenv("ENABLE_L2_EMBEDDING") != "true" {
+		t.Skip("Skipping: Set ENABLE_L2_EMBEDDING=true to run with real embedding service")
+	}
 }
 
 // TestScheduleParrot_CreateSchedule corresponds to TC-SCHEDULE-001
@@ -127,8 +129,10 @@ func TestLongTermExtractor_UserPreference(t *testing.T) {
 // TestShortTermExtractor_ConversationHistory corresponds to TC-STM-001
 // 验证最近 N 轮对话被正确加载
 func TestShortTermExtractor_ConversationHistory(t *testing.T) {
-	// This would require session service in L2
-	t.Skip("Requires session service - run with L2 tag")
+	// Skip in L1 mode, run manually in L2 with real session service
+	if os.Getenv("ENABLE_L2_SESSION") != "true" {
+		t.Skip("Skipping: Set ENABLE_L2_SESSION=true to run with real session service")
+	}
 }
 
 // ===========================================================================
