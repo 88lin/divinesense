@@ -1,5 +1,4 @@
 import { FileText, TrendingUp } from "lucide-react";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -14,9 +13,8 @@ export function MemoQueryResult({ result, className }: MemoQueryResultProps) {
   const { t } = useTranslation();
   const { memos, query, count } = result;
 
-  const sortedMemos = useMemo(() => {
-    return [...memos].sort((a, b) => b.score - a.score);
-  }, [memos]);
+  // Rerank 已排好序，直接使用
+  const sortedMemos = memos;
 
   if (count === 0) {
     return (
@@ -69,9 +67,6 @@ interface MemoQueryResultItemProps {
 }
 
 function MemoQueryResultItem({ memo, rank }: MemoQueryResultItemProps) {
-  const scorePercentage = Math.round(memo.score * 100);
-  const scoreColor = getScoreColor(memo.score);
-
   return (
     <Link to={`/memo/${memo.uid}`} className="block px-4 py-3 hover:bg-muted transition-colors">
       <div className="flex items-start justify-between space-x-3">
@@ -89,22 +84,7 @@ function MemoQueryResultItem({ memo, rank }: MemoQueryResultItemProps) {
         <div className="flex-1 min-w-0">
           <p className="text-sm text-foreground line-clamp-2">{memo.content}</p>
         </div>
-
-        {/* Score Badge */}
-        <div className={cn("flex-shrink-0 px-2 py-1 rounded text-xs font-medium", scoreColor)}>{scorePercentage}%</div>
       </div>
     </Link>
   );
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 0.9) {
-    return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300";
-  } else if (score >= 0.7) {
-    return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300";
-  } else if (score >= 0.5) {
-    return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300";
-  } else {
-    return "bg-muted text-muted-foreground";
-  }
 }
