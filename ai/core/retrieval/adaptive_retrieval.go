@@ -536,7 +536,17 @@ func (r *AdaptiveRetriever) memoSemanticOnly(ctx context.Context, opts *Retrieva
 	}
 
 	// 过滤低分结果
-	filtered := r.filterByScore(results, opts.MinScore)
+	// 对于 Low 质量且刚经过 Rerank 的结果，降低过滤阈值以避免过度过滤
+	// 因为 Rerank 分数体系与原始分数不同，分数可能较低
+	effectiveMinScore := opts.MinScore
+	if quality == LowQuality && len(results) > 0 {
+		effectiveMinScore = 0.0 // Low 质量时不应用 minScore 过滤，依赖 Rerank 排序
+		opts.Logger.DebugContext(ctx, "Low quality - skipping minScore filter",
+			"request_id", opts.RequestID,
+			"original_min_score", opts.MinScore,
+		)
+	}
+	filtered := r.filterByScore(results, effectiveMinScore)
 	opts.Logger.InfoContext(ctx, "Semantic retrieval completed",
 		"request_id", opts.RequestID,
 		"final_count", len(filtered),
