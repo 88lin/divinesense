@@ -32,7 +32,9 @@ import {
   Copy,
   Edit3,
   Ellipsis,
+  Maximize2,
   MessageCircle,
+  Minimize2,
   Pin,
   PinOff,
   Share2,
@@ -45,11 +47,12 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import MemoContent from "@/components/MemoContent";
 import MemoView from "@/components/MemoView/MemoView";
 import { useInstance } from "@/contexts/InstanceContext";
 import { useDeleteMemo, useUpdateMemo } from "@/hooks/useMemoQueries";
 import useNavigateTo from "@/hooks/useNavigateTo";
-import { userKeys } from "@/hooks/useUserQueries";
+import { userKeys, useUser } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
@@ -102,6 +105,7 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
   const { profile } = useInstance();
   const { mutateAsync: updateMemo } = useUpdateMemo();
   const { mutateAsync: deleteMemo } = useDeleteMemo();
+  const { data: creator, isLoading: creatorLoading } = useUser(memo.creator);
 
   const isInMemoDetailPage = location.pathname.startsWith(`/${memo.name}`);
   const hasCompletedTaskList = hasCompletedTasks(memo.content);
@@ -129,6 +133,43 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<SwipeDirection>(null);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const [isReadingMode, setIsReadingMode] = useState(false);
+
+  // Fullscreen API helpers with compatibility check
+  const isFullscreenSupported =
+    typeof document !== "undefined" &&
+    !!(document.fullscreenEnabled || (document as unknown as { webkitFullscreenEnabled?: boolean }).webkitFullscreenEnabled);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!cardRef.current || !isFullscreenSupported) {
+      // Fallback to modal if fullscreen not supported
+      setIsReadingMode((prev) => !prev);
+      return;
+    }
+
+    try {
+      if (!document.fullscreenElement) {
+        await cardRef.current.requestFullscreen();
+        setIsReadingMode(true);
+      } else {
+        await document.exitFullscreen();
+        setIsReadingMode(false);
+      }
+    } catch (error) {
+      console.error("Fullscreen error:", error);
+      // Fallback to modal on error
+      setIsReadingMode((prev) => !prev);
+    }
+  }, [isFullscreenSupported]);
+
+  // Listen for fullscreen changes (e.g., ESC key)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsReadingMode(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   // Refs for swipe detection and click-outside
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -371,7 +412,7 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
         ref={cardRef}
         className={cn(
           // Base card styles
-          "group relative rounded-lg overflow-hidden",
+          "group relative rounded-lg overflow-y-auto",
           // Sticky note background
           colorClasses.bg,
           "border",
@@ -466,6 +507,7 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
           <MemoCompactFooter
             memo={memo}
             isExpanded={isExpanded}
+            isReadingMode={isReadingMode}
             onToggle={handleToggle}
             onEdit={handleEdit}
             onTogglePin={handleTogglePin}
@@ -473,6 +515,7 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
             onShare={handleShare}
             onToggleArchive={handleToggleArchive}
             onDelete={() => setDeleteDialogOpen(true)}
+            onToggleReadingMode={toggleFullscreen}
             isArchived={isArchived}
             quickActions={quickActions}
             quickMenuOpen={quickMenuOpen}
@@ -496,6 +539,38 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
         onConfirm={confirmDelete}
         confirmVariant="destructive"
       />
+
+      {/* Reading Mode Modal - fallback when fullscreen not supported */}
+      {isReadingMode && !isFullscreenSupported && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-start justify-center pt-16 animate-in fade-in duration-200"
+          onClick={toggleFullscreen}
+        >
+          <div
+            className="w-full max-w-3xl mx-4 max-h-[calc(100vh-8rem)] overflow-y-auto bg-background rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with close button */}
+            <div className="sticky top-0 flex items-center justify-between px-4 py-3 bg-background/95 backdrop-blur-sm border-b">
+              <span className="text-sm text-muted-foreground">
+                {creatorLoading ? "..." : creator?.displayName || creator?.username || t("common.unknown")}
+              </span>
+              <button
+                onClick={toggleFullscreen}
+                className="p-2 rounded-lg hover:bg-accent transition-colors"
+                aria-label={t("common.exit_fullscreen")}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <MemoContent content={memo.content} />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 });
@@ -597,6 +672,7 @@ function MemoCompactHeader({
 interface MemoCompactFooterProps {
   memo: Memo;
   isExpanded: boolean;
+  isReadingMode: boolean;
   onToggle: () => void;
   onEdit: () => void;
   onTogglePin: () => void;
@@ -604,6 +680,7 @@ interface MemoCompactFooterProps {
   onShare: () => void;
   onToggleArchive: () => void;
   onDelete: () => void;
+  onToggleReadingMode: () => void;
   isArchived: boolean;
   quickActions: Array<{
     key: QuickAction;
@@ -623,6 +700,7 @@ interface MemoCompactFooterProps {
 function MemoCompactFooter({
   memo,
   isExpanded,
+  isReadingMode,
   onToggle,
   onEdit,
   onTogglePin,
@@ -630,6 +708,7 @@ function MemoCompactFooter({
   onShare,
   onToggleArchive,
   onDelete,
+  onToggleReadingMode,
   isArchived,
   quickActions,
   quickMenuOpen,
@@ -676,6 +755,14 @@ function MemoCompactFooter({
 
         {/* Copy button */}
         {!isArchived && <ActionButton icon={Copy} label={t("common.copy")} onClick={onCopy} colorClasses={colorClasses} />}
+
+        {/* Fullscreen button */}
+        <ActionButton
+          icon={isReadingMode ? Minimize2 : Maximize2}
+          label={isReadingMode ? t("common.exit_fullscreen") : t("common.fullscreen")}
+          onClick={onToggleReadingMode}
+          colorClasses={colorClasses}
+        />
 
         {/* Share button - if available */}
         {!isArchived && typeof navigator !== "undefined" && "share" in navigator && (
