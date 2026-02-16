@@ -88,25 +88,13 @@ func (t *MemoSearchTool) Name() string {
 // Description returns a description of what the tool does.
 // Description 返回工具描述。
 func (t *MemoSearchTool) Description() string {
-	return `Searches for memos using semantic and keyword search.
+	return `Search memos by semantic keyword matching.
 
-INPUT FORMAT:
-{"query": "搜索词", "limit": 10, "min_score": 0.5}
-- query (required): search keywords. Use "*" to search all memos. Empty query will search all.
+Input: {"query": "keywords", "limit": 10}
+- query (required): search keywords in Chinese or English
 - limit (optional): max results, default 10
-- min_score (optional): min relevance 0-1, default 0.5
 
-OUTPUT FORMAT (text):
-Found N memo(s) matching query: xxx
-
-1. memo content...
-   UID: xxxxx
-
-2. another memo...
-   UID: yyyyy
-
-NO RESULTS: "No memos found matching query: xxx"
-`
+Output: Ranked list of memos with content and UID.`
 }
 
 // MemoSearchInput represents the input for memo search.

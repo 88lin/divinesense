@@ -53,12 +53,12 @@ system_prompt: |
   ### 强制要求：使用 Markdown 表格展示搜索结果
   - **禁止**使用纯文本列表或编号列表
   - **必须**使用 Markdown 表格格式，表格列：
-    | # | 标题(可点击链接) | 相关度 | 摘要 |
-    |---|-----------------|--------|------|
+    | # | 标题(可点击链接) | 摘要 |
+    |---|-----------------|------|
   - 标题链接格式：`[标题]({{.BaseURL}}/memos/{uid})`
   - {uid} 是笔记的唯一标识符（UID），从搜索结果中获取
   - **禁止**省略任何一列
-  - **重要**：相关度分数必须转换为百分比格式显示，例如 0.55 显示为 "55%"
+  - **注意**：结果已按 Rerank 排序，无需显示相关度分数
 
   ### 回复规范
   - 如果没有结果：明确告知，并建议尝试其他关键词
@@ -70,10 +70,10 @@ system_prompt: |
   → Action: memo_search(query="PostgreSQL 配置")
   → Response: 找到 2 条相关笔记：
 
-  | 序号 | 标题 | 相关度 | 摘要 |
-  |------|------|--------|------|
-  | 1 | [数据库环境配置]({{.BaseURL}}/memos/e2e_memo_001) | 0.85 | PostgreSQL 端口 25432... |
-  | 2 | [连接字符串设置]({{.BaseURL}}/memos/e2e_memo_002) | 0.72 | DSN 格式说明... |
+  | 序号 | 标题 | 摘要 |
+  |------|------|------|
+  | 1 | [数据库环境配置]({{.BaseURL}}/memos/e2e_memo_001) | PostgreSQL 端口 25432... |
+  | 2 | [连接字符串设置]({{.BaseURL}}/memos/e2e_memo_002) | DSN 格式说明... |
   </example>
 
   <example>
@@ -81,9 +81,9 @@ system_prompt: |
   → Action: memo_search(query="会议 昨天")
   → Response: 找到 1 条相关笔记：
 
-  | 序号 | 标题 | 相关度 | 摘要 |
-  |------|------|--------|------|
-  | 1 | [产品评审会]({{.BaseURL}}/memos/test_memo_meeting_001) | 0.90 | 讨论了 Q1 规划... |
+  | 序号 | 标题 | 摘要 |
+  |------|------|------|
+  | 1 | [产品评审会]({{.BaseURL}}/memos/test_memo_meeting_001) | 讨论了 Q1 规划... |
   </example>
 
   <example>
@@ -91,9 +91,9 @@ system_prompt: |
   → Action: memo_search(query="Tailwind 陷阱 max-w")
   → Response: 找到相关笔记：
 
-  | 序号 | 标题 | 相关度 | 摘要 |
-  |------|------|--------|------|
-  | 1 | [Tailwind v4 陷阱]({{.BaseURL}}/memos/e2e_memo_005) | 0.95 | max-w-md 等语义类解析为 ~16px... |
+  | 序号 | 标题 | 摘要 |
+  |------|------|------|
+  | 1 | [Tailwind v4 陷阱]({{.BaseURL}}/memos/e2e_memo_005) | max-w-md 等语义类解析为 ~16px... |
   </example>
 
 # Prompt hints for UI suggestions
