@@ -596,6 +596,20 @@ func (h *ParrotHandler) executeWithOrchestrator(
 	var assistantContent strings.Builder
 	var assistantContentMu sync.Mutex
 
+	// ========== Phase 2.5: Send block_created event immediately ==========
+	// CRITICAL: Send blockId to frontend BEFORE orchestrator starts processing
+	// This allows frontend to create optimistic block immediately for instant UI feedback
+	// Without this, frontend won't know the blockId until the first orchestrator event
+	if blockID > 0 {
+		if err := stream.Send(&v1pb.ChatResponse{
+			BlockId:   blockID,
+			EventType: "block_created",
+			EventData: req.Message,
+		}); err != nil {
+			logger.Warn("Failed to send block_created event", slog.String("error", err.Error()))
+		}
+	}
+
 	// ========== Phase 3: Inject orchestrator context ==========
 	// Pass request-level data through the call chain without modifying function signatures
 	orchCtx := &ctxpkg.OrchestratorContext{
@@ -768,23 +782,11 @@ func (h *ParrotHandler) executeWithOrchestrator(
 		}
 	}
 
-	stream.Send(&v1pb.ChatResponse{
-		BlockId: blockID,
-		Done:    true,
-		BlockSummary: &v1pb.BlockSummary{
-			TotalDurationMs:       durationMs,
-			Status:                status,
-			ToolCallCount:         int32(toolCallCount),
-			ToolsUsed:             toolsUsed,
-			TotalInputTokens:      result.TokenUsage.InputTokens,
-			TotalOutputTokens:     result.TokenUsage.OutputTokens,
-			TotalCacheWriteTokens: result.TokenUsage.CacheWriteTokens,
-			TotalCacheReadTokens:  result.TokenUsage.CacheReadTokens,
-		},
-	})
-
-	// ========== Phase 5: Persist block to database ==========
-	// Complete the block with AI response content and session stats
+	// ========== Phase 5: Persist block to database BEFORE sending done ==========
+	// CRITICAL: Complete block BEFORE sending done marker to prevent race condition
+	// This ensures that when frontend receives done=true and refetches blocks,
+	// the assistantContent is already persisted in the database.
+	// This fixes the "Initializing..." stuck issue.
 	if currentBlock != nil && h.blockManager != nil {
 		assistantContentMu.Lock()
 		finalContent := assistantContent.String()
@@ -806,8 +808,29 @@ func (h *ParrotHandler) executeWithOrchestrator(
 		if completeErr := h.blockManager.CompleteBlock(ctx, currentBlock.ID, finalContent, blockSessionStats); completeErr != nil {
 			logger.Warn("Failed to complete orchestrator block",
 				slog.String("error", completeErr.Error()))
+		} else {
+			logger.Info("ai.block.completed",
+				slog.Int64("block_id", currentBlock.ID),
+				slog.Int("content_length", len(finalContent)),
+			)
 		}
 	}
+
+	// Now send the done marker - frontend can safely refetch blocks
+	stream.Send(&v1pb.ChatResponse{
+		BlockId: blockID,
+		Done:    true,
+		BlockSummary: &v1pb.BlockSummary{
+			TotalDurationMs:       durationMs,
+			Status:                status,
+			ToolCallCount:         int32(toolCallCount),
+			ToolsUsed:             toolsUsed,
+			TotalInputTokens:      result.TokenUsage.InputTokens,
+			TotalOutputTokens:     result.TokenUsage.OutputTokens,
+			TotalCacheWriteTokens: result.TokenUsage.CacheWriteTokens,
+			TotalCacheReadTokens:  result.TokenUsage.CacheReadTokens,
+		},
+	})
 
 	logger.Info("ai.chat.completed",
 		slog.String("mode", "orchestrator"),
