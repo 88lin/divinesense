@@ -97,7 +97,7 @@ const StreamingMarkdown = memo(function StreamingMarkdown({
       />
     ),
     td: (props: React.TdHTMLAttributes<HTMLTableDataCellElement>) => (
-      <td {...props} className="px-3 py-2 text-slate-600 dark:text-slate-300 align-top w-auto" style={{ width: "40%" }} />
+      <td {...props} className="px-3 py-2 text-slate-600 dark:text-slate-300 align-top" />
     ),
     a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
       <a {...props} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer" />

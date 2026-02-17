@@ -146,7 +146,7 @@ export const BlockHeader = memo(function BlockHeader({
         : "border-l-transparent",
   );
 
-  // Mode-specific summary
+  // Mode-specific summary with comprehensive stats
   const modeSummary = useMemo(() => {
     if (!blockSummary) return null;
 
@@ -160,27 +160,62 @@ export const BlockHeader = memo(function BlockHeader({
     };
     const formatTime = (ms?: number) => (ms ? `${(ms / 1000).toFixed(1)}s` : "");
 
-    switch (currentMode) {
-      case "geek":
-        return {
-          primary: formatTime(blockSummary.totalDurationMs),
-          secondary: blockSummary.toolCallCount ? `${blockSummary.toolCallCount} 工具` : "",
-          icon: "clock",
-        };
-      case "evolution":
-        return {
-          primary: formatTime(blockSummary.totalDurationMs),
-          secondary: blockSummary.filesModified ? `${blockSummary.filesModified} 文件` : "",
-          icon: "clock",
-        };
-      case "normal":
-      default:
-        return {
-          primary: formatTokens(blockSummary.totalInputTokens, blockSummary.totalOutputTokens),
-          secondary: formatCost(blockSummary.totalCostUSD),
-          icon: "token",
-        };
+    // Build stats array for flexible display
+    type StatItem = { value: string; icon?: string; title?: string; className?: string };
+    const stats: StatItem[] = [];
+
+    // Duration (always show if available)
+    if (blockSummary.totalDurationMs) {
+      stats.push({
+        value: formatTime(blockSummary.totalDurationMs),
+        icon: "clock",
+        title: t("ai.unified_block.session_duration"),
+      });
     }
+
+    // Tool calls (show if > 0)
+    if (blockSummary.toolCallCount && blockSummary.toolCallCount > 0) {
+      stats.push({
+        value: `${blockSummary.toolCallCount} ${t("ai.stats.tool_calls_short")}`,
+        icon: "wrench",
+        title: t("ai.stats.tool_calls"),
+      });
+    }
+
+    // Tokens (for normal mode)
+    if (currentMode === "normal") {
+      const tokens = formatTokens(blockSummary.totalInputTokens, blockSummary.totalOutputTokens);
+      if (tokens) {
+        stats.push({
+          value: tokens,
+          icon: "token",
+          title: t("ai.unified_block.session_tokens"),
+          className: "text-amber-500",
+        });
+      }
+    }
+
+    // Cost (always show if available)
+    const cost = formatCost(blockSummary.totalCostUSD);
+    if (cost) {
+      stats.push({
+        value: cost,
+        icon: "cost",
+        title: t("ai.unified_block.session_cost"),
+        className: "text-green-600 dark:text-green-400",
+      });
+    }
+
+    // Files modified (for evolution mode)
+    if (currentMode === "evolution" && blockSummary.filesModified) {
+      stats.push({
+        value: `${blockSummary.filesModified} ${t("ai.stats.files_modified_short")}`,
+        icon: "file",
+        title: t("ai.stats.files_modified"),
+      });
+    }
+
+    return { stats };
   }, [blockSummary, userMessage.metadata?.mode, parrotId, t]);
 
   return (
@@ -218,59 +253,38 @@ export const BlockHeader = memo(function BlockHeader({
       {/* Right: Stats + Badge + Toggle */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-1 sm:ml-2">
         {/* Mode-specific Session Summary - Responsive */}
-        {modeSummary && modeSummary.primary && (
+        {modeSummary && modeSummary.stats.length > 0 && (
           <>
             {/* Desktop (≥ 1024px): Full stats */}
-            <div className="hidden lg:flex items-center gap-3 text-[11px] font-mono opacity-70 mr-1 bg-muted/50 px-2 py-1 rounded border border-border/50">
-              {(!userMessage.metadata?.mode || userMessage.metadata?.mode === "normal") && (
-                <>
-                  {modeSummary.primary && (
-                    <span className="flex items-center gap-1" title={t("ai.unified_block.session_tokens")}>
-                      <span className="text-amber-500">⚡</span> {modeSummary.primary}
-                    </span>
-                  )}
-                  {modeSummary.secondary && (
-                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400" title={t("ai.unified_block.session_cost")}>
-                      <span className="font-bold">$</span> {modeSummary.secondary}
-                    </span>
-                  )}
-                </>
-              )}
-              {(userMessage.metadata?.mode === "geek" || userMessage.metadata?.mode === "evolution") && (
-                <>
-                  {modeSummary.primary && (
-                    <span className="flex items-center gap-1" title={t("ai.unified_block.session_duration")}>
-                      <Clock className="w-3 h-3" /> {modeSummary.primary}
-                    </span>
-                  )}
-                  {modeSummary.secondary && (
-                    <span
-                      className="flex items-center gap-1"
-                      title={userMessage.metadata?.mode === "geek" ? t("ai.stats.tool_calls") : t("ai.stats.files_modified")}
-                    >
-                      <Wrench className="w-3 h-3" /> {modeSummary.secondary}
-                    </span>
-                  )}
-                </>
-              )}
+            <div className="hidden lg:flex items-center gap-2 text-[11px] font-mono opacity-70 mr-1 bg-muted/50 px-2 py-1 rounded border border-border/50">
+              {modeSummary.stats.map((stat, idx) => (
+                <span key={idx} className={cn("flex items-center gap-1", stat.className)} title={stat.title}>
+                  {stat.icon === "clock" && <Clock className="w-3 h-3" />}
+                  {stat.icon === "wrench" && <Wrench className="w-3 h-3" />}
+                  {stat.icon === "token" && <span className="text-amber-500">⚡</span>}
+                  {stat.icon === "cost" && <span className="font-bold">$</span>}
+                  {stat.value}
+                </span>
+              ))}
             </div>
 
-            {/* Mobile (< 1024px): Single key stat */}
+            {/* Mobile (< 1024px): Show first 2 stats */}
             <div className="lg:hidden flex items-center gap-1 text-[10px] font-mono opacity-80">
-              {(!userMessage.metadata?.mode || userMessage.metadata?.mode === "normal") && modeSummary.secondary && (
-                <span className="flex items-center gap-0.5 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
-                  <span className="font-bold">$</span>
-                  {modeSummary.secondary}
+              {modeSummary.stats.slice(0, 2).map((stat, idx) => (
+                <span
+                  key={idx}
+                  className={cn(
+                    "flex items-center gap-0.5 px-1.5 py-0.5 rounded",
+                    stat.className ? stat.className : "text-muted-foreground bg-muted/50",
+                  )}
+                  title={stat.title}
+                >
+                  {stat.icon === "clock" && <Clock className="w-3 h-3" />}
+                  {stat.icon === "wrench" && <Wrench className="w-3 h-3" />}
+                  {stat.icon === "cost" && <span className="font-bold">$</span>}
+                  {stat.value}
                 </span>
-              )}
-              {(!userMessage.metadata?.mode || userMessage.metadata?.mode === "normal") &&
-                !modeSummary.secondary &&
-                modeSummary.primary && <span className="text-muted-foreground">{modeSummary.primary}</span>}
-              {(userMessage.metadata?.mode === "geek" || userMessage.metadata?.mode === "evolution") && modeSummary.primary && (
-                <span className="flex items-center gap-0.5 text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
-                  <Clock className="w-3 h-3" /> {modeSummary.primary}
-                </span>
-              )}
+              ))}
             </div>
           </>
         )}

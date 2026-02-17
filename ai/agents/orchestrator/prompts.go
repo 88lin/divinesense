@@ -30,6 +30,7 @@ type DecomposerPrompts struct {
 	Rules                string `yaml:"rules"`
 	UserRequestTemplate  string `yaml:"user_request_template"`
 	TimeContextTemplate  string `yaml:"time_context_template"`
+	Examples             string `yaml:"examples"`
 }
 
 // AggregatorPrompts holds prompts for result aggregation.
@@ -39,6 +40,7 @@ type AggregatorPrompts struct {
 	LanguageHints           map[string]string `yaml:"language_hints"`
 	OriginalRequestTemplate string            `yaml:"original_request_template"`
 	ResultsTemplate         string            `yaml:"results_template"`
+	SynthesisStrategies     string            `yaml:"synthesis_strategies"`
 }
 
 // Global prompt config with lazy loading.
@@ -172,8 +174,9 @@ func (c *PromptConfig) BuildDecomposerPrompt(userInput, expertDescriptions strin
 %s
 %s
 %s
+%s
 
-%s`, d.SystemContext, expertDescriptions, timeContextSection, d.AnalysisInstructions, d.OutputFormat, d.Rules,
+%s`, d.SystemContext, expertDescriptions, timeContextSection, d.AnalysisInstructions, d.OutputFormat, d.Rules, d.Examples,
 		fmt.Sprintf(d.UserRequestTemplate, userInput))
 }
 

@@ -463,9 +463,11 @@
       "cache_hit_rate": "Cache Hit Rate",
       "percent": "%",
       "tool_calls": "Tool Calls",
+      "tool_calls_short": "tools",
       "avg": "Avg",
       "per_call": "/call",
-      "files_modified": "Files Modified"
+      "files_modified": "Files Modified",
+      "files_modified_short": "files"
     },
     "unified_block": {
       "session": "Session",

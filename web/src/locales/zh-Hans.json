@@ -458,9 +458,11 @@
       "cache_hit_rate": "缓存命中率",
       "percent": "%",
       "tool_calls": "工具调用",
+      "tool_calls_short": "工具",
       "avg": "平均",
       "per_call": "/次",
-      "files_modified": "修改文件"
+      "files_modified": "修改文件",
+      "files_modified_short": "文件"
     },
     "unified_block": {
       "session": "会话",
