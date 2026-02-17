@@ -2,10 +2,13 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	agents "github.com/hrygo/divinesense/ai/agents"
+	agentpkg "github.com/hrygo/divinesense/ai/agents/runner"
 	"github.com/hrygo/divinesense/ai/agents/universal"
 	ctxpkg "github.com/hrygo/divinesense/ai/context"
 )
@@ -124,7 +127,15 @@ func (r *ParrotExpertRegistry) GetExpertConfig(name string) *agents.ParrotSelfCo
 }
 
 // ExecuteExpert executes a task with the specified expert agent.
+// history is automatically extracted from context via GetHistory.
 func (r *ParrotExpertRegistry) ExecuteExpert(ctx context.Context, expertName string, input string, callback EventCallback) error {
+	// Extract history from context for context-aware sub-agent execution
+	history := ctxpkg.GetHistory(ctx)
+	if len(history) > 0 {
+		slog.Debug("expert: using conversation history for sub-agent",
+			"expert", expertName,
+			"history_len", len(history))
+	}
 	// Extract userID from context first, fallback to registry's default userID
 	// This enables per-request userID override without changing registry initialization
 	userID := r.userID
@@ -140,8 +151,12 @@ func (r *ParrotExpertRegistry) ExecuteExpert(ctx context.Context, expertName str
 
 	// Convert orchestrator.EventCallback to agent.EventCallback
 	// agent.EventCallback signature: func(eventType string, eventData any) error
+	//
+	// IMPORTANT: Include both EventData and Meta in JSON format.
+	// The handler (server/router/api/v1/ai/handler.go) already parses this format
+	// for tool_use/tool_result events to extract tool_name from meta.
+	// Format: {"data": "...", "meta": {"tool_name": "xxx", ...}}
 	agentCallback := func(eventType string, eventData any) error {
-		// Forward to orchestrator callback (convert eventData to string)
 		if callback != nil {
 			var eventDataStr string
 			switch v := eventData.(type) {
@@ -149,8 +164,22 @@ func (r *ParrotExpertRegistry) ExecuteExpert(ctx context.Context, expertName str
 				eventDataStr = v
 			case []byte:
 				eventDataStr = string(v)
+			case *agentpkg.EventWithMeta:
+				// If Meta exists, include it as JSON for handler to parse tool_name etc.
+				// This ensures handler can extract Meta fields like tool_name, status, etc.
+				if v.Meta != nil {
+					metaJSON, err := json.Marshal(v.Meta)
+					if err == nil {
+						// Use consistent format: {"data": "...", "meta": {...}}
+						combined := fmt.Sprintf(`{"data":%q,"meta":%s}`, v.EventData, string(metaJSON))
+						eventDataStr = combined
+					} else {
+						eventDataStr = v.EventData
+					}
+				} else {
+					eventDataStr = v.EventData
+				}
 			default:
-				// For other types, just pass empty string or marshal if needed
 				eventDataStr = fmt.Sprintf("%v", v)
 			}
 			callback(eventType, eventDataStr)
@@ -158,8 +187,8 @@ func (r *ParrotExpertRegistry) ExecuteExpert(ctx context.Context, expertName str
 		return nil
 	}
 
-	// Execute with callback
-	return parrot.Execute(ctx, input, nil, agentCallback)
+	// Execute with callback and history
+	return parrot.Execute(ctx, input, history, agentCallback)
 }
 
 // GetIntentKeywords returns a map of intent names to their related keywords from expert configurations.

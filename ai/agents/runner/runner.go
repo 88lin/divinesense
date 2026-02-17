@@ -845,13 +845,31 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, s
 		if msg.Output != "" {
 			durationMs := stats.RecordToolResult()
 
+			// Extract tool ID and name from content blocks for matching with tool_use
+			// tool_result blocks use tool_use_id to reference the corresponding tool_use
+			var toolID string
+			var toolName string
+			for _, block := range msg.GetContentBlocks() {
+				if block.Type == "tool_result" {
+					// Prefer ToolUseID (standard field) over ID for matching
+					toolID = block.ToolUseID
+					if toolID == "" {
+						toolID = block.ID // Fallback to ID if tool_use_id is not present
+					}
+					toolName = block.Name // Tool name from content block
+					break
+				}
+			}
+
 			meta := &EventMeta{
+				ToolName:        toolName,
+				ToolID:          toolID,
 				Status:          "success",
 				DurationMs:      durationMs,
 				TotalDurationMs: totalDuration,
 				OutputSummary:   TruncateString(msg.Output, 500),
 			}
-			r.logger.Debug("CCRunner: sending tool_result event", "output_length", len(msg.Output), "duration_ms", durationMs)
+			r.logger.Debug("CCRunner: sending tool_result event", "tool_name", toolName, "tool_id", toolID, "output_length", len(msg.Output), "duration_ms", durationMs)
 			if err := callback("tool_result", &EventWithMeta{EventType: "tool_result", EventData: msg.Output, Meta: meta}); err != nil {
 				return err
 			}
@@ -897,18 +915,30 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, s
 	case "user":
 		// Tool results come as type:"user" with nested tool_result blocks
 		for _, block := range msg.GetContentBlocks() {
-			if block.Type == "tool_result" {
-				durationMs := stats.RecordToolResult()
+			if block.Type != "tool_result" {
+				continue
+			}
 
-				meta := &EventMeta{
-					Status:          "success",
-					DurationMs:      durationMs,
-					TotalDurationMs: totalDuration,
-					OutputSummary:   TruncateString(block.Content, 500),
-				}
-				if err := callback("tool_result", &EventWithMeta{EventType: "tool_result", EventData: block.Content, Meta: meta}); err != nil {
-					return err
-				}
+			durationMs := stats.RecordToolResult()
+
+			// tool_result blocks use tool_use_id to reference the corresponding tool_use
+			// The Name field is typically empty in tool_result blocks
+			toolID := block.ToolUseID
+			if toolID == "" {
+				toolID = block.ID // Fallback to ID if tool_use_id is not present
+			}
+
+			meta := &EventMeta{
+				ToolID:          toolID,     // Use tool_use_id for matching
+				ToolName:        block.Name, // May be empty for tool_result blocks
+				Status:          "success",
+				DurationMs:      durationMs,
+				TotalDurationMs: totalDuration,
+				OutputSummary:   TruncateString(block.Content, 500),
+			}
+			r.logger.Debug("CCRunner: sending tool_result event from user message", "tool_name", block.Name, "tool_id", toolID, "tool_use_id", block.ToolUseID, "duration_ms", durationMs)
+			if err := callback("tool_result", &EventWithMeta{EventType: "tool_result", EventData: block.Content, Meta: meta}); err != nil {
+				return err
 			}
 		}
 	default:

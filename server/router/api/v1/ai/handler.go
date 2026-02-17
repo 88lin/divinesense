@@ -532,6 +532,7 @@ func (h *ParrotHandler) executeWithOrchestrator(
 ) error {
 	// Create logger for this request
 	logger := observability.NewRequestContext(slog.Default(), "orchestrator", req.UserID)
+	startTime := time.Now()
 
 	// ========== Phase 1: Build conversation history ==========
 	var history []string
@@ -591,6 +592,10 @@ func (h *ParrotHandler) executeWithOrchestrator(
 		}
 	}
 
+	// Variable to collect AI response content
+	var assistantContent strings.Builder
+	var assistantContentMu sync.Mutex
+
 	// ========== Phase 3: Inject orchestrator context ==========
 	// Pass request-level data through the call chain without modifying function signatures
 	orchCtx := &ctxpkg.OrchestratorContext{
@@ -604,12 +609,128 @@ func (h *ParrotHandler) executeWithOrchestrator(
 	ctx = ctxpkg.WithOrchestratorContext(ctx, orchCtx)
 
 	// Create callback adapter for streaming events
+	// Phase 4 fix: Include BlockId in all orchestrator events for frontend optimistic block creation
 	callback := func(eventType string, eventData string) {
+		// Parse event data for tool_use and tool_result events
+		// Format from expert_registry: {"data": "...", "meta": {...}}
+		var finalData string
+		var eventMeta *v1pb.EventMetadata
+
+		if (eventType == "tool_use" || eventType == "tool_result") && strings.HasPrefix(eventData, `{"data":`) {
+			var parsed struct {
+				Data string         `json:"data"`
+				Meta map[string]any `json:"meta"`
+			}
+			if err := json.Unmarshal([]byte(eventData), &parsed); err == nil {
+				finalData = parsed.Data
+				if parsed.Meta != nil {
+					// Extract meta fields
+					getString := func(key string) string {
+						if v, ok := parsed.Meta[key]; ok {
+							if s, ok := v.(string); ok {
+								return s
+							}
+						}
+						return ""
+					}
+					getInt64 := func(key string) int64 {
+						if v, ok := parsed.Meta[key]; ok {
+							if n, ok := v.(float64); ok {
+								return int64(n)
+							}
+						}
+						return 0
+					}
+					getInt32 := func(key string) int32 {
+						if v, ok := parsed.Meta[key]; ok {
+							if n, ok := v.(float64); ok {
+								return int32(n)
+							}
+						}
+						return 0
+					}
+
+					toolName := getString("tool_name")
+					if toolName != "" || getString("status") != "" {
+						eventMeta = &v1pb.EventMetadata{
+							DurationMs:      getInt64("duration_ms"),
+							TotalDurationMs: getInt64("total_duration_ms"),
+							ToolName:        toolName,
+							ToolId:          getString("tool_id"),
+							Status:          getString("status"),
+							ErrorMsg:        getString("error_msg"),
+							InputSummary:    getString("input_summary"),
+							OutputSummary:   getString("output_summary"),
+							FilePath:        getString("file_path"),
+							LineCount:       getInt32("line_count"),
+						}
+					}
+				}
+			} else {
+				finalData = eventData
+			}
+		} else {
+			finalData = eventData
+		}
+
+		// Collect AI response content for block persistence
+		// Note: Orchestrator sends "answer" and "aggregation" events (not "content" or "text")
+		if eventType == "answer" || eventType == "content" || eventType == "aggregation" {
+			assistantContentMu.Lock()
+			assistantContent.WriteString(finalData)
+			assistantContentMu.Unlock()
+		}
+
 		if err := stream.Send(&v1pb.ChatResponse{
+			BlockId:   blockID,
 			EventType: eventType,
-			EventData: eventData,
+			EventData: finalData,
+			EventMeta: eventMeta,
 		}); err != nil {
 			slog.Warn("failed to send orchestrator event", "error", err, "event_type", eventType)
+		}
+
+		// CRITICAL FIX: Persist tool_use and tool_result events to database
+		// Without this, frontend cannot display tool call status (always shows "pending")
+		if eventType == "tool_use" || eventType == "tool_result" {
+			if currentBlock == nil || h.blockManager == nil {
+				// Log warning when tool events cannot be persisted - this affects frontend display
+				logger.Warn("orchestrator: cannot persist tool event - block or manager unavailable",
+					slog.String("event_type", eventType),
+					slog.Bool("has_block", currentBlock != nil),
+					slog.Bool("has_manager", h.blockManager != nil))
+			} else {
+				// Build metadata for block event (same as non-orchestrator mode)
+				var eventMetaForBlock map[string]any
+				if eventMeta != nil {
+					eventMetaForBlock = map[string]any{
+						"duration_ms":       eventMeta.DurationMs,
+						"total_duration_ms": eventMeta.TotalDurationMs,
+						"tool_name":         eventMeta.ToolName,
+						"tool_id":           eventMeta.ToolId,
+						"status":            eventMeta.Status,
+						"error_msg":         eventMeta.ErrorMsg,
+						"input_tokens":      eventMeta.InputTokens,
+						"output_tokens":     eventMeta.OutputTokens,
+						"input_summary":     eventMeta.InputSummary,
+						"output_summary":    eventMeta.OutputSummary,
+						"file_path":         eventMeta.FilePath,
+						"line_count":        eventMeta.LineCount,
+						// Frontend compatibility fields (extractToolCalls expects these)
+						"is_error":  eventMeta.Status == "error",
+						"duration":  eventMeta.DurationMs,
+						"exit_code": 0,
+					}
+				}
+
+				// Append event to database
+				if err := h.blockManager.AppendEvent(ctx, currentBlock.ID, eventType, finalData, eventMetaForBlock); err != nil {
+					logger.Warn("orchestrator: failed to persist event",
+						slog.String("event_type", eventType),
+						slog.Int64("block_id", currentBlock.ID),
+						slog.String("error", err.Error()))
+				}
+			}
 		}
 	}
 
@@ -621,16 +742,72 @@ func (h *ParrotHandler) executeWithOrchestrator(
 	}
 
 	// Send completion event
+	// Phase 4 fix: Include BlockId in done event
+	durationMs := time.Since(startTime).Milliseconds()
+
+	// Determine status from errors
+	status := "completed"
+	if len(result.Errors) > 0 {
+		status = "error"
+	}
+
+	// Collect tools used from task plan
+	var toolsUsed []string
+	var toolCallCount int
+	if result.Plan != nil && len(result.Plan.Tasks) > 0 {
+		seen := make(map[string]bool)
+		for _, task := range result.Plan.Tasks {
+			if task.Agent != "" && !seen[task.Agent] {
+				toolsUsed = append(toolsUsed, task.Agent)
+				seen[task.Agent] = true
+			}
+			// Each task counts as at least one tool execution
+			if task.Status == orchestrator.TaskStatusCompleted {
+				toolCallCount++
+			}
+		}
+	}
+
 	stream.Send(&v1pb.ChatResponse{
-		Done: true,
+		BlockId: blockID,
+		Done:    true,
 		BlockSummary: &v1pb.BlockSummary{
-			TotalDurationMs:       int64(result.TokenUsage.InputTokens + result.TokenUsage.OutputTokens),
+			TotalDurationMs:       durationMs,
+			Status:                status,
+			ToolCallCount:         int32(toolCallCount),
+			ToolsUsed:             toolsUsed,
 			TotalInputTokens:      result.TokenUsage.InputTokens,
 			TotalOutputTokens:     result.TokenUsage.OutputTokens,
 			TotalCacheWriteTokens: result.TokenUsage.CacheWriteTokens,
 			TotalCacheReadTokens:  result.TokenUsage.CacheReadTokens,
 		},
 	})
+
+	// ========== Phase 5: Persist block to database ==========
+	// Complete the block with AI response content and session stats
+	if currentBlock != nil && h.blockManager != nil {
+		assistantContentMu.Lock()
+		finalContent := assistantContent.String()
+		assistantContentMu.Unlock()
+
+		// Build session stats from orchestrator result
+		blockSessionStats := &store.SessionStats{
+			SessionID:        fmt.Sprintf("conv_%d", req.ConversationID),
+			UserID:           req.UserID,
+			AgentType:        string(req.AgentType),
+			TotalDurationMs:  durationMs,
+			InputTokens:      int(result.TokenUsage.InputTokens),
+			OutputTokens:     int(result.TokenUsage.OutputTokens),
+			CacheWriteTokens: int(result.TokenUsage.CacheWriteTokens),
+			CacheReadTokens:  int(result.TokenUsage.CacheReadTokens),
+			ToolCallCount:    toolCallCount,
+		}
+
+		if completeErr := h.blockManager.CompleteBlock(ctx, currentBlock.ID, finalContent, blockSessionStats); completeErr != nil {
+			logger.Warn("Failed to complete orchestrator block",
+				slog.String("error", completeErr.Error()))
+		}
+	}
 
 	logger.Info("ai.chat.completed",
 		slog.String("mode", "orchestrator"),
@@ -830,9 +1007,49 @@ func (h *ParrotHandler) executeAgent(
 			return nil
 		} else {
 			// Handle legacy event types (string, error)
+			// Also handle JSON format from orchestrator: {"data": "...", "meta": {...}}
 			switch v := eventData.(type) {
 			case string:
 				dataStr = v
+				// Try to parse JSON format to extract metadata (for tool_use/tool_result events)
+				// This handles events from orchestrator that were converted to JSON format
+				if (eventType == "tool_use" || eventType == "tool_result") && strings.HasPrefix(v, "{\"data\":") {
+					var parsed struct {
+						Data string         `json:"data"`
+						Meta map[string]any `json:"meta"`
+					}
+					if err := json.Unmarshal([]byte(v), &parsed); err == nil && parsed.Data != "" {
+						dataStr = parsed.Data
+						// Extract metadata from JSON
+						if parsed.Meta != nil {
+							getString := func(key string) string {
+								if val, ok := parsed.Meta[key]; ok {
+									if s, ok := val.(string); ok {
+										return s
+									}
+								}
+								return ""
+							}
+							getInt64 := func(key string) int64 {
+								if val, ok := parsed.Meta[key]; ok {
+									if n, ok := val.(float64); ok {
+										return int64(n)
+									}
+								}
+								return 0
+							}
+							eventMeta = &v1pb.EventMetadata{
+								ToolName:      getString("tool_name"),
+								ToolId:        getString("tool_id"),
+								Status:        getString("status"),
+								ErrorMsg:      getString("error_msg"),
+								InputSummary:  getString("input_summary"),
+								OutputSummary: getString("output_summary"),
+								DurationMs:    getInt64("duration_ms"),
+							}
+						}
+					}
+				}
 			case error:
 				dataStr = v.Error()
 			default:
@@ -1296,6 +1513,10 @@ func (h *ParrotHandler) executeAgent(
 		blockSummary.ToolCallCount = int32(statsSnapshot.ToolCallCount)
 		if len(statsSnapshot.ToolsUsed) > 0 {
 			blockSummary.ToolsUsed = statsSnapshot.ToolsUsed
+		}
+		if len(statsSnapshot.FilePaths) > 0 {
+			blockSummary.FilePaths = statsSnapshot.FilePaths
+			blockSummary.FilesModified = int32(len(statsSnapshot.FilePaths))
 		}
 		// Convert milli-cents to USD (1 USD = 100000 milli-cents)
 		if statsSnapshot.TotalCostMilliCents > 0 {
