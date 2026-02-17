@@ -12,6 +12,13 @@ import (
 	routerpkg "github.com/hrygo/divinesense/ai/routing"
 )
 
+// IntentKeywordProvider defines the interface for providing intent keywords for sticky routing.
+// This enables dynamic loading of keywords from expert configurations.
+type IntentKeywordProvider interface {
+	// GetIntentKeywords returns a map of intent names to their related keywords.
+	GetIntentKeywords() map[string][]string
+}
+
 // ChatRouteType represents the type of chat routing.
 type ChatRouteType string
 
@@ -44,6 +51,91 @@ func isShortConfirmation(input string) bool {
 	// Remove common punctuation
 	normalized = strings.TrimRight(normalized, "。！？.!?")
 	return shortConfirmations[normalized]
+}
+
+// intentKeywords maps intent names to their related keywords for sticky routing.
+// This enables sticky routing for inputs that are semantically related to the last intent.
+// Note: These keywords should match the routing.keywords in expert config files (memo.yaml, schedule.yaml).
+// The actual values are loaded from config at runtime via IntentKeywordProvider.
+var intentKeywords = map[string][]string{
+	// Memo-related intents
+	"memo_search": {
+		// Core keywords (from memo.yaml routing.keywords)
+		"笔记", "搜索", "找", "记录", "memo",
+		// Sticky routing: follow-up to previous memo search
+		"总结", "详细内容", "相关", "这条", "note", "search", "find", "look",
+	},
+	"create_note": {"记", "记录", "写", "创建", "note", "record", "create", "write"},
+	"delete_note": {"删除", "笔记", "note", "delete", "remove"},
+	"update_note": {"修改", "更新", "编辑", "笔记", "note", "edit", "update", "modify"},
+
+	// Schedule-related intents
+	"schedule_manage": {
+		// Core keywords (from schedule.yaml routing.keywords)
+		"日程", "会议", "提醒", "安排", "schedule",
+		// Sticky routing: follow-up to previous schedule management
+		"修改", "取消", "时间", "地点", "参会", "meeting", "event", "calendar",
+	},
+	"create_event":   {"日程", "会议", "安排", "创建", "schedule", "meeting", "event", "create", "add"},
+	"delete_event":   {"删除", "日程", "会议", "schedule", "meeting", "delete", "remove", "cancel"},
+	"query_schedule": {"日程", "会议", "查看", "查询", "schedule", "meeting", "query", "check", "show"},
+	"update_event":   {"修改", "更新", "调整", "日程", "schedule", "edit", "update", "modify", "change"},
+}
+
+// isRelatedToLastIntent checks if the input is semantically related to the last intent.
+// This enables sticky routing for follow-up questions that don't use confirmation words.
+// If provider is nil, falls back to hardcoded intentKeywords map.
+func isRelatedToLastIntentWithProvider(input string, lastIntent string, provider IntentKeywordProvider) bool {
+	if lastIntent == "" {
+		return false
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(input))
+
+	// Try to get keywords from provider first, fallback to hardcoded
+	var keywords []string
+	var exists bool
+
+	if provider != nil {
+		keywords, exists = provider.GetIntentKeywords()[lastIntent]
+	}
+
+	// Fallback to hardcoded keywords if provider doesn't have them
+	if !exists || len(keywords) == 0 {
+		keywords, exists = intentKeywords[lastIntent]
+		if !exists {
+			// Fallback: check if any keyword contains the intent name
+			lowerIntent := strings.ToLower(lastIntent)
+			for key, kws := range intentKeywords {
+				if strings.Contains(lowerIntent, key) || strings.Contains(key, lowerIntent) {
+					keywords = kws
+					break
+				}
+			}
+		}
+	}
+
+	// Check if input contains any of the keywords
+	for _, kw := range keywords {
+		if strings.Contains(normalized, kw) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExtractIntent extracts the intent from route type for metadata storage.
+// This is a standalone function to avoid DRY violation between packages.
+func ExtractIntent(route ChatRouteType) string {
+	switch route {
+	case RouteTypeMemo:
+		return "memo_search"
+	case RouteTypeSchedule:
+		return "schedule_manage"
+	default:
+		return "unknown"
+	}
 }
 
 // ChatRouteResult represents the routing classification result.
@@ -268,7 +360,7 @@ func (r *ChatRouter) RouteAndExecute(ctx context.Context, input string, sessionC
 				"result_preview", result[:min(len(result), 100)])
 
 			// Parse the inability report to extract capability and reason
-			capability, reason := parseInabilityReport(result)
+			capability, reason := ParseInabilityReport(result)
 
 			// Create a simplified handoff request
 			req := SimpleHandoffRequest{
@@ -415,9 +507,10 @@ func mapIntentToRouteType(intent routerpkg.Intent) ChatRouteType {
 	}
 }
 
-// parseInabilityReport parses the INABILITY_REPORTED message to extract capability and reason.
-func parseInabilityReport(report string) (capability, reason string) {
-	// Format: "INABILITY_REPORTED: <capability> - <reason> (suggested_agent: <agent>)"
+// ParseInabilityReport parses the INABILITY_REPORTED message to extract capability and reason.
+// This is a public function to avoid DRY violation between packages.
+// Format: "INABILITY_REPORTED: <capability> - <reason> (suggested_agent: <agent>)"
+func ParseInabilityReport(report string) (capability, reason string) {
 	prefix := "INABILITY_REPORTED:"
 	if !strings.HasPrefix(report, prefix) {
 		return "", report
@@ -427,12 +520,13 @@ func parseInabilityReport(report string) (capability, reason string) {
 	content = strings.TrimSpace(content)
 
 	// Split by " - " to separate capability and reason
-	if idx := strings.Index(content, " - "); idx != -1 {
-		capability = strings.TrimSpace(content[:idx])
-		reason = strings.TrimSpace(content[idx+3:])
+	before, after, found := strings.Cut(content, " - ")
+	if found {
+		capability = strings.TrimSpace(before)
+		reason = strings.TrimSpace(after)
 		// Remove suggested_agent part if present
-		if idx := strings.Index(reason, " (suggested_agent:"); idx != -1 {
-			reason = strings.TrimSpace(reason[:idx])
+		if before, _, found := strings.Cut(reason, " (suggested_agent:"); found {
+			reason = strings.TrimSpace(before)
 		}
 		return capability, reason
 	}

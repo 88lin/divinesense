@@ -13,8 +13,9 @@ import (
 // routing decisions are based on persisted database state (AIBlock.Metadata),
 // not just in-memory session state.
 type ChatRouterWithMetadata struct {
-	*ChatRouter // Embed original router
-	metadataMgr *ctxpkg.MetadataManager
+	*ChatRouter     // Embed original router
+	metadataMgr     *ctxpkg.MetadataManager
+	keywordProvider IntentKeywordProvider // Optional: for dynamic keyword loading
 }
 
 // NewChatRouterWithMetadata creates a new chat router with metadata support.
@@ -31,6 +32,23 @@ func NewChatRouterWithMetadata(
 	}
 }
 
+// NewChatRouterWithMetadataAndKeywords creates a new chat router with metadata and keyword provider.
+func NewChatRouterWithMetadataAndKeywords(
+	baseRouter *ChatRouter,
+	metadataMgr *ctxpkg.MetadataManager,
+	keywordProvider IntentKeywordProvider,
+) *ChatRouterWithMetadata {
+	if baseRouter == nil {
+		panic("ChatRouter is required")
+	}
+	r := &ChatRouterWithMetadata{
+		ChatRouter:      baseRouter,
+		metadataMgr:     metadataMgr,
+		keywordProvider: keywordProvider,
+	}
+	return r
+}
+
 // RouteWithContextWithMetadata routes with metadata-based sticky routing.
 // This method extends the base routing with:
 // 1. Metadata-based sticky state (persistent across sessions)
@@ -45,11 +63,12 @@ func (r *ChatRouterWithMetadata) RouteWithContextWithMetadata(
 	// Layer 0: Check metadata-based sticky state first
 	if r.metadataMgr != nil && conversationID > 0 {
 		if isSticky, meta := r.metadataMgr.IsStickyValid(ctx, conversationID); isSticky && meta != nil {
-			// Check if input is a short confirmation
-			if isShortConfirmation(input) {
+			// Check if input is a short confirmation OR related to last intent
+			if isShortConfirmation(input) || isRelatedToLastIntentWithProvider(input, meta.LastIntent, r.keywordProvider) {
 				slog.Debug("route reused from metadata sticky",
 					"input", strutil.Truncate(input, 30),
 					"route", meta.LastAgent,
+					"intent", meta.LastIntent,
 					"confidence", meta.LastIntentConfidence,
 					"method", "metadata_sticky")
 				return &ChatRouteResult{
@@ -71,7 +90,7 @@ func (r *ChatRouterWithMetadata) RouteWithContextWithMetadata(
 	// Layer 2: Persist routing result to metadata (if successful)
 	if r.metadataMgr != nil && conversationID > 0 && blockID > 0 {
 		if result.Route != "" && !result.NeedsOrchestration {
-			intent := r.extractIntent(result.Route)
+			intent := ExtractIntent(result.Route)
 			if err := r.metadataMgr.SetCurrentAgent(
 				ctx,
 				conversationID,
@@ -89,18 +108,6 @@ func (r *ChatRouterWithMetadata) RouteWithContextWithMetadata(
 	}
 
 	return result, nil
-}
-
-// extractIntent extracts the intent from route type for metadata storage.
-func (r *ChatRouterWithMetadata) extractIntent(route ChatRouteType) string {
-	switch route {
-	case RouteTypeMemo:
-		return "memo_search"
-	case RouteTypeSchedule:
-		return "schedule_manage"
-	default:
-		return "unknown"
-	}
 }
 
 // InvalidateStickyCache invalidates the sticky cache for a conversation.
