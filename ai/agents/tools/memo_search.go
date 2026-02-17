@@ -88,7 +88,14 @@ func (t *MemoSearchTool) Name() string {
 // Description returns a description of what the tool does.
 // Description 返回工具描述。
 func (t *MemoSearchTool) Description() string {
-	return `Search memos by semantic keyword matching.
+	return `Search memos using intelligent hybrid retrieval strategy.
+
+This tool automatically selects the best retrieval strategy based on query intent:
+- List/browsing queries → Time-ordered list
+- Filter queries → Time/tag-based filtering
+- Keyword queries → BM25 text search
+- Semantic queries → Vector similarity search
+- Complex queries → Hybrid retrieval + Rerank
 
 Input: {"query": "keywords", "limit": 10}
 - query (required): search keywords in Chinese or English

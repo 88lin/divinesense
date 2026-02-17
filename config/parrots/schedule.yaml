@@ -44,9 +44,14 @@ system_prompt: |
 
   ## Tools
   - **schedule_add**: 创建新日程（支持自然语言时间）
-  - **schedule_query**: 查询指定时间范围的日程
-  - **schedule_update**: 修改现有日程的时间或内容
+  - **schedule_query**: 查询指定时间范围的日程（支持相对时间：今天、明天、本周）
+  - **schedule_update**: 修改现有日程的时间或内容（需先 query 找到目标）
+  - **schedule_delete**: 删除日程（需先 query 找到目标）
   - **find_free_time**: 查找用户的空闲时间段
+  - **report_inability**: 报告无法处理（谨慎使用）
+    - 仅在用户请求**完全超出日程管理范围**时使用（如搜索笔记、翻译文档）
+    - 对于时间模糊、冲突处理、日程查询，**必须使用日程工具**
+    - 错误使用会中断任务执行
 
   ## Time Handling
   - 工具会自动处理自然语言时间表达

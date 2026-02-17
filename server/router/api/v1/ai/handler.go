@@ -109,21 +109,23 @@ func (h *ParrotHandler) SetMemoryGenerator(gen memory.Generator) {
 	h.memoryGenerator = gen
 }
 
-// maybeGenerateConversationTitle auto-generates a conversation title after the first block.
+// maybeGenerateConversationTitle auto-generates a conversation title for the first block.
 // Only generates if title_source is "default" (never been auto-generated or user-edited).
 // Runs asynchronously in a background goroutine to avoid blocking the chat flow.
-func (h *ParrotHandler) maybeGenerateConversationTitle(ctx context.Context, conversationID int32, completedBlock *store.AIBlock) {
+// Optimization: Called immediately after block creation (not after block completion) for parallel execution.
+func (h *ParrotHandler) maybeGenerateConversationTitle(ctx context.Context, conversationID int32, userMessage string) {
 	// Run asynchronously in background - don't block the chat flow
-	go h.generateTitleAsync(conversationID, completedBlock)
+	go h.generateTitleAsync(conversationID, userMessage)
 }
 
 // generateTitleAsync generates and updates the conversation title in the background.
-func (h *ParrotHandler) generateTitleAsync(conversationID int32, completedBlock *store.AIBlock) {
+// Uses only userMessage for early title generation (parallel with Orchestrator processing).
+func (h *ParrotHandler) generateTitleAsync(conversationID int32, userMessage string) {
 	// Use a fresh context with timeout for the title generation
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Check if this is the first completed block for this conversation
+	// Check if this is the first block for this conversation
 	blocks, err := h.factory.store.ListAIBlocks(ctx, &store.FindAIBlock{
 		ConversationID: &conversationID,
 	})
@@ -135,7 +137,7 @@ func (h *ParrotHandler) generateTitleAsync(conversationID int32, completedBlock 
 		return
 	}
 
-	// Only generate title for the first completed block
+	// Only generate title for the first block
 	if len(blocks) != 1 {
 		return
 	}
@@ -158,14 +160,9 @@ func (h *ParrotHandler) generateTitleAsync(conversationID int32, completedBlock 
 		return
 	}
 
-	// Generate title from block content
-	userMessage := ""
-	if len(completedBlock.UserInputs) > 0 {
-		userMessage = completedBlock.UserInputs[0].Content
-	}
-	aiResponse := completedBlock.AssistantContent
-
-	title, err := h.titleGenerator.Generate(ctx, userMessage, aiResponse)
+	// Generate title from user message only (parallel optimization)
+	// AI response is empty for early generation
+	title, err := h.titleGenerator.Generate(ctx, userMessage, "")
 	if err != nil {
 		slog.Warn("Failed to generate conversation title",
 			"conversation_id", conversationID,
@@ -607,6 +604,12 @@ func (h *ParrotHandler) executeWithOrchestrator(
 		}); err != nil {
 			logger.Warn("Failed to send block_created event", slog.String("error", err.Error()))
 		}
+
+		// Early title generation: Start immediately after block creation for parallel execution
+		// This runs concurrently with Orchestrator processing, reducing perceived latency
+		if h.titleGenerator != nil && req.ConversationID > 0 {
+			h.maybeGenerateConversationTitle(ctx, req.ConversationID, req.Message)
+		}
 	}
 
 	// ========== Phase 3: Inject orchestrator context ==========
@@ -812,12 +815,7 @@ func (h *ParrotHandler) executeWithOrchestrator(
 				slog.Int64("block_id", currentBlock.ID),
 				slog.Int("content_length", len(finalContent)),
 			)
-
-			// Auto-generate conversation title after first successful block
-			// Only if title_source is "default" (never been auto-generated or user-edited)
-			if h.titleGenerator != nil && currentBlock.ConversationID > 0 {
-				h.maybeGenerateConversationTitle(ctx, currentBlock.ConversationID, currentBlock)
-			}
+			// Title generation moved to block creation time (Phase 2) for parallel execution
 		}
 	}
 
@@ -919,6 +917,12 @@ func (h *ParrotHandler) executeAgent(
 			logger.Warn("Failed to create block, continuing without block",
 				slog.String("error", createErr.Error()),
 			)
+		} else if currentBlock != nil {
+			// Early title generation: Start immediately after block creation for parallel execution
+			// This runs concurrently with agent processing, reducing perceived latency
+			if h.titleGenerator != nil {
+				h.maybeGenerateConversationTitle(ctx, req.ConversationID, req.Message)
+			}
 		}
 		// Note: BlockManager already logs "Created block for chat" with round_number
 	}
@@ -1646,12 +1650,7 @@ func (h *ParrotHandler) executeAgent(
 						)
 					}
 				}
-
-				// Auto-generate conversation title after first successful block
-				// Only if title_source is "default" (never been auto-generated or user-edited)
-				if h.titleGenerator != nil && currentBlock.ConversationID > 0 {
-					h.maybeGenerateConversationTitle(ctx, currentBlock.ConversationID, currentBlock)
-				}
+				// Title generation moved to block creation time for parallel execution
 			}
 		}
 	}

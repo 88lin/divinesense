@@ -431,13 +431,16 @@ func (cm *CapabilityMap) MatchInput(input string) ([]string, float64) {
 	})
 
 	// Calculate confidence (normalize by max possible score)
+	// Scoring: each keyword = 1 point, each pattern = 2 points
+	// A single keyword match (score=1) should give confidence ~0.5 to bypass orchestration
+	// Formula: confidence = min(score/2.0, 1.0) where 2.0 is the "high confidence" threshold
 	maxScore := 0
 	for _, score := range matchedExperts {
 		if score > maxScore {
 			maxScore = score
 		}
 	}
-	confidence := float64(maxScore) / 5.0 // Normalize: assume 5 is high score
+	confidence := float64(maxScore) / 2.0 // Normalize: 2 points = high confidence (0.8+)
 	if confidence > 1.0 {
 		confidence = 1.0
 	}
