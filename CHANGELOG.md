@@ -9,6 +9,38 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.100.1] - 2026-02-17
+
+> 性能优化与多轮对话稳定性修复版本
+
+### ⚡ Performance
+
+- **路由延迟优化**: 添加数据库索引 `idx_ai_block_conversation_round_desc` 优化 GetLatestAIBlock 查询
+  - 路由延迟从 ~284ms 降至 <5ms
+  - 提升多轮对话响应速度
+
+### ✨ New Features
+
+- **通用任务直接响应**: Orchestrator 现在支持通用任务直接响应，无需调用专家代理 (#252, #253)
+
+### 🐛 Bug Fixes
+
+- **多轮对话上下文丢失**: 修复 Orchestrator 模式下多轮对话上下文丢失问题 (#258)
+- **通用代理问题**: 修复 GeneralParrot 代理相关问题 (#258)
+- **标题生成问题**: 修复标题生成相关问题 (#258)
+- **Block UI 未渲染**: 修复 Block UI 未渲染和刷新后卡在初始化问题
+- **多轮对话 3 个问题**: 修复多轮对话的多个关联问题 (#254)
+- **Orchestrator 多轮对话 bug**: 修复 Orchestrator 模式多轮对话的多个 bug (#250)
+- **路由置信度计算**: 修复路由置信度计算和 Agent 工具描述问题
+
+### 📦 Database Migration
+
+```bash
+psql -d divinesense -f store/migration/postgres/migrate/20260217000001_optimize_get_latest_block.up.sql
+```
+
+---
+
 ## [v0.100.0] - 2026-02-16 🐴 喜迎马年春节
 
 > 这是一个重要的功能增强版本，带来了 AI 搜索、UI 体验和架构的全面升级。
