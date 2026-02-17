@@ -154,8 +154,11 @@ self_description:
     excludes:
       - "搜索笔记"
       - "找.*内容"
+      - "总结.*"
+      - "翻译.*"
+      - "改写.*"
     # Priority when multiple agents match (higher = preferred)
-    priority: 5
+    priority: 1
     # Semantic examples for Layer 3 semantic routing
     # These will be pre-computed as embedding vectors at startup
     semantic_examples:

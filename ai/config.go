@@ -49,10 +49,11 @@ type LLMConfig struct {
 // IntentClassifierConfig represents intent classification LLM configuration.
 // Uses a lightweight model for fast, cost-effective classification.
 type IntentClassifierConfig struct {
-	Model   string
-	APIKey  string
-	BaseURL string
-	Enabled bool
+	Provider string
+	Model    string
+	APIKey   string
+	BaseURL  string
+	Enabled  bool
 }
 
 // UniversalParrotConfig represents configuration for UniversalParrot (configuration-driven parrots).
@@ -105,10 +106,11 @@ func NewConfigFromProfile(p *profile.Profile) *Config {
 	// Intent Classifier configuration
 	// Default uses SiliconFlow with Qwen2.5-7B-Instruct for fast, cost-effective classification
 	cfg.IntentClassifier = IntentClassifierConfig{
-		Enabled: p.AIIntentAPIKey != "",
-		Model:   p.AIIntentModel,
-		APIKey:  p.AIIntentAPIKey,
-		BaseURL: p.AIIntentBaseURL,
+		Enabled:  p.AIIntentAPIKey != "",
+		Provider: p.AIIntentProvider,
+		Model:    p.AIIntentModel,
+		APIKey:   p.AIIntentAPIKey,
+		BaseURL:  p.AIIntentBaseURL,
 	}
 
 	// UniversalParrot configuration
@@ -147,6 +149,11 @@ func (c *Config) Validate() error {
 
 	if c.LLM.Provider != "ollama" && c.LLM.APIKey == "" {
 		return errors.New("LLM API key is required")
+	}
+
+	// Intent Classifier validation (only when explicitly enabled)
+	if c.IntentClassifier.Enabled && c.IntentClassifier.Provider != "ollama" && c.IntentClassifier.APIKey == "" {
+		return errors.New("intent classifier API key is required for non-ollama providers")
 	}
 
 	return nil

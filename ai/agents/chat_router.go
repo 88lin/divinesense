@@ -31,6 +31,11 @@ const (
 	// Implemented by UniversalParrot with schedule.yaml configuration.
 	RouteTypeSchedule ChatRouteType = "schedule"
 
+	// RouteTypeGeneral routes to General Parrot for pure LLM tasks.
+	// Implemented by UniversalParrot with general.yaml configuration.
+	// Use for: summarization, translation, rewriting, Q&A without tools.
+	RouteTypeGeneral ChatRouteType = "general"
+
 	// Note: RouteTypeAmazing removed - Orchestrator handles complex/ambiguous requests
 )
 
@@ -63,7 +68,7 @@ var intentKeywords = map[string][]string{
 		// Core keywords (from memo.yaml routing.keywords)
 		"笔记", "搜索", "找", "记录", "memo",
 		// Sticky routing: follow-up to previous memo search
-		"总结", "详细内容", "相关", "这条", "note", "search", "find", "look",
+		"详细内容", "相关", "这条", "note", "search", "find", "look",
 	},
 	"create_note": {"记", "记录", "写", "创建", "note", "record", "create", "write"},
 	"delete_note": {"删除", "笔记", "note", "delete", "remove"},
@@ -80,6 +85,13 @@ var intentKeywords = map[string][]string{
 	"delete_event":   {"删除", "日程", "会议", "schedule", "meeting", "delete", "remove", "cancel"},
 	"query_schedule": {"日程", "会议", "查看", "查询", "schedule", "meeting", "query", "check", "show"},
 	"update_event":   {"修改", "更新", "调整", "日程", "schedule", "edit", "update", "modify", "change"},
+
+	// General LLM task intents
+	"general_task": {
+		// Core keywords (from general.yaml routing.keywords)
+		"总结", "摘要", "翻译", "改写", "润色", "解释", "说明", "什么意思", "重写",
+		"summarize", "summary", "translate", "rewrite", "polish", "explain",
+	},
 }
 
 // isRelatedToLastIntent checks if the input is semantically related to the last intent.
@@ -133,6 +145,8 @@ func ExtractIntent(route ChatRouteType) string {
 		return "memo_search"
 	case RouteTypeSchedule:
 		return "schedule_manage"
+	case RouteTypeGeneral:
+		return "general_task"
 	default:
 		return "unknown"
 	}
@@ -489,6 +503,8 @@ func (r *ChatRouter) routeTypeToExpertName(routeType ChatRouteType) string {
 		return "memo"
 	case RouteTypeSchedule:
 		return "schedule"
+	case RouteTypeGeneral:
+		return "general"
 	default:
 		return ""
 	}
@@ -502,6 +518,8 @@ func mapIntentToRouteType(intent routerpkg.Intent) ChatRouteType {
 		return RouteTypeMemo
 	case routerpkg.AgentTypeSchedule:
 		return RouteTypeSchedule
+	case routerpkg.AgentTypeGeneral:
+		return RouteTypeGeneral
 	default:
 		return "" // Empty indicates unknown - needs orchestration
 	}

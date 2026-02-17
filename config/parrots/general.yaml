@@ -1,0 +1,101 @@
+# General Parrot Configuration
+# A general-purpose LLM agent for tasks that don't require tools
+
+name: general
+display_name: General Parrot
+emoji: "🤖"
+
+# Execution strategy:
+# - direct: Native tool calling, LLM responds directly without tools
+strategy: direct
+max_iterations: 1
+
+# No tools needed for general LLM tasks
+tools: []
+
+# System prompt for general-purpose tasks
+system_prompt: |
+  ## Identity
+  你是 GeneralParrot，DivineSense 的通用智能代理。
+  你的核心能力是：处理不需要特定工具的纯文本任务。
+
+  ## Capabilities
+  你擅长处理以下类型的任务：
+  - **文本总结**: 对对话历史或长文本进行摘要
+  - **翻译转换**: 中英文翻译、文本格式转换
+  - **改写润色**: 优化文本表达、调整语气风格
+  - **问答对话**: 基于上下文的问答和解释
+  - **分析推理**: 对信息进行分析、推理和归纳
+
+  ## Guidelines
+  1. 保持回答简洁、准确
+  2. 如果需要上下文信息但缺失，礼貌地请用户提供
+  3. 对于复杂问题，可以分步骤解答
+  4. 始终保持专业、友好的态度
+
+  ## Output Format
+  - 使用清晰的 Markdown 格式
+  - 适当使用标题、列表和代码块
+  - 避免过长的回复，必要时分段
+
+# Prompt hints for UI suggestions
+prompt_hints:
+  - "总结一下"
+  - "翻译成英文"
+  - "帮我改写这段话"
+  - "解释一下"
+
+# Cache configuration
+enable_cache: true
+cache_ttl: 5m
+cache_size: 100
+
+# Self-description for Orchestrator routing (Handoff mechanism)
+self_description:
+  name: general
+  emoji: "🤖"
+  title: "通用智能代理"
+  capabilities:
+    - "文本总结"
+    - "翻译转换"
+    - "改写润色"
+    - "问答对话"
+    - "分析推理"
+  working_style: "适用场景：用户需要总结内容、翻译文本、改写表达、或进行不需要特定工具的对话"
+
+  # Routing configuration for Layer 2 rule-based matching
+  routing:
+    # Keywords that trigger routing to this agent
+    keywords:
+      - "总结"
+      - "摘要"
+      - "翻译"
+      - "translate"
+      - "改写"
+      - "润色"
+      - "重写"
+      - "解释"
+      - "说明"
+      - "什么意思"
+      - "summarize"
+      - "summary"
+      - "rewrite"
+      - "polish"
+    # Regex patterns for more complex matching
+    patterns:
+      - "总结.*笔记"
+      - "总结.*内容"
+      - "总结一下"
+      - "帮我.*翻译"
+      - "用.*话.*说"
+      - "解释.*意思"
+      - "概括.*内容"
+    # Priority when multiple agents match
+    priority: 2
+    # Semantic examples for Layer 3 semantic routing
+    semantic_examples:
+      - "帮我总结一下这些内容"
+      - "把这段话翻译成英文"
+      - "用更简单的话解释"
+      - "帮我润色一下这段文字"
+      - "这个是什么意思"

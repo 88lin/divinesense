@@ -58,6 +58,7 @@ type AgentType string
 const (
 	AgentTypeMemo     AgentType = "memo"
 	AgentTypeSchedule AgentType = "schedule"
+	AgentTypeGeneral  AgentType = "general"
 	AgentTypeUnknown  AgentType = "unknown"
 	// Note: AgentTypeAmazing removed - Orchestrator handles complex/ambiguous requests
 )
@@ -112,6 +113,8 @@ const (
 	IntentScheduleCreate Intent = "schedule_create"
 	IntentScheduleUpdate Intent = "schedule_update"
 	IntentBatchSchedule  Intent = "batch_schedule"
+	// IntentGeneralTask handles pure LLM tasks: summarization, translation, rewriting, Q&A
+	IntentGeneralTask Intent = "general_task"
 	// Note: IntentAmazing removed - Orchestrator handles complex/ambiguous requests
 	IntentUnknown Intent = "unknown"
 )

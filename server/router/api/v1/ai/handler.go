@@ -111,7 +111,6 @@ func (h *ParrotHandler) SetMemoryGenerator(gen memory.Generator) {
 
 // maybeGenerateConversationTitle auto-generates a conversation title after the first block.
 // Only generates if title_source is "default" (never been auto-generated or user-edited).
-//
 // Runs asynchronously in a background goroutine to avoid blocking the chat flow.
 func (h *ParrotHandler) maybeGenerateConversationTitle(ctx context.Context, conversationID int32, completedBlock *store.AIBlock) {
 	// Run asynchronously in background - don't block the chat flow
@@ -813,6 +812,12 @@ func (h *ParrotHandler) executeWithOrchestrator(
 				slog.Int64("block_id", currentBlock.ID),
 				slog.Int("content_length", len(finalContent)),
 			)
+
+			// Auto-generate conversation title after first successful block
+			// Only if title_source is "default" (never been auto-generated or user-edited)
+			if h.titleGenerator != nil && currentBlock.ConversationID > 0 {
+				h.maybeGenerateConversationTitle(ctx, currentBlock.ConversationID, currentBlock)
+			}
 		}
 	}
 
