@@ -79,7 +79,10 @@ type SwipeDirection = "left" | "right" | null;
 // Utilities
 // ============================================================================
 
-function formatRelativeTime(timestamp: number, t: (key: string, options?: Record<string, unknown>) => string): string {
+function formatRelativeTime(
+  timestamp: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const date = new Date(timestamp);
   if (isNaN(date.getTime())) return t("common.unknown") || "?";
 
@@ -97,7 +100,11 @@ function formatRelativeTime(timestamp: number, t: (key: string, options?: Record
 // Main Component
 // ============================================================================
 
-export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }: MemoBlockV3Props) {
+export const MemoBlockV3 = memo(function MemoBlockV3({
+  memo,
+  onEdit,
+  className,
+}: MemoBlockV3Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigateTo = useNavigateTo();
@@ -138,12 +145,20 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
   // Fullscreen API helpers with compatibility check
   const isFullscreenSupported =
     typeof document !== "undefined" &&
-    !!(document.fullscreenEnabled || (document as unknown as { webkitFullscreenEnabled?: boolean }).webkitFullscreenEnabled);
+    !!(
+      document.fullscreenEnabled ||
+      (document as unknown as { webkitFullscreenEnabled?: boolean }).webkitFullscreenEnabled
+    );
 
   const toggleFullscreen = useCallback(async () => {
     if (!cardRef.current || !isFullscreenSupported) {
       // Fallback to modal if fullscreen not supported
-      setIsReadingMode((prev) => !prev);
+      setIsReadingMode((prev) => {
+        const newMode = !prev;
+        // Expand on maximize, collapse on minimize
+        setIsExpanded(newMode);
+        return newMode;
+      });
       return;
     }
 
@@ -151,21 +166,30 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
       if (!document.fullscreenElement) {
         await cardRef.current.requestFullscreen();
         setIsReadingMode(true);
+        setIsExpanded(true); // Expand on maximize
       } else {
         await document.exitFullscreen();
         setIsReadingMode(false);
+        setIsExpanded(false); // Collapse on minimize
       }
     } catch (error) {
       console.error("Fullscreen error:", error);
       // Fallback to modal on error
-      setIsReadingMode((prev) => !prev);
+      setIsReadingMode((prev) => {
+        const newMode = !prev;
+        setIsExpanded(newMode);
+        return newMode;
+      });
     }
   }, [isFullscreenSupported]);
 
   // Listen for fullscreen changes (e.g., ESC key)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsReadingMode(!!document.fullscreenElement);
+      const isFullscreen = !!document.fullscreenElement;
+      setIsReadingMode(isFullscreen);
+      // Expand on maximize, collapse on minimize
+      setIsExpanded(isFullscreen);
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
@@ -256,7 +280,10 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
 
   const handleToggleArchive = useCallback(async () => {
     const newState = memo.state === State.ARCHIVED ? State.NORMAL : State.ARCHIVED;
-    const message = newState === State.ARCHIVED ? t("message.archived-successfully") : t("message.restored-successfully");
+    const message =
+      newState === State.ARCHIVED
+        ? t("message.archived-successfully")
+        : t("message.restored-successfully");
 
     try {
       await updateMemo({
@@ -385,7 +412,12 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
     }> = [];
 
     if (!isArchived) {
-      actions.push({ key: "archive", icon: Archive, label: t("common.archive"), action: handleToggleArchive });
+      actions.push({
+        key: "archive",
+        icon: Archive,
+        label: t("common.archive"),
+        action: handleToggleArchive,
+      });
     } else {
       actions.push({
         key: "archive",
@@ -553,7 +585,9 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
             {/* Header with close button */}
             <div className="sticky top-0 flex items-center justify-between px-4 py-3 bg-background/95 backdrop-blur-sm border-b">
               <span className="text-sm text-muted-foreground">
-                {creatorLoading ? "..." : creator?.displayName || creator?.username || t("common.unknown")}
+                {creatorLoading
+                  ? "..."
+                  : creator?.displayName || creator?.username || t("common.unknown")}
               </span>
               <button
                 onClick={toggleFullscreen}
@@ -624,7 +658,13 @@ function MemoCompactHeader({
 
       {/* Content preview - clickable for toggle */}
       <button onClick={onToggle} className="flex-1 min-w-0 text-left">
-        <p className={cn("text-sm leading-relaxed text-left w-full", isArchived && "line-through opacity-60", colorClasses.text)}>
+        <p
+          className={cn(
+            "text-sm leading-relaxed text-left w-full",
+            isArchived && "line-through opacity-60",
+            colorClasses.text,
+          )}
+        >
           {previewText}
         </p>
 
@@ -722,7 +762,11 @@ function MemoCompactFooter({
 
   return (
     <div
-      className={cn("flex items-center justify-between px-4 py-2.5", "border-t border-current/10", "bg-black/[0.02] dark:bg-white/[0.02]")}
+      className={cn(
+        "flex items-center justify-between px-4 py-2.5",
+        "border-t border-current/10",
+        "bg-black/[0.02] dark:bg-white/[0.02]",
+      )}
     >
       {/* Left: Collapse/Expand indicator */}
       <button
@@ -733,14 +777,27 @@ function MemoCompactFooter({
           colorClasses.muted,
         )}
       >
-        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        <span className="hidden sm:inline">{isExpanded ? t("memo.show-less") : t("memo.show-more")}</span>
+        {isExpanded ? (
+          <ChevronUp className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronDown className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline">
+          {isExpanded ? t("memo.show-less") : t("memo.show-more")}
+        </span>
       </button>
 
       {/* Right: Primary actions */}
       <div className="flex items-center gap-0.5">
         {/* Edit button - always visible when not archived */}
-        {!isArchived && <ActionButton icon={Edit3} label={t("common.edit")} onClick={onEdit} colorClasses={colorClasses} />}
+        {!isArchived && (
+          <ActionButton
+            icon={Edit3}
+            label={t("common.edit")}
+            onClick={onEdit}
+            colorClasses={colorClasses}
+          />
+        )}
 
         {/* Pin button - visible for root memos */}
         {!memo.parent && !isArchived && (
@@ -749,12 +806,23 @@ function MemoCompactFooter({
             label={memo.pinned ? t("common.unpin") : t("common.pin")}
             onClick={onTogglePin}
             colorClasses={colorClasses}
-            className={memo.pinned ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20" : undefined}
+            className={
+              memo.pinned
+                ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+                : undefined
+            }
           />
         )}
 
         {/* Copy button */}
-        {!isArchived && <ActionButton icon={Copy} label={t("common.copy")} onClick={onCopy} colorClasses={colorClasses} />}
+        {!isArchived && (
+          <ActionButton
+            icon={Copy}
+            label={t("common.copy")}
+            onClick={onCopy}
+            colorClasses={colorClasses}
+          />
+        )}
 
         {/* Fullscreen button */}
         <ActionButton
@@ -766,7 +834,12 @@ function MemoCompactFooter({
 
         {/* Share button - if available */}
         {!isArchived && typeof navigator !== "undefined" && "share" in navigator && (
-          <ActionButton icon={Share2} label={t("common.share")} onClick={onShare} colorClasses={colorClasses} />
+          <ActionButton
+            icon={Share2}
+            label={t("common.share")}
+            onClick={onShare}
+            colorClasses={colorClasses}
+          />
         )}
 
         {/* Desktop (sm+): Show Archive button directly */}
@@ -823,7 +896,9 @@ function MemoCompactFooter({
           >
             {/* Header with close button */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{t("memo.actions")}</span>
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                {t("memo.actions")}
+              </span>
               <button
                 onClick={() => onQuickMenuToggle()}
                 className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -847,7 +922,8 @@ function MemoCompactFooter({
                     "transition-colors duration-100",
                     "hover:bg-zinc-100 dark:hover:bg-zinc-800",
                     "focus-visible:outline-none focus-visible:bg-zinc-100 dark:focus-visible:bg-zinc-800",
-                    action.danger && "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30",
+                    action.danger &&
+                      "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30",
                   )}
                 >
                   <action.icon className="w-4 h-4 shrink-0" />
@@ -876,7 +952,15 @@ interface ActionButtonProps {
   buttonRef?: React.RefObject<HTMLButtonElement>;
 }
 
-function ActionButton({ icon: Icon, label, onClick, colorClasses, className, isActive, buttonRef }: ActionButtonProps) {
+function ActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  colorClasses,
+  className,
+  isActive,
+  buttonRef,
+}: ActionButtonProps) {
   return (
     <button
       type="button"
