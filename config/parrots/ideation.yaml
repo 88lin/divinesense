@@ -174,9 +174,12 @@ self_description:
       - "帮我写.*论文"
       - "帮我写.*报告"
       - "帮我写.*邮件"
-    # Priority when multiple agents match (higher = preferred)
-    # Priority 1 means Ideation has higher priority than General (priority 2)
-    priority: 1
+    # Priority when multiple agents match (higher numeric value = higher priority)
+    # Ideation: 10 (highest for creative tasks)
+    # Schedule: 8
+    # Memo: 8
+    # General: 1 (fallback, lowest)
+    priority: 10
     # Semantic examples for Layer 3 semantic routing
     semantic_examples:
       - "帮我头脑风暴一些产品创意"

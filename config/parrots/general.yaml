@@ -90,8 +90,10 @@ self_description:
       - "用.*话.*说"
       - "解释.*意思"
       - "概括.*内容"
-    # Priority when multiple agents match
-    priority: 2
+    # Priority when multiple agents match (higher numeric value = higher priority)
+    # General is the fallback agent with lowest priority
+    # Expert agents have higher priority: Ideation(10), Schedule(8), Memo(8)
+    priority: 1
     # Semantic examples for Layer 3 semantic routing
     semantic_examples:
       - "帮我总结一下这些内容"
