@@ -143,7 +143,12 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
   const toggleFullscreen = useCallback(async () => {
     if (!cardRef.current || !isFullscreenSupported) {
       // Fallback to modal if fullscreen not supported
-      setIsReadingMode((prev) => !prev);
+      setIsReadingMode((prev) => {
+        const newMode = !prev;
+        // Expand on maximize, collapse on minimize
+        setIsExpanded(newMode);
+        return newMode;
+      });
       return;
     }
 
@@ -151,21 +156,30 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
       if (!document.fullscreenElement) {
         await cardRef.current.requestFullscreen();
         setIsReadingMode(true);
+        setIsExpanded(true); // Expand on maximize
       } else {
         await document.exitFullscreen();
         setIsReadingMode(false);
+        setIsExpanded(false); // Collapse on minimize
       }
     } catch (error) {
       console.error("Fullscreen error:", error);
       // Fallback to modal on error
-      setIsReadingMode((prev) => !prev);
+      setIsReadingMode((prev) => {
+        const newMode = !prev;
+        setIsExpanded(newMode);
+        return newMode;
+      });
     }
   }, [isFullscreenSupported]);
 
   // Listen for fullscreen changes (e.g., ESC key)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsReadingMode(!!document.fullscreenElement);
+      const isFullscreen = !!document.fullscreenElement;
+      setIsReadingMode(isFullscreen);
+      // Expand on maximize, collapse on minimize
+      setIsExpanded(isFullscreen);
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
@@ -385,7 +399,12 @@ export const MemoBlockV3 = memo(function MemoBlockV3({ memo, onEdit, className }
     }> = [];
 
     if (!isArchived) {
-      actions.push({ key: "archive", icon: Archive, label: t("common.archive"), action: handleToggleArchive });
+      actions.push({
+        key: "archive",
+        icon: Archive,
+        label: t("common.archive"),
+        action: handleToggleArchive,
+      });
     } else {
       actions.push({
         key: "archive",
