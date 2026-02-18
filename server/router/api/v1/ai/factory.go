@@ -257,6 +257,28 @@ func (f *AgentFactory) buildToolFactories() map[string]universal.ToolFactoryFunc
 		}
 	}
 
+	// memo_write tool factory
+	// Allows Ideation Agent to save creative ideas to memos
+	if f.store != nil {
+		factories["memo_write"] = func(userID int32) (agents.ToolWithSchema, error) {
+			userIDGetter := func(ctx context.Context) int32 {
+				return userID
+			}
+			tool, err := tools.NewMemoWriteTool(f.store, userIDGetter)
+			if err != nil {
+				return nil, err
+			}
+			return agents.ToolFromLegacy(
+				tool.Name(),
+				tool.Description(),
+				func(ctx context.Context, input string) (string, error) {
+					return tool.Run(ctx, input)
+				},
+				tool.InputType,
+			), nil
+		}
+	}
+
 	// report_inability tool factory
 	// Allows experts to report when they cannot handle a task (Handoff mechanism)
 	factories["report_inability"] = func(userID int32) (agents.ToolWithSchema, error) {
