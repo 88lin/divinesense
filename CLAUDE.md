@@ -88,17 +88,17 @@
 │  Orchestrator   │ ← LLM 驱动任务分解
 └────────┬────────┘
          │
-    ┌────┴────┐
-    ↓         ↓
-┌───────┐ ┌───────┐
-│ Memo  │ │ Sched │  ← Expert Agents (config/ 配置化)
-└───────┘ └───────┘
-    │         │
-    └────┬────┘
-         ↓
-┌─────────────────┐
-│  Aggregator     │ ← 结果聚合（如需要）
-└─────────────────┘
+    ┌────┼────┬────┐
+    ↓    ↓    ↓    ↓
+┌──────┐┌────────┐┌────────┐┌────────┐
+│ Memo ││Schedule││Ideation││General │ ← 专家代理 (config/ 配置化)
+└──────┘└────────┘└────────┘└────────┘
+    │       │        │        │
+    └───────┴────────┴────────┘
+                   ↓
+         ┌─────────────────┐
+         │   Aggregator    │ ← 结果聚合（如需要）
+         └─────────────────┘
 ```
 
 ### 专家代理 (Expert Agents)
@@ -106,6 +106,7 @@
 | :-------------------- | :------- | :------- |
 | MemoParrot (灰灰)     | 笔记搜索 | UniversalParrot + memo.yaml |
 | ScheduleParrot (时巧) | 日程管理 | UniversalParrot + schedule.yaml |
+| IdeationParrot (灵光) | 创意生成 | UniversalParrot + ideation.yaml |
 | GeneralParrot (通才)  | 通用任务 | UniversalParrot + general.yaml |
 
 > **架构**: 所有领域代理基于 **UniversalParrot** 配置驱动实现，通过 YAML 配置定义行为

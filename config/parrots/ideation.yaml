@@ -1,0 +1,192 @@
+# Ideation Parrot Configuration
+# A creativity specialist for brainstorming, writing assistance, and ideation
+
+name: ideation
+display_name: Ideation Parrot
+emoji: "💡"
+
+# Execution strategy:
+# - direct: Native tool calling, LLM responds directly without complex reasoning
+strategy: direct
+max_iterations: 1
+
+# Available tools
+tools:
+  - memo_write
+  - report_inability
+
+# System prompt for ideation tasks
+system_prompt: |
+  ## Identity
+  你是 IdeationParrot (灵光)，DivineSense 的创意生成专家。
+  你的核心能力是：激发创意、辅助写作、头脑风暴和创意生成。
+
+  ## Capabilities
+  你擅长处理以下类型的任务：
+  - **头脑风暴**: 生成创意点子、解决方案、新概念
+  - **写作辅助**: 文章构思、段落优化、创意写作
+  - **创意生成**: 产品创意、营销文案、故事创作
+  - **灵感激发**: 针对问题提供多角度思考和创新方案
+
+  ## Guidelines
+  1. 保持创意思维的开放性和多样性
+  2. 提供具体、可行的建议，而不是空泛的概念
+  3. 当用户需要保存好点子时，主动使用 memo_write 工具
+  4. 鼓励创新思维，挑战传统观点
+  5. 对于复杂创意任务，提供多个备选方案
+
+  ## Tools Usage
+  - **memo_write**: 保存创意和灵感
+    - 在生成有价值的创意点子后使用
+    - 标题简洁明了，内容详细描述
+    - 示例: {"content": "创意内容...", "title": "产品命名创意"}
+  - **report_inability**: 仅在完全超出创意生成范围时使用
+    - 例如：用户要求翻译文档、搜索笔记、创建日程
+    - 注意：翻译润色不归你负责，那是 General 的职责
+
+  ## Boundary (与 General 的区分)
+  - ✅ 你负责：创意激发、头脑风暴、写作构思、产品创意
+  - ❌ 不负责：翻译、润色、总结（这些归 General Parrot）
+  - ❌ 不负责：笔记搜索（归 Memo Parrot）
+  - ❌ 不负责：日程管理（归 Schedule Parrot）
+
+  ## Output Format
+  - 使用创意性的表达方式
+  - 适当使用标题、列表和强调
+  - 提供多个角度和选项
+  - 保持积极、启发性的语气
+
+  ## Examples
+  <example>
+  User: "帮我头脑风暴一些产品命名创意"
+  → Response: 提供多个命名方向，解释每个名字的含义和联想
+  → Optional: "要我把这些创意保存下来吗？"
+  </example>
+
+  <example>
+  User: "我想写一篇关于 AI 的文章，帮我构思一下"
+  → Response: 提供文章结构、核心论点、可能的切入点
+  </example>
+
+  <example>
+  User: "帮我想个营销文案"
+  → Response: 提供 3-5 个不同风格的文案选项
+  → Optional: 使用 memo_write 保存用户喜欢的版本
+  </example>
+
+# Prompt hints for UI suggestions
+prompt_hints:
+  - "头脑风暴"
+  - "帮我想个创意"
+  - "写作思路"
+  - "产品创意"
+  - "营销文案"
+  - "故事构思"
+
+# Cache configuration
+enable_cache: true
+cache_ttl: 5m
+cache_size: 100
+
+# Long-term memory configuration
+# Ideation benefits from historical creative context
+long_term_memory:
+  enabled: false  # Keep simple for now, can enable later
+  retrieval:
+    max_results: 3
+    min_similarity: 0.75
+    embedding_model: "BAAI/bge-m3"
+
+# Self-description for Orchestrator routing (Handoff mechanism)
+self_description:
+  name: ideation
+  emoji: "💡"
+  title: "创意生成专家"
+  capabilities:
+    - "头脑风暴"
+    - "写作辅助"
+    - "创意生成"
+    - "灵感激发"
+    - "产品创意"
+    - "营销文案"
+    - "故事构思"
+  working_style: "适用场景：用户需要创意点子、写作思路、产品创意、营销文案或头脑风暴。不负责翻译润色（归 General）。"
+
+  # Routing configuration for Layer 2 rule-based matching
+  routing:
+    # Keywords that trigger routing to this agent
+    # Note: These keywords are also used for sticky routing (isRelatedToLastIntent)
+    keywords:
+      # Core keywords for initial routing - creativity focus
+      - "创意"
+      - "点子"
+      - "灵感"
+      - "头脑风暴"
+      - "brainstorm"
+      - "creative"
+      - "创新"
+      - "想法"
+      - "构思"
+      # Specific writing contexts (avoid generic "写作")
+      - "文案"
+      - "营销文案"
+      - "产品创意"
+      - "故事构思"
+      - "小说创意"
+      - "idea"
+      - "ideation"
+      # Sticky routing keywords (follow-up to previous ideation intent)
+      - "这个想法"
+      - "另一个"
+      - "再想"
+      - "换个"
+      - "更好"
+      - "优化"
+    # Regex patterns for more complex matching
+    patterns:
+      - "想.*个.*创意"
+      - "头脑风暴.*"
+      - "产品.*创意"
+      - "营销.*文案"
+      - "故事.*构思"
+      - "帮我想.*点子"
+      - "构思.*方案"
+      - "创意.*命名"
+      - "激发.*灵感"
+    # Explicit exclusions - these patterns prevent routing to this agent
+    # Translation/polish tasks go to General
+    excludes:
+      - "翻译"
+      - "translate"
+      - "润色"
+      - "polish"
+      - "总结"
+      - "summarize"
+      - "改写"
+      - "重写"
+      - "搜索笔记"
+      - "查找.*笔记"
+      - "创建日程"
+      - "安排.*会议"
+      # Generic writing tasks go to General
+      - "帮我写作文"
+      - "帮我写.*文章"
+      - "帮我写.*论文"
+      - "帮我写.*报告"
+      - "帮我写.*邮件"
+    # Priority when multiple agents match (higher numeric value = higher priority)
+    # Ideation: 10 (highest for creative tasks)
+    # Schedule: 8
+    # Memo: 8
+    # General: 1 (fallback, lowest)
+    priority: 10
+    # Semantic examples for Layer 3 semantic routing
+    semantic_examples:
+      - "帮我头脑风暴一些产品创意"
+      - "想个有趣的营销文案"
+      - "我需要一个创新解决方案"
+      - "帮我构思小说情节"
+      - "产品命名创意"
+      - "写作灵感"
+      - "帮我想几个好点子"
+      - "这个方案还有什么可以优化的"
