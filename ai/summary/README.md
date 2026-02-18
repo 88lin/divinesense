@@ -1,8 +1,8 @@
 # AI Summarizer (`ai/summary`)
 
-`summary` 包提供智能摘要生成服务，用于快速提取 Memo 的核心内容。
+The `summary` package provides intelligent summary generation service for quickly extracting the core content of Memos.
 
-## 架构设计
+## Architecture
 
 ```mermaid
 classDiagram
@@ -10,7 +10,9 @@ classDiagram
         <<interface>>
         +Summarize(ctx, req)
     }
-    class LLMSummarizer {
+    class llmSummarizer {
+        -llm Service
+        -timeout Duration
         +Summarize()
     }
     class FallbackSummarizer {
@@ -18,32 +20,53 @@ classDiagram
         -truncate()
         -firstParagraph()
     }
-    
-    Summarizer <|.. LLMSummarizer
-    LLMSummarizer --> FallbackSummarizer : uses on fail
+
+    Summarizer <|.. llmSummarizer
+    llmSummarizer --> FallbackSummarizer : uses on fail
 ```
 
-*   **`Summarizer` 接口**: 定义摘要生成能力。
-*   **降级策略 (Fallback)**: 考虑到 LLM 可能超时或不可用，系统实现了多级降级策略。
+- **`Summarizer` Interface**: Defines summary generation capability.
+- **Fallback Strategy**: Considering LLM may timeout or be unavailable, the system implements a multi-level fallback strategy.
 
-## 算法流程
+## Algorithm Flow
 
 ```mermaid
 flowchart TD
-    Start[Request] --> TryLLM{Call LLM?}
+    Start[Request] --> ShortText{Content <= MaxLen?}
+    ShortText -- Yes --> ReturnOriginal[Return Original Content]
+    ShortText -- No --> TryLLM{LLM Available?}
     TryLLM -- Success --> ReturnLLM[Return LLM Summary]
     TryLLM -- Fail/Timeout --> Fallback{Fallback Levels}
-    
+
     Fallback --> Level1[First Paragraph]
     Level1 -- Too Short --> Level2[First Sentence]
     Level2 -- Too Short --> Level3[Truncate 50 chars]
-    
+
     Level3 --> ReturnFallback[Return Fallback Summary]
 ```
 
-1.  **尝试 LLM 生成**: 使用专门的 Prompt (如 "请用一句话概括...") 调用 LLM。
-2.  **自动降级**: 如果 LLM 调用失败、超时或返回空，依次尝试：
-    *   **First Paragraph**: 提取第一段。
-    *   **First Sentence**: 提取第一句话。
-    *   **Truncate**: 截取前 N 个字符 (默认 50)。
-3.  **结果标记**: 返回结果中包含 `Source` 字段 (`llm`, `fallback_*`)，便于前端区分展示或决定是否重试。
+## Algorithm Details
+
+### 1. Short Text Optimization
+If text length (in runes) <= MaxLen (default 200), return original content directly with `Source: original`.
+
+### 2. LLM Generation
+Use a dedicated prompt (e.g., "请用一句话概括...") to call LLM.
+- Request LLM to return JSON format: `{"summary": "生成的摘要"}`
+- Parse and truncate to MaxLen characters.
+
+### 3. Automatic Fallback
+If LLM call fails, times out, or returns empty, try in order:
+- **First Paragraph**: Extract first paragraph.
+- **First Sentence**: Extract first sentence.
+- **Truncate**: Truncate first N characters (default 50).
+
+### 4. Result Marking
+Return result includes `Source` field (`llm`, `fallback_*`, `original`) for frontend to distinguish display or decide whether to retry.
+
+## Configuration
+
+| Config | Default | Description |
+| :----- | :------ | :---------- |
+| `MaxLen` | 200 | Maximum summary length in characters |
+| `Timeout` | 15s | LLM call timeout |

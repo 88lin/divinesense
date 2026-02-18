@@ -1,15 +1,15 @@
 # AI Review Service (`ai/review`)
 
-`review` 包实现了基于 **SM-2 算法** 的智能间隔重复 (Spaced Repetition) 复习系统，帮助用户高效回顾 Memo。
+The `review` package implements an intelligent spaced repetition review system based on **SM-2 algorithm**, helping users efficiently review their Memos.
 
-## 架构设计
+## Architecture
 
 ```mermaid
 classDiagram
-    class ReviewService {
-        +GetDueReviews(ctx, userID, limit)
-        +RecordReview(ctx, userID, memoUID, quality)
-        +GetReviewStats(ctx, userID)
+    class Service {
+        +GetDueReviews()
+        +RecordReview()
+        +GetReviewStats()
     }
     class ReviewState {
         +MemoUID string
@@ -19,41 +19,85 @@ classDiagram
         +EaseFactor float64
         +IntervalDays int
     }
-    
-    ReviewService ..> ReviewState : manages
+    class ReviewItem {
+        +MemoID string
+        +Title string
+        +Snippet string
+        +Tags []string
+        +Priority float64
+    }
+    class ReviewStats {
+        +TotalMemos int
+        +DueToday int
+        +ReviewedToday int
+        +NewMemos int
+        +MasteredMemos int
+        +StreakDays int
+    }
+
+    Service ..> ReviewState : manages
+    Service ..> ReviewItem : creates
+    Service ..> ReviewStats : creates
 ```
 
-## 核心算法: SM-2
-复习算法参考了 SuperMemo-2，根据用户反馈的记忆质量 (`Quality`) 动态调整下一次复习的间隔。
+## Core Algorithm: SM-2
 
-**质量评分 (Quality)**:
-*   `0 (Again)`: 完全忘记，重置间隔。
-*   `3 (Hard)`: 记得很吃力，间隔略微缩短或不变。
-*   `4 (Good)`: 正常记得，标准间隔增长。
-*   `5 (Easy)`: 轻松记得，间隔加速增长。
+The review algorithm references SuperMemo-2, dynamically adjusting the next review interval based on user feedback's memory quality (`Quality`).
 
-**参数更新**:
-*   **Ease Factor (EF)**: 难度系数，默认 2.5。每次复习根据质量调整。
-*   **Interval (I)**: 下次复习间隔天数。`I(n) = I(n-1) * EF`。
+### Quality Ratings
+- `0 (Again)`: Completely forgot, reset interval.
+- `3 (Hard)`: Remember with difficulty, interval slightly reduced or unchanged.
+- `4 (Good)`: Remember normally, standard interval increase.
+- `5 (Easy)`: Remember easily, accelerated interval increase.
 
-## 排序与推荐
-`GetDueReviews` 不仅仅返回到期的笔记，还计算 **优先级 (Priority)** 进行排序：
+### Parameter Updates
+- **Ease Factor (EF)**: Difficulty factor, default 2.5. Adjusted after each review based on quality.
+- **Interval (I)**: Next review interval days. `I(n) = I(n-1) * EF`.
+
+### Interval Calculation
+| Quality | Interval Formula |
+| :------ | :--------------- |
+| Again | Reset to 1 day |
+| Hard | `I(n) = I(n-1) * 1.2` |
+| Good | `I(n) = I(n-1) * EF` (first: 1->3->...) |
+| Easy | `I(n) = I(n-1) * EF * 1.3` |
+
+## Priority Calculation
+
+`GetDueReviews` not only returns due memos but also calculates **Priority** for sorting:
 
 `Priority = OverdueFactor + TagImportance + NewItemBonus - RecencyPenalty`
 
-1.  **Overdue Factor**: 逾期越久，优先级越高。
-2.  **Tag Importance**: 包含 "重要", "核心" 等标签的笔记优先。
-3.  **New Item Bonus**: 新笔记（复习次数少）给予一定优待。
-4.  **Recency Penalty**: 刚创建不到 1 小时的笔记降权，避免立即复习。
+1. **Overdue Factor**: Longer overdue = higher priority.
+2. **Tag Importance**: Notes with "重要", "核心", "important", "key", "critical" tags prioritized.
+3. **New Item Bonus**: New notes (fewer reviews) given some preference.
+4. **Recency Penalty**: Reduce weight for notes created less than 1 hour ago to avoid immediate review.
 
-## 业务流程
+## Review Statistics
+
+| Stat | Description |
+| :--- | :---------- |
+| `TotalMemos` | Total number of memos |
+| `DueToday` | Number of memos due today |
+| `ReviewedToday` | Number of memos reviewed today |
+| `NewMemos` | Number of new memos (never reviewed) |
+| `MasteredMemos` | Number of mastered memos (interval > 30 days) |
+| `TotalReviews` | Total number of reviews |
+| `StreakDays` | Consecutive days with reviews |
+| `AverageAccuracy` | Estimated accuracy based on mastered ratio |
+
+## Storage
+
+Review states are persisted in user settings (`REVIEW_STATES` key) as protobuf.
+
+## Business Flow
 
 ```mermaid
 sequenceDiagram
     participant User
     participant Service
     participant Store
-    
+
     User->>Service: GetDueReviews()
     Service->>Store: List All Memos
     Service->>Store: Get User Review States
@@ -62,7 +106,7 @@ sequenceDiagram
         Service->>Service: Calculate Priority
     end
     Service-->>User: Top-K Review Items
-    
+
     User->>Service: RecordReview(Quality)
     Service->>Service: Apply SM-2 Algorithm
     Service->>Service: Update NextReview Date

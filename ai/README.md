@@ -1,169 +1,204 @@
-# DivineSense AI 大脑 (`ai/`)
+# DivineSense AI Brain (`ai/`)
 
-`ai` 包是 DivineSense 的认知核心，囊括了从基础的 LLM 集成到高级自主 Agent（智能体）的所有智能能力。
+`ai` package is DivineSense's cognitive core, encompassing all intelligent capabilities from basic LLM integration to advanced autonomous Agents.
 
-## 🧠 系统架构 (知识图谱)
+## System Architecture (Knowledge Graph)
 
-此架构图展示了 AI 模块的“宏观架构”与数据流转。
+This architecture diagram shows the "macro architecture" and data flow of the AI module.
 
 ```mermaid
 graph TD
-    User[👤 用户] <--> API[📡 API 层]
-    API <--> Router[🚦 路由系统]
-    
-    subgraph Brain [🧠 AI 大脑]
+    User[User] <--> API[API Layer]
+    API <--> Router[Routing System]
+
+    subgraph Brain [AI Brain]
         direction TB
-        
-        %% Layer 1: 决策与编排
-        Router --> |意图| Agents[🦜 智能体 / 鹦鹉]
-        
-        subgraph Cortex [认知引擎]
-            Agents --> Orchestrator[🎼 编排器]
-            Agents --> Universal[🤖 通用鹦鹉]
-            Agents --> Geek[👨‍💻 极客鹦鹉]
+
+        %% Layer 1: Decision & Orchestration
+        Router --> |Intent| Agents[Agents / Parrots]
+
+        subgraph Cortex [Cognition Engine]
+            Agents --> Orchestrator[Orchestrator]
+            Agents --> Universal[UniversalParrot]
+            Agents --> Expert[Expert Agents]
         end
-        
-        %% Layer 2: 技能与感知
-        subgraph Skills [技能与感知]
-            Universal --> Time[🕰️ 时间解析]
-            Universal --> Summary[📝 摘要]
-            Universal --> Tags[🏷️ 标签]
-            Universal --> Format[✨ 格式化]
-            Universal --> Services[🔧 业务服务]
+
+        %% Layer 2: Skills & Perception
+        subgraph Skills [Skills & Perception]
+            Universal --> Time[Time Parsing]
+            Universal --> Summary[Summary]
+            Universal --> Tags[Tags]
+            Universal --> Format[Format]
+            Universal --> Services[Business Services]
         end
-        
-        %% Layer 3: 记忆与上下文
-        subgraph MemoryLobe [记忆与上下文]
-            Context[🥡 上下文] --> Budget[💰 预算分配]
-            Context --> ShortTerm[💭 短期记忆]
-            Context --> LongTerm[📚 情景/图谱]
-            Review[🔁 复习] --> SM2[📉 SM-2 算法]
+
+        %% Layer 3: Memory & Context
+        subgraph MemoryLobe [Memory & Context]
+            Context[Context] --> Budget[Token Budget]
+            Context --> ShortTerm[Short-term Memory]
+            Context --> LongTerm[Episodic/Graph]
+            Review[Review] --> SM2[SM-2 Algorithm]
         end
-        
-        %% Layer 4: 基础设施
-        subgraph Foundation [核心基建]
-            LLM[🔌 core/llm]
-            Embed[🔢 core/embedding]
-            Rerank[📶 core/reranker]
-            Cache[⚡ 缓存]
-            Config[⚙️ 配置加载]
+
+        %% Layer 4: Infrastructure
+        subgraph Foundation [Core Infrastructure]
+            LLM[core/llm]
+            Embed[core/embedding]
+            Rerank[core/reranker]
+            Retrieval[core/retrieval]
+            Cache[Cache]
+            Config[Config Loader]
         end
-        
+
         Agents --> Context
         Skills --> Foundation
         MemoryLobe --> Foundation
     end
-    
-    %% 跨依赖
+
+    %% Cross-dependencies
     Router --> Cache
     Router --> LLM
-    LongTerm --> Graph[🕸️ 知识图谱]
-    
-    %% 输出
-    Agents --> Response[💬 响应]
+    Expert --> Retrieval
+    LongTerm --> Graph[Knowledge Graph]
+
+    %% Output
+    Agents --> Response[Response]
 ```
 
-## 📚 微观架构与算法
+## Micro-Architecture & Algorithms
 
-### 1. 感知与路由 (前额叶)
-*   **[routing](./routing/README.md)**: **四层意图分类架构**。
-    *   *算法*: `L0:LRU缓存` -> `L1:规则匹配 (加权关键词)` -> `L2:历史匹配 (向量相似度)` -> `L3:LLM兜底`。
-*   **[duplicate](./duplicate/README.md)**: **混合相似度检测**。
-    *   *算法*: `得分 = 0.5*向量相似度 + 0.3*标签重合度 + 0.2*时间衰减`。
-*   **[aitime](./aitime/README.md)**: **自然语言时间解析**。
-    *   *流程*: 正则匹配 -> NLP处理 (相对时间/中文语义) -> 标准化时间。
+### 1. Perception & Routing (Prefrontal Cortex)
+- **[routing](./routing/README.md)**: **Four-layer intent classification architecture**.
+    - *Algorithm*: `L0:LRU Cache` -> `L1:Rule Matching (Weighted Keywords)` -> `L2:History Matching (Vector Similarity)` -> `L3:LLM Fallback`.
+- **[duplicate](./duplicate/README.md)**: **Hybrid similarity detection**.
+    - *Algorithm*: `Score = 0.5*Vector Similarity + 0.3*Tag Overlap + 0.2*Time Decay`.
+- **[aitime](./aitime/README.md)**: **Natural language time parsing**.
+    - *Flow*: Regex matching -> NLP processing (relative time/Chinese semantics) -> Standardized time.
 
-### 2. Agent 智能体系统 (鹦鹉)
-*   **[agents](./agents/README.md)**: 自主实体系统。
-    *   **UniversalParrot**: 配置驱动的通用 Agent (如 Memo, Schedule)。支持 `Direct` (直接), `ReAct` (推理+行动), `Planning` (规划), `Reflexion` (反思) 策略。
-    *   **GeekParrot**: 通过 Claude Code CLI 实现代码执行能力的 Agent。
-    *   **Orchestrator**: 基于 DAG 的多 Agent 协同编排，包含 `Decomposer` (拆解器) 和 `Handoff` (交接) 机制。
-*   **[services](./services/README.md)**: 业务逻辑封装 (如 `schedule` 的重复规则处理)。
+### 2. Agent System (Parrots)
+- **[agents](./agents/README.md)**: Autonomous entity system.
+    - **Orchestrator**: LLM-driven task decomposition and multi-agent coordination. Contains `Decomposer` and `Handoff` mechanisms.
+    - **UniversalParrot**: Config-driven general Agent (e.g., Memo, Schedule). Supports `Direct`, `ReAct`, `Planning`, `Reflexion` strategies.
+    - **Expert Agents**: Domain-specific agents including MemoParrot and ScheduleParrot.
+    - **GeekParrot**: Claude Code CLI integration for code execution.
+- **[services](./services/README.md)**: Business logic encapsulation (e.g., schedule repeat rule processing).
 
-### 3. 认知能力 (技能)
-*   **[tags](./tags/README.md)**: **三层标签推荐系统**。
-    *   *算法*: `L1:统计推荐` -> `L2:规则推荐` -> `L3:LLM语义推荐`。
-*   **[summary](./summary/README.md)**: **高可用摘要生成**。
-    *   *流程*: 尝试 LLM -> 降级至首段提取 -> 降级至截断。
-*   **[enrichment](./enrichment/README.md)**: **流水线处理**。
-    *   *机制*: 存前 (阻塞式) + 存后 (异步并行) 增强。
+### 3. Cognitive Capabilities (Skills)
+- **[tags](./tags/README.md)**: **Three-layer tag recommendation system**.
+    - *Algorithm*: `L1:Statistics` -> `L2:Rules` -> `L3:LLM Semantic`.
+- **[summary](./summary/README.md)**: **High-availability summary generation**.
+    - *Flow*: Try LLM -> Fallback to first paragraph extraction -> Fallback to truncation.
+- **[enrichment](./enrichment/README.md)**: **Pipeline processing**.
+    - *Mechanism*: Pre-save (blocking) + Post-save (async parallel) enhancement.
 
-### 4. 记忆与上下文 (海马体)
-*   **[context](./context/README.md)**: **动态 Token 管理**。
-    *   *特性*: Token 预算分配 (STM/LTM/RAG 比例)，增量更新 (Context Caching)。
-*   **[graph](./graph/README.md)**: **个人知识图谱**。
-    *   *算法*: PageRank (重要性计算), 标签传播 (社区发现)。
-*   **[review](./review/README.md)**: **间隔重复复习**。
-    *   *算法*: **SM-2** (SuperMemo-2) 记忆曲线算法，优化复习间隔。
-*   **[cache](./cache/README.md)**: **双层缓存架构**。
-    *   *架构*: `L1:LRU` (精确 SHA256) + `L2:Semantic` (向量余弦相似度)。
+### 4. Memory & Context (Hippocampus)
+- **[context](./context/README.md)**: **Dynamic Token Management**.
+    - *Features*: Token budget allocation (STM/LTM/RAG ratio), incremental updates (Context Caching).
+- **[graph](./graph/README.md)**: **Personal Knowledge Graph**.
+    - *Algorithm*: PageRank (importance), Label Propagation (community detection).
+- **[review](./review/README.md)**: **Spaced repetition review**.
+    - *Algorithm*: **SM-2** (SuperMemo-2) memory curve algorithm.
+- **[cache](./cache/README.md)**: **Two-layer cache architecture**.
+    - *Architecture*: `L1:LRU` (exact SHA256) + `L2:Semantic` (vector cosine similarity).
 
-### 5. 基础设施 (脑干)
-*   **[core](./core/README.md)**: 统一的 LLM, Embedding, Reranker, Retrieval 接口。
-*   **[observability](./observability/README.md)**: 全栈 `logging`, `metrics` (Prometheus), `tracing` (OTEL)。
-*   **[configloader](./configloader/README.md)**: 具备回退机制的 YAML 配置加载器。
-*   **[timeout](./timeout/README.md)**: 集中式系统限制，防止“认知过载”。
+### 5. Infrastructure (Brainstem)
+- **[core](./core/README.md)**: Unified LLM, Embedding, Reranker, Retrieval interfaces.
+- **[retrieval](./core/retrieval/README.md)**: Adaptive retrieval with RRF fusion and quality assessment.
+- **[observability](./observability/README.md)**: Full-stack `logging`, `metrics` (Prometheus), `tracing` (OTEL).
+- **[configloader](./configloader/README.md)**: YAML config loader with fallback mechanism.
+- **[timeout](./timeout/README.md)**: Centralized system limits to prevent "cognitive overload".
 
-## 🔄 核心工作流
+## Core Workflows
 
-### W1: 用户查询处理
+### W1: User Query Processing
 ```mermaid
 sequenceDiagram
-    User->>Router: "查找关于 AI 的笔记"
-    Router->>Router: 分类 -> 意图: MEMO_QUERY
-    Router->>Agents: 路由(MEMO_QUERY) -> MemoParrot
-    
-    Agents->>Context: 构建上下文(历史 + RAG)
-    Context-->>Agents: 返回 Prompt
-    
-    Agents->>LLM: 对话补全 (Chat Completion)
-    LLM-->>Agents: 工具调用 (memo_search)
-    
-    Agents->>Tools: 执行 memo_search
-    Tools-->>Agents: 返回结果
-    
-    Agents->>LLM: 生成回答
-    Agents-->>User: 最终响应
+    User->>Router: "Find notes about AI"
+    Router->>Router: Classify -> Intent: MEMO_QUERY
+    Router->>Agents: Route(MEMO_QUERY) -> MemoParrot
+
+    Agents->>Context: Build context (history + RAG)
+    Context-->>Agents: Return Prompt
+
+    Agents->>LLM: Chat Completion
+    LLM-->>Agents: Tool Call (memo_search)
+
+    Agents->>Tools: Execute memo_search
+    Tools-->>Agents: Return results
+
+    Agents->>LLM: Generate response
+    Agents-->>User: Final response
 ```
 
-### W2: Memo 知识摄入
+### W2: Memo Knowledge Ingestion
 ```mermaid
 flowchart LR
-    Input[原始 Memo] --> Enrich[✨ 增强流水线]
-    
+    Input[Raw Memo] --> Enrich[Enrichment Pipeline]
+
     subgraph Parallel Processing
-        Enrich --> Tags[🏷️ 标签生成]
-        Enrich --> Title[📑 标题生成]
-        Enrich --> Summary[📝 摘要生成]
+        Enrich --> Tags[Tag Generation]
+        Enrich --> Title[Title Generation]
+        Enrich --> Summary[Summary Generation]
     end
-    
-    Tags & Title & Summary --> Save[💾 数据库保存]
-    
-    Save --> Embed[🔢 向量化 Embedding]
-    Save --> Graph[🕸️ 更新图谱]
-    Save --> Review[📅 安排复习]
+
+    Tags & Title & Summary --> Save[Database Save]
+
+    Save --> Embed[Vector Embedding]
+    Save --> Graph[Update Graph]
+    Save --> Review[Schedule Review]
 ```
 
-## 📂 目录结构映射
+## Directory Structure
 
 ```text
 ai/
-├── core/               # Layer 0: 基础能力 (LLM, Embed, Rerank)
-├── internal/           # Layer 0: 内部工具 (strutil)
-├── observability/      # Layer 0: 监控 (Logs, Metrics, Traces)
-├── configloader/       # Layer 0: 配置加载
-├── timeout/            # Layer 0: 系统限制
-├── cache/              # Layer 1: 语义缓存
-├── context/            # Layer 1: 上下文窗口管理
-├── services/           # Layer 2: 业务逻辑 (Schedule, Session)
-├── agents/             # Layer 3: 自主智能体 (Parrots)
-├── routing/            # Layer 3: 意图分类与路由
-├── aitime/             # Skill: 时间解析
-├── tags/               # Skill: 标签推荐
-├── summary/            # Skill: 摘要生成
-├── format/             # Skill: 格式化
-├── enrichment/         # Skill: 处理流水线
-├── duplicate/          # Skill: 去重与查重
-├── review/             # Skill: 间隔复习
-└── graph/              # Skill: 知识图谱
+├── core/               # Layer 0: Foundation (LLM, Embed, Rerank, Retrieval)
+│   ├── llm/            # LLM client with multi-provider support
+│   ├── embedding/      # Vectorization with chunking
+│   ├── reranker/       # Re-ranking for RAG
+│   └── retrieval/      # Adaptive retrieval strategies
+├── internal/           # Layer 0: Internal tools (strutil)
+├── observability/      # Layer 0: Monitoring (Logs, Metrics, Traces)
+├── configloader/       # Layer 0: Config loading
+├── timeout/            # Layer 0: System limits
+├── cache/              # Layer 1: Semantic cache
+├── context/            # Layer 1: Context window management
+├── services/           # Layer 2: Business logic (Schedule, Session)
+├── agents/             # Layer 3: Autonomous Agents (Parrots)
+├── routing/            # Layer 3: Intent classification & routing
+├── aitime/            # Skill: Time parsing
+├── tags/               # Skill: Tag recommendation
+├── summary/            # Skill: Summary generation
+├── format/             # Skill: Formatting
+├── enrichment/         # Skill: Processing pipeline
+├── duplicate/          # Skill: Deduplication
+├── review/             # Skill: Spaced repetition
+└── graph/              # Skill: Knowledge graph
+```
+
+## Key Interfaces
+
+### LLM Service
+```go
+type Service interface {
+    Chat(ctx context.Context, messages []Message) (string, *LLMCallStats, error)
+    ChatStream(ctx context.Context, messages []Message) (<-chan string, <-chan *LLMCallStats, <-chan error)
+    ChatWithTools(ctx context.Context, messages []Message, tools []ToolDescriptor) (*ChatResponse, *LLMCallStats, error)
+    Warmup(ctx context.Context)
+}
+```
+
+### Embedding Service
+```go
+type Service interface {
+    Embed(ctx context.Context, text string) ([]float32, error)
+    EmbedBatch(ctx context.Context, texts []string) ([][]float32, error)
+}
+```
+
+### Retrieval Service
+```go
+type AdaptiveRetriever interface {
+    Retrieve(ctx context.Context, opts *RetrievalOptions) ([]*SearchResult, error)
+}
 ```

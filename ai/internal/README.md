@@ -1,9 +1,20 @@
 # AI Internal Utilities (`ai/internal`)
 
-`internal` 包包含 AI 模块内部使用的通用工具函数和辅助代码。这些代码不作为公共 API 暴露给外部模块。
+The `internal` package contains common utility functions and auxiliary code used internally by the AI module. These codes are not exposed as public APIs to external modules.
 
 ## Subpackages
 
 ### `strutil`
-提供字符串处理工具，特别是针对多字节字符（如中文）的安全处理。
-*   **`Truncate(s string, maxLen int)`**: 安全地按字符数（Rune）截断字符串，防止切断多字节字符导致乱码或 panic。
+
+Provides string processing utilities, especially for safe handling of multi-byte characters (such as Chinese).
+
+- **`Truncate(s string, maxLen int)`**: Safely truncate string by character count (Rune), preventing cutting multi-byte characters causing garbled text or panic.
+
+## Usage Example
+
+```go
+import "github.com/hrygo/divinesense/ai/internal/strutil"
+
+// Safe truncation for CJK text
+truncated := strutil.Truncate("你好世界", 3) // Returns "你好..."
+```

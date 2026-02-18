@@ -1,10 +1,10 @@
 # AI Tag Suggester (`ai/tags`)
 
-`tags` 包实现了三层渐进式的标签推荐系统，旨在为用户提供准确且个性化的标签建议。
+The `tags` package implements a three-layer progressive tag recommendation system, providing users with accurate and personalized tag suggestions.
 
-## 架构设计
+## Architecture
 
-系统采用分层架构 (Layered Architecture)，每一层都作为独立的 `Layer` 接口实现，由 `TagSuggester` 统一编排。
+The system uses a layered architecture, where each layer is an independent `Layer` interface implementation, orchestrated by `TagSuggester`.
 
 ```mermaid
 classDiagram
@@ -16,57 +16,65 @@ classDiagram
         <<interface>>
         +Suggest(ctx, req)
     }
-    class Layer1_Stats {
+    class StatisticsLayer {
         +Suggest()
     }
-    class Layer2_Rules {
+    class RulesLayer {
         +Suggest()
     }
-    class Layer3_LLM {
+    class LLMLayer {
         +Suggest()
     }
-    
+
     TagSuggester o-- Layer : orchestrates
-    Layer <|.. Layer1_Stats
-    Layer <|.. Layer2_Rules
-    Layer <|.. Layer3_LLM
+    Layer <|.. StatisticsLayer
+    Layer <|.. RulesLayer
+    Layer <|.. LLMLayer
 ```
 
-## 推荐策略 (3-Layer System)
+## Recommendation Strategy (3-Layer System)
 
-### Layer 1: 统计推荐 (Statistics)
-*   **原理**: 基于用户历史标签的使用频率。
-*   **优势**: 速度极快 (~0ms)，符合用户习惯。
-*   **内容**: 返回用户最常用的 Top-N 标签。
+### Layer 1: Statistics (Statistics)
+- **Principle**: Based on user's historical tag usage frequency.
+- **Advantage**: Extremely fast (~0ms), follows user habits.
+- **Content**: Returns user's most frequently used Top-N tags.
 
-### Layer 2: 规则匹配 (Rule-based)
-*   **原理**: 简单的关键词匹配。例如，内容包含 "会议" -> 推荐 `#work`。
-*   **优势**: 低延迟，确定性强。
+### Layer 2: Rules (Rule-based)
+- **Principle**: Simple keyword matching. For example, content contains "会议" -> recommend `#work`.
+- **Advantage**: Low latency, deterministic.
 
-### Layer 3: 语义理解 (LLM/Semantic)
-*   **原理**: 使用 LLM 或 Embedding 理解笔记内容的深层语义，推荐新标签或相关标签。
-*   **优势**: 智能，能发现潜在关联。
-*   **触发**: 可选。通常在前两层结果不足时触发。
+### Layer 3: LLM (Semantic)
+- **Principle**: Use LLM or Embedding to understand deep semantics of note content, recommend new or related tags.
+- **Advantage**: Intelligent, can discover potential connections.
+- **Trigger**: Optional. Usually triggered when results from first two layers are insufficient.
 
-## 业务流程
+## Workflow
 
 ```mermaid
 flowchart TD
     Start[Suggest Request] --> L1[Layer 1: Get Frequent Tags]
     L1 --> Accumulate[Result Pool]
-    
+
     Start --> L2[Layer 2: Keyword Match]
     L2 --> Accumulate
-    
+
     Accumulate --> Check{Count >= MaxTags?}
     Check -- Yes --> Return[Return Suggestions]
     Check -- No --> L3{Use LLM?}
-    
+
     L3 -- Yes --> CallLLM[Layer 3: LLM Generation]
     CallLLM --> Accumulate
-    
+
     L3 -- No --> Return
-    
+
     Accumulate --> Dedup[Deduplicate & Score]
     Dedup --> Return
 ```
+
+## Merge and Ranking
+
+After collecting suggestions from all layers:
+
+1. **Deduplication**: Keep highest confidence for each tag (case-insensitive).
+2. **Sorting**: Sort by confidence descending.
+3. **Limiting**: Return up to `MaxTags` (default 5, max 10).

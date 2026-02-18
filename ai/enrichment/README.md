@@ -1,10 +1,10 @@
 # AI Enrichment Pipeline (`ai/enrichment`)
 
-`enrichment` 包实现了一个可扩展的内容增强管线 (Pipeline)，用于在 Memo 保存前后自动提取元数据。
+The `enrichment` package implements an extensible content enrichment pipeline for automatically extracting metadata before/after Memo saving.
 
-## 架构设计
+## Architecture
 
-采用 **Pipeline Pattern** 和 **并发执行模型**。
+Uses **Pipeline Pattern** and **Concurrent Execution Model**.
 
 ```mermaid
 classDiagram
@@ -28,27 +28,27 @@ classDiagram
     class TagsEnricher {
         +Enrich()
     }
-    
+
     Enricher <|.. TitleEnricher
     Enricher <|.. SummaryEnricher
     Enricher <|.. TagsEnricher
     Pipeline o-- Enricher : manages
 ```
 
-*   **`Enricher` 接口**: 定义了单一增强能力的规范，包含 `Type` (类型), `Phase` (阶段), `Enrich` (逻辑)。
-*   **`Pipeline`**: 负责编排多个 Enricher。
-    *   **并行执行**: 使用 Goroutine + WaitGroup 并发执行所有独立的增强任务，由 `context.WithTimeout` 控制整体超时。
-    *   **阶段分离**: 支持 `PreSave` (存前阻塞) 和 `PostSave` (存后异步) 两种模式。
+- **`Enricher` Interface**: Defines single enrichment capability, including `Type` (type), `Phase` (phase), `Enrich` (logic).
+- **`Pipeline`**: Responsible for orchestrating multiple Enrichers.
+  - **Parallel Execution**: Uses Goroutine + WaitGroup to concurrently execute all independent enrichment tasks, controlled by `context.WithTimeout`.
+  - **Phase Separation**: Supports `PreSave` (blocking before save) and `PostSave` (async after save) modes.
 
-## 算法与能力
+## Enrichment Types
 
-当前内置的 Enricher 包括：
+Currently built-in Enrichers include:
 
-1.  **Title Enricher**: 自动生成简短、概括性的标题。
-2.  **Summary Enricher**: 生成一句话摘要。
-3.  **Tags Enricher**: 基于内容自动推荐标签 (Taxonomy)。
+1. **Title Enricher**: Automatically generate short, concise titles.
+2. **Summary Enricher**: Generate one-sentence summary.
+3. **Tags Enricher**: Automatically recommend tags based on content.
 
-## 业务流程
+## Workflow
 
 ```mermaid
 sequenceDiagram
@@ -58,9 +58,9 @@ sequenceDiagram
     participant EnricherA
     participant EnricherB
     participant DB
-    
+
     User->>Server: Save Memo
-    
+
     rect rgb(200, 255, 200)
     Note right of Server: Pre-save Phase (Optional)
     Server->>Pipeline: Enrich(PreSave)
@@ -68,10 +68,10 @@ sequenceDiagram
     EnricherA-->>Pipeline: Result
     Pipeline-->>Server: Merged Content
     end
-    
+
     Server->>DB: Insert Memo
     Server-->>User: 200 OK
-    
+
     rect rgb(200, 200, 255)
     Note right of Server: Post-save Phase (Async)
     Server->>Pipeline: EnrichPostSave(Async)
@@ -86,10 +86,22 @@ sequenceDiagram
     end
 ```
 
-1.  **用户保存 Memo**。
-2.  **Pre-save (可选)**: 执行格式化等需要即时反馈的任务。
-3.  **Post-save (异步)**:
-    *   触发 `Pipeline.EnrichPostSave`。
-    *   并行调用 Title, Summary, Tags 生成器。
-    *   LLM 分析内容并返回结果。
-    *   结果存入数据库，通过 WebSocket 推送给前端更新 UI。
+1. **User saves Memo**.
+2. **Pre-save (Optional)**: Execute tasks that need immediate feedback like formatting.
+3. **Post-save (Async)**:
+   - Trigger `Pipeline.EnrichPostSave`.
+   - Parallel call Title, Summary, Tags generators.
+   - LLM analyzes content and returns results.
+   - Store results in database, push to frontend via WebSocket to update UI.
+
+## Pipeline Methods
+
+| Method | Description |
+| :----- | :---------- |
+| `EnrichAll` | Execute all enrichers in parallel (both Pre and Post) |
+| `EnrichPostSave` | Execute only Post-save phase enrichers |
+| `EnrichOne` | Execute single enrichment type |
+
+## Timeout
+
+Default pipeline timeout: 30 seconds.

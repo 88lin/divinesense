@@ -8,56 +8,91 @@
 classDiagram
     class ContextBuilder {
         <<interface>>
-        +Build(ctx, req)
+        +Build(ctx, req) *ContextResult
+        +BuildHistory(ctx, req) []string
+        +GetStats() *ContextStats
     }
-    class IncrementalBuilder {
-        -baseBuilder Service
-        -deltaBuilder DeltaBuilder
-        +BuildIncremental()
+    class Service {
+        -shortTerm *ShortTermExtractor
+        -longTerm *LongTermExtractor
+        -ranker *PriorityRanker
+        -allocator *BudgetAllocator
+        +Build()
+        +BuildHistory()
     }
     class BudgetAllocator {
-        +Allocate(total, hasRetrieval)
-        +AllocateForAgent(total, type)
+        +AllocateForAgentWithHistory(total, hasRetrieval, agentType, historyLength)
     }
-    class EpisodicProvider {
-        <<interface>>
-        +SearchEpisodes()
+    class ShortTermExtractor {
+        +Extract(ctx, provider, sessionID) []Message
     }
-    
+    class LongTermExtractor {
+        +Extract(ctx, provider, prefProvider, userID, query) *LongTermContext
+    }
+    class PriorityRanker {
+        +RankAndTruncate(segments, budget) []*ContextSegment
+    }
+
     ContextBuilder <|.. Service : implements
     Service --> BudgetAllocator : uses
-    Service --> EpisodicProvider : uses
-    IncrementalBuilder --> Service : decorates
-    IncrementalBuilder --> DeltaBuilder : uses
+    Service --> ShortTermExtractor : uses
+    Service --> LongTermExtractor : uses
+    Service --> PriorityRanker : uses
 ```
 
-该包包含以下核心模块：
+## 核心模块
 
-1.  **`BudgetAllocator` (预算分配器)**: 负责根据 Agent 类型和配置，计算各类信息（系统提示词、短期记忆、长期记忆、检索内容）的 Token 配额。
-2.  **`ContextBuilder` (上下文构建器)**: 编排整个构建流程，从不同源（Memory, RAG, User Profile）拉取数据并组装。
-3.  **`DeltaBuilder` (增量构建器)**: 实现高效的上下文更新策略，计算前后两次请求的差异，支持 System Prompt Caching。
-4.  **`EpisodicProvider` (情景记忆提供者)**: 基于向量搜索的长短期记忆检索接口。
+### 1. ContextBuilder 接口
+
+```go
+type ContextBuilder interface {
+    Build(ctx context.Context, req *ContextRequest) (*ContextResult, error)
+    BuildHistory(ctx context.Context, req *ContextRequest) ([]string, error)
+    GetStats() *ContextStats
+}
+```
+
+### 2. Service 实现
+
+组合多个提取器和分配器，提供完整的上下文构建能力：
+
+- **ShortTermExtractor**: 提取近期对话历史
+- **LongTermExtractor**: 提取情景记忆和用户偏好
+- **PriorityRanker**: 基于优先级裁剪内容以适应预算
+- **BudgetAllocator**: 动态 Token 预算分配
+
+### 3. Provider 接口
+
+- **MessageProvider**: 对话消息提供者
+- **EpisodicProvider**: 情景记忆检索接口
+- **PreferenceProvider**: 用户偏好提供者
+- **CacheProvider**: 上下文缓存（可选）
 
 ## 算法设计
 
 ### 1. 动态 Token 预算分配
-根据 `TokenBudget` 结构进行分配。
-*   **基础分配**: 预留 System Prompt 和 User Preferences。
-*   **剩余分配**: 根据是否有检索结果 (RAG)，动态调整 Short-term Memory (STM) 和 Long-term Memory (LTM) 的比例。
-    *   *有 RAG*: 侧重 RAG 内容 (45%)，减少 STM (40%)。
-    *   *无 RAG*: 侧重 STM (55%)。
-*   **长对话自适应**: 当对话轮数超过阈值 (`HistoryLengthThreshold=20`)，自动压缩 STM 的比例，增加 LTM 配额，以应对超长上下文产生的“遗忘”问题。
 
-### 2. 增量上下文更新 (Incremental Update)
-为了配合支持 Context Caching 的 LLM (如 DeepSeek, Claude)，实现了多种更新策略：
-*   **`ComputeDelta`**: 计算并仅发送变化的部分（如新增的 Retrieval Items, 新的 Query）。
-*   **`AppendOnly`**: 仅追加新消息，复用之前的 System Prompt 前缀 Hash。
-*   **`UpdateConversationOnly`**: 当 System Prompt 未变时，仅更新对话列表部分。
-*   通过 SHA256 Hash 比对 System Prompt、User Prefs 等静态区块，决定使用哪种策略。
+根据 `TokenBudget` 结构进行分配：
+
+- **基础分配**: 预留 System Prompt
+- **对话历史分配**: 根据对话轮数动态调整
+  - 短对话 (< 20 轮): 侧重短期记忆 (STM 55%)
+  - 长对话 (>= 20 轮): 自动压缩 STM，增加情景记忆配额
+- **RAG 调整**: 有检索结果时，侧重检索内容 (45%)，减少 STM (40%)
+
+### 2. 优先级裁剪
+
+按优先级从低到高裁剪内容：
+
+```
+PrioritySystem > PriorityRecentTurns > PriorityRetrieval >
+PriorityEpisodic > PriorityOlderTurns > PriorityPreferences
+```
 
 ### 3. 多级记忆检索
-*   **短期记忆**: 也就是最近的 N 轮对话历史。
-*   **长期记忆 (Episodic)**: 使用向量相似度 (Embedding + Vector Search) 从历史 Memo 或 Episode 中检索与当前 Query 相关的片段。
+
+- **短期记忆**: 最近 N 轮对话历史（可配置，默认 10 轮）
+- **长期记忆 (Episodic)**: 向量相似度搜索历史 Memo
 
 ## 业务流程
 
@@ -66,34 +101,88 @@ sequenceDiagram
     participant User
     participant Handler
     participant ContextBuilder
-    participant Budget
-    participant Store
-    
+    participant Allocator
+    participant Providers
+
     User->>Handler: Send Message
     Handler->>ContextBuilder: Build(Request)
-    ContextBuilder->>Budget: Allocate()
-    Budget-->>ContextBuilder: TokenBudget
-    
+    ContextBuilder->>Allocator: Allocate(budget, history)
+    Allocator-->>ContextBuilder: TokenBudget
+
     par Parallel Fetch
-        ContextBuilder->>Store: Get History (STM)
-        ContextBuilder->>Store: Vector Search (LTM/RAG)
-        ContextBuilder->>Store: Get User Profile
+        ContextBuilder->>Providers: Get History (STM)
+        ContextBuilder->>Providers: Vector Search (LTM)
+        ContextBuilder->>Providers: Get Preferences
     end
-    
-    ContextBuilder->>ContextBuilder: Prune & Assemble
+
+    ContextBuilder->>ContextBuilder: Rank & Truncate
     ContextBuilder-->>Handler: ContextResult (Prompt)
 ```
 
-1.  **请求接入**: 接收 `ContextRequest`，包含 SessionID, Query, UserID 等。
-2.  **预算计算**: `BudgetAllocator` 计算当前请求的 Token 分布。
-3.  **策略选择**: `DeltaBuilder` 检查是否有可复用的上一轮 Snapshot，选择更新策略。
-4.  **内容组装**:
-    *   获取 System Prompt (可能包含 Template 渲染)。
-    *   获取 User Preferences (时区、语言风格)。
-    *   获取短期对话历史 (Pruning 到预算范围内)。
-    *   执行 RAG / Episodic Search 获取相关背景信息。
-5.  **输出生成**: 返回 `ContextResult`，包含最终拼接好的 Prompt 字符串和各部分 Token 统计。
+1. **请求接入**: 接收 `ContextRequest`，包含 SessionID, Query, UserID 等
+2. **预算计算**: 根据 Agent 类型和对话历史长度动态计算 Token 分布
+3. **并行拉取**: 同时获取短期记忆、长期记忆、用户偏好
+4. **优先级裁剪**: 按优先级排序并裁剪到预算范围内
+5. **结果组装**: 返回 `ContextResult`，包含各部分内容和 Token 统计
 
-## 依赖
-*   `ai/core/embedding`: 用于向量化。
-*   `store`: 用于向量存储访问。
+## ContextResult 结构
+
+```go
+type ContextResult struct {
+    TokenBreakdown      *TokenBreakdown
+    SystemPrompt        string
+    ConversationContext string
+    RetrievalContext    string
+    UserPreferences     string
+    TotalTokens         int
+    BuildTime           time.Duration
+}
+```
+
+## 配置
+
+```go
+type Config struct {
+    MaxTurns    int           // 最大对话轮数 (default: 10)
+    MaxEpisodes int           // 最大情景记忆数 (default: 3)
+    MaxTokens   int           // 默认最大 token 数 (default: 4096)
+    CacheTTL    time.Duration // 缓存 TTL (default: 5 minutes)
+}
+```
+
+## 目录结构
+
+```
+ai/context/
+├── builder.go            # ContextBuilder 接口
+├── builder_impl.go       # Service 实现
+├── budget.go            # 预算分配器
+├── budget_profiles.go   # 预算配置文件
+├── short_term.go        # 短期记忆提取
+├── long_term.go         # 长期记忆提取
+├── priority.go          # 优先级排序
+├── episodic_provider.go # 情景记忆接口
+├── provider.go          # Provider 接口定义
+├── store_adapter.go     # 存储适配器
+├── delta.go            # 增量更新 (保留)
+└── container.go        # 上下文容器
+```
+
+## 使用示例
+
+```go
+service := context.NewService(cfg).
+    WithMessageProvider(msgProvider).
+    WithEpisodicProvider(episodicProvider).
+    WithPreferenceProvider(prefProvider)
+
+req := &ContextRequest{
+    SessionID:     "session-123",
+    CurrentQuery: "帮我找一下上周的会议记录",
+    AgentType:    "memo",
+    UserID:       1,
+    MaxTokens:    4096,
+}
+
+result, err := service.Build(ctx, req)
+```

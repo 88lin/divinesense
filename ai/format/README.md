@@ -1,8 +1,8 @@
 # AI Formatter (`ai/format`)
 
-`format` 包提供智能文本格式化服务，能够将用户随意的输入转换为结构清晰的标准 Markdown。
+The `format` package provides intelligent text formatting service, converting user casual input into structured standard Markdown.
 
-## 架构设计
+## Architecture
 
 ```mermaid
 classDiagram
@@ -10,45 +10,70 @@ classDiagram
         <<interface>>
         +Format(ctx, req)
     }
-    class LLMFormatter {
-        -llm LLMService
+    class llmFormatter {
+        -llm Service
         -timeout Duration
         +Format()
         -isWellFormatted(content) bool
     }
-    
-    Formatter <|.. LLMFormatter : implements
+
+    Formatter <|.. llmFormatter : implements
 ```
 
-*   **`Formatter` 接口**: 定义格式化能力。
-*   **`llmFormatter`**: 基于 LLM 的实现。
-*   **Heuristic Check (启发式检查)**: 在调用昂贵的 LLM 之前，先通过规则判断内容是否已经是良好的 Markdown，避免浪费 Token。
+- **`Formatter` Interface**: Defines formatting capability.
+- **`llmFormatter`**: LLM-based implementation.
+- **Heuristic Check**: Before calling expensive LLM, first check if content is already well-formatted Markdown using rules to avoid wasting tokens.
 
-## 算法流程
+## Algorithm Flow
 
 ```mermaid
 flowchart TD
-    Start[输入文本] --> Check{isWellFormatted?}
-    Check -- Yes --> ReturnPass[返回原文本 (Passthrough)]
-    Check -- No --> BuildPrompt[构造 Prompt]
-    BuildPrompt --> CallLLM[调用 LLM]
-    CallLLM -- Success --> Clean[代码块清洗]
+    Start[Input Text] --> Short{Short Text?}
+    Short -- Yes (<50 chars) --> Check{isWellFormatted?}
+    Short -- No --> Check
+
+    Check -- Yes --> ReturnPass[Return Original Text (Passthrough)]
+    Check -- No --> BuildPrompt[Build Prompt]
+    BuildPrompt --> CallLLM[Call LLM]
+    CallLLM -- Success --> Clean[Clean Code Block]
     CallLLM -- Fail --> ReturnPass
-    Clean --> ReturnFormat[返回格式化文本]
+    Clean --> ReturnFormat[Return Formatted Text]
 ```
 
-1.  **接收输入**: 用户输入的纯文本。
-2.  **预检查 (`isWellFormatted`)**:
-    *   检查文本长度。
-    *   统计 Markdown 特征字符（`#`, `- `, `* `, `1. `）的密度。
-    *   如果判断已经格式良好，直接返回原文本 (`Source: passthrough`)。
-3.  **LLM 格式化**:
-    *   如果预检查不通过，构造 Prompt："请将以下内容整理为标准 Markdown 格式..."。
-    *   调用 LLM 生成。
-4.  **后处理**:
-    *   去除 LLM 可能包裹的 \`\`\`markdown 代码块标记。
-    *   返回清洗后的 Markdown 文本。
+1. **Receive Input**: Plain text from user.
+2. **Pre-check (`isWellFormatted`)**:
+   - Check text length (< 50 chars returns false).
+   - Count Markdown feature characters (`#`, `- `, `* `, `1. `) density.
+   - If at least 2 Markdown markers found, consider already well-formatted, return original text (`Source: passthrough`).
+3. **LLM Formatting**:
+   - If pre-check fails, build prompt: "请将以下内容整理为标准 Markdown 格式...".
+   - Call LLM to generate.
+4. **Post-processing**:
+   - Remove `\`\`\`markdown` code block markers that LLM might wrap around.
+   - Return cleaned Markdown text.
 
-## 业务场景
+## Configuration
 
-主要用于 Memo 输入框的 "一键美化" 功能，帮助用户快速整理凌乱的会议记录或想法。
+| Config | Default | Description |
+| :----- | :------ | :---------- |
+| `Timeout` | 10s | LLM call timeout |
+
+## System Prompt
+
+```
+你是一个笔记格式化助手。将用户随意输入的内容整理为结构清晰的 Markdown 格式。
+
+规则：
+1. 保持原文含义完全不变，不添加、不删除任何信息
+2. 合理使用 Markdown 标记：标题(#)、列表(-)、加粗(**)、代码块(''')
+3. 如果内容包含多个主题，使用标题分隔
+4. 如果内容是清单/列表形式，转为 Markdown 列表
+5. 如果内容已经格式良好，原样返回
+6. 不要添加额外的标题或总结
+7. 直接返回格式化后的 Markdown，不要包裹在 JSON 或代码块中
+8. 如果原文是英文，使用英文标点；如果是中文，使用中文标点
+```
+
+## Use Case
+
+Mainly used for "One-click Beautify" feature in Memo input box, helping users quickly organize messy meeting notes or ideas.

@@ -1,24 +1,35 @@
 # AI Timeout Constants (`ai/timeout`)
 
-`timeout` 包集中管理 AI 模块所有的超时常量配置，确保系统在面对外部调用（如 LLM API）时的健壮性。
+The `timeout` package centrally manages all timeout constant configurations for AI modules, ensuring system robustness when facing external calls (such as LLM APIs).
 
-## 核心常量
+## Core Constants
 
 ### Agent Execution
-*   `AgentTimeout` / `AgentExecutionTimeout`: **2 分钟**。整个 Agent 处理流程（思考+工具调用）的最大时长。
-*   `MaxIterations`: **5 次**。ReAct 循环的最大思考轮数，防止死循环。
+| Constant | Default | Description |
+| :-------- | :------ | :---------- |
+| `AgentTimeout` | 2 min | Maximum duration for entire Agent processing (thinking + tool calls) |
+| `AgentExecutionTimeout` | 2 min | Alias for AgentTimeout (backward compatibility) |
+| `MaxIterations` | 5 | Maximum ReAct loop iterations, prevents infinite loops |
+| `MaxToolIterations` | 5 | Alias for MaxIterations |
 
 ### LLM & Tools
-*   `StreamTimeout`: **5 分钟**。流式响应的最大保持时间。
-*   `ToolExecutionTimeout`: **30 秒**。单个工具调用的超时限制。
-*   `EmbeddingTimeout`: **30 秒**。向量生成的超时限制。
+| Constant | Default | Description |
+| :-------- | :------ | :---------- |
+| `StreamTimeout` | 5 min | Maximum hold time for streaming responses |
+| `ToolExecutionTimeout` | 30 s | Timeout for single tool execution |
+| `EmbeddingTimeout` | 30 s | Timeout for vector generation |
 
 ### Fault Tolerance
-*   `MaxToolFailures`: **3 次**。允许工具连续失败的最大次数，超过则中断任务。
-*   `MaxRecentToolCalls`: **10**。循环检测窗口大小。
+| Constant | Default | Description |
+| :-------- | :------ | :---------- |
+| `MaxToolFailures` | 3 | Maximum consecutive failures before aborting |
+| `MaxRecentToolCalls` | 10 | Number of recent tool calls to track for loop detection |
+| `MaxTruncateLength` | 200 | Maximum length for truncating strings in logs |
 
-## 使用建议
-直接导入该包使用常量，而非在代码中硬编码数字，以便于统一调整系统策略。
+## Usage
+
+Import this package directly to use constants instead of hardcoding numbers, facilitating unified system strategy adjustment.
+
 ```go
 ctx, cancel := context.WithTimeout(parentCtx, timeout.AgentTimeout)
 defer cancel()
