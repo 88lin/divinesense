@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <a href="https://github.com/hrygo/divinesense/releases"><img src="https://img.shields.io/badge/version-v0.99.0-green.svg" alt="Version"></a>
+  <a href="https://github.com/hrygo/divinesense/releases"><img src="https://img.shields.io/badge/version-v0.100.1-green.svg" alt="Version"></a>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8.svg" alt="Go"></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18-61DAFB.svg" alt="React"></a>
 </p>
@@ -43,10 +43,13 @@
 
 ### 专家代理 (Expert Agents)
 
-| 代理 | 名称 | 核心能力 |
-| :--- | :--- | :--- |
-| **MemoParrot** | 灰灰 | 语义搜索笔记，智能标签建议 |
-| **ScheduleParrot** | 时巧 | 自然语言创建日程，冲突检测 |
+| 代理 | 名称 | 核心能力 | 实现方式 |
+| :--- | :--- | :--- | :--- |
+| **MemoParrot** | 灰灰 | 语义搜索笔记，智能标签建议 | UniversalParrot + memo.yaml |
+| **ScheduleParrot** | 时巧 | 自然语言创建日程，冲突检测 | UniversalParrot + schedule.yaml |
+| **GeneralParrot** | 通才 | 通用任务，直接响应 | UniversalParrot + general.yaml |
+
+> **架构**: 所有领域代理基于 **UniversalParrot** 配置驱动实现，通过 YAML 配置定义行为
 
 ### 外部执行器 (External Executors)
 
@@ -57,7 +60,7 @@
 
 > **Note**: AmazingParrot 已被 Orchestrator 替代，其职责由 Orchestrator 动态协调 Expert Agents 完成。
 
-**智能路由**：Cache → Rule 高效匹配，低置信度请求自动转 Orchestrator
+**智能路由 (两层)**：Cache (LRU) → Rule Matcher (配置驱动)，置信度阈值 0.8
 
 ### 搜索与检索
 
@@ -149,7 +152,7 @@ docker run -d --name divinesense \
 2. **使用 80 端口**：需配置 `AmbientCapabilities=CAP_NET_BIND_SERVICE`
 3. **Nginx 反向代理**：可选，用于域名绑定
 
-详见：[部署指南](docs/deployment/BINARY_DEPLOYMENT.md)
+详见：[部署指南](docs/dev-guides/deployment/BINARY_DEPLOYMENT.md)
 
 ### 本地开发
 
@@ -180,7 +183,7 @@ make deps-all && make start
 - **Unified Block Model**：AI 聊天对话持久化，支持流式渲染和会话恢复
 - **智能缓存层**：LRU 缓存 + DeepSeek 上下文缓存，响应延迟 <1ms
 
-**详细架构**：[系统架构文档](docs/dev-guides/ARCHITECTURE.md)
+**详细架构**：[系统架构文档](docs/architecture/overview.md)
 
 ---
 
@@ -206,14 +209,14 @@ make deps-all && make start
 
 ## 开发文档
 
-| 文档                                            | 说明                             |
-| :---------------------------------------------- | :------------------------------- |
-| [系统架构](docs/dev-guides/ARCHITECTURE.md)     | AI 代理、数据流、项目结构        |
-| [后端开发](docs/dev-guides/BACKEND_DB.md)       | API、数据库、环境配置            |
-| [前端开发](docs/dev-guides/FRONTEND.md)         | 布局、组件、Tailwind 4           |
-| [Chat Apps 指南](docs/user-guides/CHAT_APPS.md) | Telegram/钉钉机器人接入          |
-| [Git 工作流](.claude/rules/git-workflow.md)     | 分支管理、PR 规范                |
-| [贡献指南](CONTRIBUTING.md)                     | **入门必读**：环境搭建、开发规范 |
+| 文档                                                 | 说明                             |
+| :--------------------------------------------------- | :------------------------------- |
+| [系统架构](docs/architecture/overview.md)           | AI 代理、数据流、项目结构        |
+| [后端开发](docs/dev-guides/backend/database.md)      | API、数据库、环境配置            |
+| [前端开发](docs/dev-guides/frontend/overview.md)    | 布局、组件、Tailwind 4          |
+| [Chat Apps 指南](docs/dev-guides/user-manuals/chat-apps.md) | Telegram/钉钉机器人接入  |
+| [Git 工作流](.claude/rules/git-workflow.md)         | 分支管理、PR 规范                |
+| [贡献指南](CONTRIBUTING.md)                         | **入门必读**：环境搭建、开发规范 |
 
 ---
 

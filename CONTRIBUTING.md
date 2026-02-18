@@ -80,21 +80,25 @@ divinesense/
 ## Architecture
 
 ```
-User Input → Orchestrator → Task Decomposition → Expert Agents → Aggregation
+User Input → ChatRouter
                  ↓
-         Cache → Rule → History → LLM (~400ms)
+         ├─> Cache (LRU)
+         ├─> Rule Matcher (config-driven)
+         │     └─> confidence < 0.8 ? → Orchestrator
+         └─> UniversalParrot (config-driven Agent)
 ```
 
-| Component    | File                                     | Purpose            |
-| :----------- | :--------------------------------------- | :----------------- |
-| Orchestrator | `ai/agents/orchestrator/orchestrator.go` | Main coordinator   |
-| Decomposer   | `ai/agents/orchestrator/decomposer.go`   | DAG task breakdown |
-| Executor     | `ai/agents/orchestrator/executor.go`     | Parallel execution |
-| Aggregator   | `ai/agents/orchestrator/aggregator.go`   | Result merging     |
+| Component       | File                                     | Purpose                |
+| :-------------- | :--------------------------------------- | :-------------------- |
+| ChatRouter      | `ai/agents/chat_router.go`               | Request routing       |
+| FastRouter      | `ai/routing/service.go`                  | Two-layer routing     |
+| Orchestrator    | `ai/agents/orchestrator/orchestrator.go` | Task decomposition    |
+| UniversalParrot | `ai/agents/universal/parrot.go`          | Config-driven Agent   |
 
-**Expert Agents** (config-driven):
-- MemoParrot (memo search)
-- ScheduleParrot (calendar)
+**Expert Agents** (config-driven via UniversalParrot):
+- MemoParrot (memo search) → memo.yaml
+- ScheduleParrot (calendar) → schedule.yaml
+- GeneralParrot (general tasks) → general.yaml
 
 ---
 
