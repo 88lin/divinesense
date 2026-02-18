@@ -102,10 +102,13 @@
 ```
 
 ### 专家代理 (Expert Agents)
-| 代理                  | 角色     |
-| :-------------------- | :------- |
-| MemoParrot (灰灰)     | 笔记搜索 |
-| ScheduleParrot (时巧) | 日程管理 |
+| 代理                  | 角色     | 实现方式 |
+| :-------------------- | :------- | :------- |
+| MemoParrot (灰灰)     | 笔记搜索 | UniversalParrot + memo.yaml |
+| ScheduleParrot (时巧) | 日程管理 | UniversalParrot + schedule.yaml |
+| GeneralParrot (通才)  | 通用任务 | UniversalParrot + general.yaml |
+
+> **架构**: 所有领域代理基于 **UniversalParrot** 配置驱动实现，通过 YAML 配置定义行为
 
 ### 外部执行器 (External Executors)
 | 代理                   | 角色            |
@@ -115,24 +118,29 @@
 
 > **注意**: AmazingParrot 已被 Orchestrator 替代，其职责由 Orchestrator 动态协调 Expert Agents 完成。
 
-### 路由与编排
+### 路由与编排 (两层: Cache → Rule)
 ```
-用户输入 → ChatRouter → [高置信度] → 直接响应
+用户输入 → ChatRouter
                 ↓
-         [低置信度/多意图]
-                ↓
-         Orchestrator → Task Decomposition → Expert Agents → Aggregation
+         ├─> 短确认词? → 复用上次路由 (session_sticky)
+         ├─> FastRouter.ClassifyIntent()
+         │     ├─> L0: Cache (LRU)
+         │     └─> L1: Rule Matcher (配置驱动)
+         │           └─> confidence < 0.8 ? → Orchestrator
+         └─> 直接路由到 UniversalParrot
 ```
 
-> **简化**: 路由层 LLM 已移除，低置信度请求直接转 Orchestrator
+> **简化**: 路由层 LLM 已移除，改为配置驱动规则匹配 + 置信度阈值
 
 ### 核心概念
 - **Orchestrator**: LLM 驱动的任务分解与协调器
-- **Expert Agent**: 领域专家代理（Memo, Schedule）
+- **UniversalParrot**: 配置驱动的通用 Agent 引擎（替代独立 Parrot 实现）
+- **Expert Agent**: 领域专家代理（基于 UniversalParrot + YAML 配置）
 - **Block**: 用户-AI 交互轮次
 - **Task Plan**: 结构化任务计划，支持透明性展示
 - **Context Engineering**: 长期记忆检索（episodic memory），MemoParrot 已启用
 - **CCRunner**: 统一的 Claude Code 执行器，Geek/Evolution 模式共享
+- **FastRouter**: 两层路由（Cache + Rule Matcher），配置驱动规则
 
 ---
 

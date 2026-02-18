@@ -1,6 +1,6 @@
 # 后端与数据库指南
 
-> **保鲜状态**: ✅ 已更新 (2026-02-12) | **最后检查**: v0.99.0 (Orchestrator-Workers)
+> **保鲜状态**: ✅ 已更新 (2026-02-18) | **最后检查**: v0.100.1 (UniversalParrot)
 
 ## 数据库支持策略
 
@@ -230,10 +230,13 @@ DIVINESENSE_AI_RERANK_MODEL=BAAI/bge-reranker-v2-m3
 
 所有 AI 聊天逻辑通过 `ai/agents/` 中的 `ChatRouter` 路由：
 
-| 代理               | 配置文件                       | 用途           | 工具                                                                  |
-| :----------------- | :----------------------------- | :------------- | :-------------------------------------------------------------------- |
-| **MemoParrot**     | `config/parrots/memo.yaml`     | 笔记搜索和检索 | `memo_search`                                                         |
-| **ScheduleParrot** | `config/parrots/schedule.yaml` | 日程管理       | `schedule_add`、`schedule_query`、`schedule_update`、`find_free_time` |
+| 代理                | 配置文件                        | 用途           | 工具                                                                   |
+| :------------------ | :------------------------------ | :------------- | :--------------------------------------------------------------------- |
+| **MemoParrot**      | `config/parrots/memo.yaml`      | 笔记搜索和检索 | `memo_search`                                                          |
+| **ScheduleParrot**  | `config/parrots/schedule.yaml`  | 日程管理       | `schedule_add`、`schedule_query`、`schedule_update`、`find_free_time` |
+| **GeneralParrot**   | `config/parrots/general.yaml`  | 通用任务       | 路由决定的领域工具                                                     |
+
+> **架构**: 所有领域代理基于 **UniversalParrot** 配置驱动实现，通过 YAML 配置定义行为。
 
 > **Note**: AmazingParrot 已被 Orchestrator 替代。当用户请求涉及多领域时，Orchestrator 动态协调 Memo 和 Schedule Agents 并行处理。
 
@@ -241,17 +244,22 @@ DIVINESENSE_AI_RERANK_MODEL=BAAI/bge-reranker-v2-m3
 
 **聊天路由流程**（`ai/routing/service.go`）：
 ```
-输入 → Cache（0ms）→ 规则匹配（0ms）→ 历史感知（~10ms）→ LLM 分类（~400ms）
-       ↓                ↓                  ↓                    ↓
-    缓存命中        关键词            对话上下文           语义理解
+输入 → ChatRouter
+       ↓
+├─> 短确认词? → 复用上次路由 (session_sticky)
+├─> FastRouter.ClassifyIntent()
+│     ├─> L0: Cache (LRU, 0ms)
+│     └─> L1: Rule Matcher (配置驱动)
+│           └─> confidence < 0.8 ? → Orchestrator
+└─> 直接路由到 UniversalParrot
 ```
 
-**三层 FastRouter 系统（v0.99.0）**：
+**两层 FastRouter 系统（v0.100.0）**：
 - Layer 0: Cache (LRU, 0ms) - 缓存命中直接返回
-- Layer 1: RuleMatcher (关键词匹配, 0ms) - 快速路径
-- Layer 2: HistoryMatcher (对话历史, ~10ms) - 上下文感知
+- Layer 1: RuleMatcher (配置驱动规则, 0ms) - 置信度阈值 0.8
 
-> 复杂请求会转发给 Orchestrator 进行动态任务分解和协调。
+> **简化**: 路由层 LLM 已移除，改为配置驱动规则匹配 + 置信度阈值
+> 低置信度请求（< 0.8）会转发给 Orchestrator 进行动态任务分解和协调。
 
 ### 查询引擎
 
@@ -532,8 +540,8 @@ CREATE UNIQUE INDEX idx_chat_app_credential_unique ON chat_app_credential(creato
 | `server/service/`           | 业务逻辑层                                          |
 | `ai/core/retrieval/`        | 混合搜索（BM25 + 向量）                             |
 | `server/queryengine/`       | 查询分析和路由                                      |
-| `ai/agents/`                | AI 代理（MemoParrot、ScheduleParrot、Orchestrator） |
-| `ai/routing/`               | 三层意图路由                                        |
+| `ai/agents/`                | AI 代理（UniversalParrot 配置驱动 + Orchestrator） |
+| `ai/routing/`               | 两层路由（Cache + Rule Matcher）                   |
 | `ai/vector/`                | Embedding 服务                                      |
 | `plugin/chat_apps/`         | 聊天应用接入（Telegram/钉钉/WhatsApp）              |
 | `store/`                    | 数据访问层接口                                      |

@@ -1,6 +1,6 @@
 # AI Chat 界面架构
 
-> **保鲜状态**: ✅ 已验证 (2026-02-12) | **最后检查**: v0.99.0 (Orchestrator-Workers)
+> **保鲜状态**: ✅ 已验证 (2026-02-18) | **最后检查**: v0.100.1 (Orchestrator-Workers)
 > **关联规格**: [Unified Block Model](../specs/block-design/unified-block-model.md) | [P1-A006](../specs/block-design/P1-A006-llm-stats-collection.md)
 
 ## 概述
@@ -12,6 +12,12 @@ AI Chat 界面采用 **Unified Block Model（统一块模型）** 设计，将�
 - **Orchestrator-Workers 架构**: 替代 AmazingParrot，支持多代理协作
 - **任务透明性**: 向用户展示任务分解和执行过程
 - **DAG 依赖支持**: 任务可以声明依赖关系
+
+## v0.100.0 更新内容
+
+- **UniversalParrot 配置驱动**: 所有领域代理统一为配置驱动实现
+- **FastRouter 两层路由**: Cache (LRU) + Rule Matcher (配置驱动)
+- **DirectResponse 模式**: 通用任务直接响应，无需多代理协作
 
 ## v0.97.0 更新内容
 
@@ -281,6 +287,33 @@ type AIBlock struct {
 
     // === Geek Mode 专属 ===
     CCSessionID string `json:"ccSessionId,omitempty"` // CC Runner 会话 ID
+
+    // === Task Plan (v0.99.0+) ===
+    TaskPlan *TaskPlan `json:"taskPlan,omitempty"` // 任务计划（用于透明性展示）
+}
+```
+
+### TaskPlan 结构 (v0.99.0+)
+
+```go
+// TaskPlan - 任务计划结构（用于透明性展示）
+type TaskPlan struct {
+    Analysis       string      `json:"analysis"`        // LLM 分析结果
+    Tasks          []*Task     `json:"tasks"`           // 分解的任务列表
+    Parallel       bool        `json:"parallel"`        // 是否并行执行
+    Aggregate      bool        `json:"aggregate"`        // 是否需要聚合
+    DirectResponse bool        `json:"directResponse"`   // 直接响应模式 (v0.100.0+)
+    Response       string      `json:"response"`         // 直接响应内容 (v0.100.0+)
+}
+
+type Task struct {
+    ID          string   `json:"id"`           // 任务 ID
+    Description string   `json:"description"` // 任务描述
+    Agent       string   `json:"agent"`       // 执行代理
+    Status      string   `json:"status"`       // pending | running | completed | failed
+    DependsOn   []string `json:"dependsOn"`    // 依赖任务 ID
+    Result      string   `json:"result"`       // 执行结果
+    Error       string   `json:"error"`        // 错误信息
 }
 ```
 
