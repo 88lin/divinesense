@@ -186,27 +186,9 @@ func init() {
 		panic(err)
 	}
 
-	viper.SetEnvPrefix("memos")
+	viper.SetEnvPrefix("divinesense")
 	viper.AutomaticEnv()
-	// Support both DIVINESENSE_* and MEMOS_* prefixes for backward compatibility
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
-
-	// Bind environment variables for configuration
-	// Try DIVINESENSE_* first, fall back to MEMOS_*
-	bindEnvWithFallback := func(configKey, newEnv, legacyEnv string) {
-		if err := viper.BindEnv(configKey, newEnv); err != nil {
-			panic(err)
-		}
-		// Also bind legacy prefix for compatibility
-		if err := viper.BindEnv(configKey, legacyEnv); err != nil {
-			panic(err)
-		}
-	}
-
-	bindEnvWithFallback("driver", "DIVINESENSE_DRIVER", "MEMOS_DRIVER")
-	bindEnvWithFallback("dsn", "DIVINESENSE_DSN", "MEMOS_DSN")
-	bindEnvWithFallback("instance-url", "DIVINESENSE_INSTANCE_URL", "MEMOS_INSTANCE_URL")
-	bindEnvWithFallback("log-level", "DIVINESENSE_LOG_LEVEL", "MEMOS_LOG_LEVEL")
 }
 
 func printGreetings(profile *profile.Profile) {
