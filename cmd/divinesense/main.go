@@ -21,6 +21,30 @@ import (
 	"github.com/hrygo/divinesense/store/db"
 )
 
+// parseLogLevel parses log level string to slog.Level
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToUpper(level) {
+	case "DEBUG":
+		return slog.LevelDebug
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN", "WARNING":
+		return slog.LevelWarn
+	case "ERROR":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+// setupLogger configures the default slog logger with the specified level
+func setupLogger(level string) {
+	logLevel := parseLogLevel(level)
+	opts := &slog.HandlerOptions{Level: logLevel}
+	handler := slog.NewTextHandler(os.Stderr, opts)
+	slog.SetDefault(slog.New(handler))
+}
+
 var (
 	rootCmd = &cobra.Command{
 		Use:   "divinesense",
@@ -35,6 +59,9 @@ var (
 			return nil
 		},
 		Run: func(_ *cobra.Command, _ []string) {
+			// Setup logger with configured log level
+			setupLogger(viper.GetString("log-level"))
+
 			instanceProfile := &profile.Profile{
 				Mode:        viper.GetString("mode"),
 				Addr:        viper.GetString("addr"),
@@ -105,6 +132,7 @@ func init() {
 	viper.SetDefault("mode", "dev")
 	viper.SetDefault("driver", "postgres")
 	viper.SetDefault("port", 28081)
+	viper.SetDefault("log-level", "INFO")
 
 	// Set version for cobra - use short version for the flag
 	rootCmd.Version = version.Version
@@ -128,6 +156,7 @@ func init() {
 	rootCmd.PersistentFlags().String("driver", "postgres", "database driver (postgres, mysql, sqlite)")
 	rootCmd.PersistentFlags().String("dsn", "", "database source name(aka. DSN)")
 	rootCmd.PersistentFlags().String("instance-url", "", "the url of your divinesense instance")
+	rootCmd.PersistentFlags().String("log-level", "INFO", "log level (DEBUG, INFO, WARN, ERROR)")
 
 	if err := viper.BindPFlag("mode", rootCmd.PersistentFlags().Lookup("mode")); err != nil {
 		panic(err)
@@ -153,6 +182,9 @@ func init() {
 	if err := viper.BindPFlag("instance-url", rootCmd.PersistentFlags().Lookup("instance-url")); err != nil {
 		panic(err)
 	}
+	if err := viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+		panic(err)
+	}
 
 	viper.SetEnvPrefix("memos")
 	viper.AutomaticEnv()
@@ -174,6 +206,7 @@ func init() {
 	bindEnvWithFallback("driver", "DIVINESENSE_DRIVER", "MEMOS_DRIVER")
 	bindEnvWithFallback("dsn", "DIVINESENSE_DSN", "MEMOS_DSN")
 	bindEnvWithFallback("instance-url", "DIVINESENSE_INSTANCE_URL", "MEMOS_INSTANCE_URL")
+	bindEnvWithFallback("log-level", "DIVINESENSE_LOG_LEVEL", "MEMOS_LOG_LEVEL")
 }
 
 func printGreetings(profile *profile.Profile) {
