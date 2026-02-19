@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -348,6 +347,16 @@ func (r *CCRunner) executeWithSession(
 		"CLAUDE_DISABLE_TELEMETRY=1",
 	)
 
+	// Debug: Log CLI execution details
+	// 调试：记录 CLI 执行详情
+	r.logger.Debug("CCRunner: executing CLI command",
+		"cli_path", r.cliPath,
+		"work_dir", cfg.WorkDir,
+		"args", args,
+		"session_id", cfg.SessionID,
+		"first_call", firstCall,
+		"env_count", len(cmd.Env))
+
 	// Get pipes
 	// 获取管道
 	stdout, err := cmd.StdoutPipe()
@@ -572,22 +581,25 @@ func (r *CCRunner) streamOutput(
 	go func() {
 		defer wg.Done()
 
-		// Sample stderr output (10% rate) for logs, capture all for error context.
-		// 对 stderr 进行采样记录到日志，同时捕获所有内容用于错误上下文。
+		// Log ALL stderr output for debugging CLI issues.
+		// Previously sampled at 10% which could miss critical errors.
+		// 记录所有 stderr 输出以便调试 CLI 问题。
+		// 之前 10% 采样可能遗漏关键错误。
 		scanner := bufio.NewScanner(stderr)
-		sampleRate := 10 // Sample 10% of stderr lines
+		lineCount := 0
 		for scanner.Scan() {
 			line := scanner.Text()
+			lineCount++
 			stderrBuf.addLine(line)
 
-			//nolint:gosec // Sampling for logging, not security-critical
-			if rand.Intn(100) < sampleRate {
-				r.logger.Warn("CCRunner: stderr sample",
-					"user_id", cfg.UserID,
-					"mode", cfg.Mode,
-					"session_id", cfg.SessionID,
-					"line", line)
-			}
+			// Log all stderr lines for debugging (increased from 10% sampling)
+			// 记录所有 stderr 行以便调试（从 10% 采样提高）
+			r.logger.Warn("CCRunner: stderr output",
+				"user_id", cfg.UserID,
+				"mode", cfg.Mode,
+				"session_id", cfg.SessionID,
+				"line_num", lineCount,
+				"line", line)
 		}
 	}()
 
