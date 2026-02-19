@@ -9,6 +9,28 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v0.100.2] - 2026-02-20
+
+> 配置重构与调试增强版本
+
+### 🐛 Bug Fixes
+
+- **CCRunner 调试增强**: stderr 日志采样从 10% 提升到 100%，添加 CLI 执行详情 debug 日志
+- **启动脚本**: 修复后端进程退出等待问题
+- **日志级别**: 移除 mode-based 日志级别覆盖，改用环境变量 `LOG_LEVEL` 控制
+
+### ✨ New Features
+
+- **@ 指令限制**: @ 提及专家代理功能限制在普通模式，避免在特殊模式下误触发
+- **LOG_LEVEL 环境变量**: 支持通过 `DIVINESENSE_LOG_LEVEL` 控制日志级别
+
+### ♻️ Refactoring
+
+- **环境变量重构**: 统一使用 `DIVINESENSE_` 前缀，移除 `MEMOS_` 前缀兼容
+- **Explore 页面重构**: Memo UI/UX 优化与页面重构
+
+---
+
 ## [v0.100.1] - 2026-02-17
 
 > 性能优化与多轮对话稳定性修复版本
