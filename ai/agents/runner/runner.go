@@ -24,8 +24,8 @@ import (
 const (
 	// Scanner buffer sizes for CLI output parsing.
 	// 扫描器缓冲区大小，用于 CLI 输出解析。
-	scannerInitialBufSize = 256 * 1024  // 256 KB
-	scannerMaxBufSize     = 1024 * 1024 // 1 MB
+	scannerInitialBufSize = 256 * 1024       // 256 KB
+	scannerMaxBufSize     = 10 * 1024 * 1024 // 10 MB
 
 	// Maximum length of non-JSON output to log.
 	// 非 JSON 输出的最大日志长度。
@@ -244,38 +244,6 @@ func (r *CCRunner) Execute(ctx context.Context, cfg *Config, prompt string, call
 		"tools_used", len(stats.ToolsUsed))
 
 	return nil
-}
-
-// StartAsyncSession starts a persistent session and returns the session object.
-func (r *CCRunner) StartAsyncSession(ctx context.Context, cfg *Config) (*Session, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// Derive SessionID from ConversationID using UUID v5 for deterministic mapping.
-	// 使用 UUID v5 从 ConversationID 派生 SessionID，实现确定性映射。
-	if cfg.SessionID == "" && cfg.ConversationID > 0 {
-		cfg.SessionID = ConversationIDToSessionID(cfg.ConversationID)
-		r.logger.Debug("CCRunner: derived SessionID from ConversationID",
-			"conversation_id", cfg.ConversationID,
-			"session_id", cfg.SessionID)
-	}
-
-	if err := r.ValidateConfig(cfg); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
-	}
-
-	// Ensure working directory exists
-	if err := os.MkdirAll(cfg.WorkDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create work directory: %w", err)
-	}
-
-	// Create session via manager
-	return r.manager.GetOrCreateSession(ctx, cfg.SessionID, *cfg)
-}
-
-// GetSessionManager returns the session manager.
-func (r *CCRunner) GetSessionManager() SessionManager {
-	return r.manager
 }
 
 // GetSessionStats returns a copy of the current session stats.
@@ -769,6 +737,14 @@ func (r *CCRunner) handleResultMessage(msg StreamMessage, stats *SessionStats, c
 // 3. Be safe for concurrent invocation from multiple goroutines
 // dispatchCallback 将流事件分发给回调，附带元数据。
 func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, stats *SessionStats) error {
+	// Skip processing if stats is nil (can happen during session warmup or reuse)
+	// 如果 stats 为 nil 则跳过处理（可能发生在会话预热或复用时）
+	if stats == nil {
+		r.logger.Debug("dispatchCallback: stats is nil, skipping event processing",
+			"type", msg.Type, "subtype", msg.Subtype)
+		return nil
+	}
+
 	// Calculate total duration
 	totalDuration := time.Since(stats.StartTime).Milliseconds()
 
@@ -777,6 +753,11 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, s
 		if msg.Error != "" {
 			return callback("error", msg.Error)
 		}
+	case "system":
+		// System messages (init, hook_started, hook_response) are already handled
+		// by SessionMonitor for CLI readiness detection. No additional processing needed.
+		// system 消息（init, hook_started, hook_response）已由 SessionMonitor 处理
+		// 用于 CLI 就绪检测，此处无需额外处理。
 	case "thinking", "status":
 		// Start thinking phase tracking (ended in other cases or by defer)
 		stats.StartThinking()
@@ -876,6 +857,11 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, s
 		}
 	case "message", "content", "text", "delta", "assistant":
 		// Assistant message starts generation phase
+		r.logger.Debug("dispatchCallback: processing assistant message",
+			"type", msg.Type,
+			"has_message", msg.Message != nil,
+			"has_direct_content", len(msg.Content) > 0,
+			"blocks_count", len(msg.GetContentBlocks()))
 		stats.EndThinking()
 		stats.StartGeneration()
 
@@ -888,6 +874,8 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, s
 				// Tool use is nested inside assistant message content
 				// End generation when tool is about to be used
 				stats.EndGeneration()
+
+				r.logger.Debug("CCRunner: processing tool_use block", "tool_name", block.Name, "tool_id", block.ID)
 
 				stats.RecordToolUse(block.Name, block.ID)
 
@@ -910,6 +898,7 @@ func (r *CCRunner) dispatchCallback(msg StreamMessage, callback EventCallback, s
 				if err := callback("tool_use", &EventWithMeta{EventType: "tool_use", EventData: block.Name, Meta: meta}); err != nil {
 					return err
 				}
+				r.logger.Debug("CCRunner: tool_use callback completed", "tool_name", block.Name, "tool_id", block.ID)
 			}
 		}
 	case "user":
