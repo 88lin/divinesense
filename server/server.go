@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"runtime"
 	"time"
 
@@ -42,15 +41,8 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 		Profile: profile,
 	}
 
-	// Set log level based on mode
-	// Dev/Demo mode: Debug level for detailed logging
-	// Prod mode: Info level for production
-	if profile.IsDev() {
-		opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-		logger := slog.New(slog.NewTextHandler(os.Stderr, opts))
-		slog.SetDefault(logger)
-		slog.Debug("Log level set to DEBUG (development mode)")
-	}
+	// Log level is now configured via DIVINESENSE_LOG_LEVEL environment variable
+	// See cmd/divinesense/main.go setupLogger()
 
 	echoServer := echo.New()
 	echoServer.Debug = true
