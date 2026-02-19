@@ -105,17 +105,26 @@ export function ChatInput({
     };
   }, []);
 
-  // Detect @ input and trigger popover
-  const checkForMentionTrigger = useCallback((text: string, cursorPosition: number) => {
-    const { shouldTrigger, filter } = shouldTriggerMentionPopover(text, cursorPosition);
+  // Detect @ input and trigger popover (only in normal mode)
+  const checkForMentionTrigger = useCallback(
+    (text: string, cursorPosition: number) => {
+      // Only trigger @ mention in normal mode
+      if (currentMode !== "normal") {
+        setMentionPopoverOpen(false);
+        return;
+      }
 
-    if (shouldTrigger && canInsertMention(text, cursorPosition - 1)) {
-      setMentionFilter(filter);
-      setMentionPopoverOpen(true);
-    } else {
-      setMentionPopoverOpen(false);
-    }
-  }, []);
+      const { shouldTrigger, filter } = shouldTriggerMentionPopover(text, cursorPosition);
+
+      if (shouldTrigger && canInsertMention(text, cursorPosition - 1)) {
+        setMentionFilter(filter);
+        setMentionPopoverOpen(true);
+      } else {
+        setMentionPopoverOpen(false);
+      }
+    },
+    [currentMode],
+  );
 
   // Handle agent selection from popover (Issue #266: 隐式专家指定)
   const handleAgentSelect = useCallback(
