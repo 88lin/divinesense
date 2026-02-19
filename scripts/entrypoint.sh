@@ -26,7 +26,7 @@ file_env() {
    unset "$fileVar"
 }
 
-file_env "MEMOS_DSN"
+file_env "DIVINESENSE_DSN"
 
 # Geek Mode: Install Claude Code CLI if enabled
 if [ "$(printenv DIVINESENSE_CLAUDE_CODE_ENABLED)" = "true" ]; then

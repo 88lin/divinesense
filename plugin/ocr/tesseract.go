@@ -341,13 +341,13 @@ func GetLanguageName(code string) string {
 func ConfigFromEnv() *Config {
 	config := DefaultConfig()
 
-	if path := os.Getenv("MEMOS_OCR_TESSERACT_PATH"); path != "" {
+	if path := os.Getenv("DIVINESENSE_OCR_TESSERACT_PATH"); path != "" {
 		config.TesseractPath = path
 	}
-	if path := os.Getenv("MEMOS_OCR_TESSDATA_PATH"); path != "" {
+	if path := os.Getenv("DIVINESENSE_OCR_TESSDATA_PATH"); path != "" {
 		config.DataPath = path
 	}
-	if langs := os.Getenv("MEMOS_OCR_LANGUAGES"); langs != "" {
+	if langs := os.Getenv("DIVINESENSE_OCR_LANGUAGES"); langs != "" {
 		config.Languages = langs
 	}
 

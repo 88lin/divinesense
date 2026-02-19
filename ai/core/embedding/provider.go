@@ -158,7 +158,7 @@ func (p *Provider) ListModels(ctx context.Context) ([]string, error) {
 // Validate validates the provider configuration by testing API connectivity.
 func (p *Provider) Validate(ctx context.Context) error {
 	if p.config.APIKey == "" {
-		return fmt.Errorf("API key is required, set MEMOS_AI_API_KEY environment variable")
+		return fmt.Errorf("API key is required, set DIVINESENSE_AI_API_KEY environment variable")
 	}
 
 	// Test embedding generation with a simple request
@@ -202,10 +202,10 @@ func (p *Provider) doWithRetry(ctx context.Context, fn func() error) error {
 // NewProviderFromEnv creates a provider from environment variables.
 func NewProviderFromEnv() (*Provider, error) {
 	return NewProvider(&Config{
-		BaseURL:        getEnv("MEMOS_AI_BASE_URL", "https://api.openai.com/v1"),
-		APIKey:         getEnv("MEMOS_AI_API_KEY", ""),
-		EmbeddingModel: getEnv("MEMOS_AI_EMBEDDING_MODEL", "text-embedding-3-small"),
-		ChatModel:      getEnv("MEMOS_AI_CHAT_MODEL", "gpt-4o-mini"),
+		BaseURL:        getEnv("DIVINESENSE_AI_BASE_URL", "https://api.openai.com/v1"),
+		APIKey:         getEnv("DIVINESENSE_AI_API_KEY", ""),
+		EmbeddingModel: getEnv("DIVINESENSE_AI_EMBEDDING_MODEL", "text-embedding-3-small"),
+		ChatModel:      getEnv("DIVINESENSE_AI_CHAT_MODEL", "gpt-4o-mini"),
 		MaxRetries:     3,
 		Timeout:        30 * time.Second,
 	})

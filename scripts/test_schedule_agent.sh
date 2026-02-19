@@ -26,14 +26,14 @@ NC='\033[0m' # No Color
 # 检查必要的环境变量
 echo -e "${YELLOW}检查环境配置...${NC}"
 
-if [ -z "$MEMOS_AI_ENABLED" ]; then
-    echo -e "${RED}错误: MEMOS_AI_ENABLED 未设置${NC}"
-    echo "请在 .env 文件中设置: MEMOS_AI_ENABLED=true"
+if [ -z "$DIVINESENSE_AI_ENABLED" ]; then
+    echo -e "${RED}错误: DIVINESENSE_AI_ENABLED 未设置${NC}"
+    echo "请在 .env 文件中设置: DIVINESENSE_AI_ENABLED=true"
     exit 1
 fi
 
-if [ -z "$MEMOS_AI_LLM_PROVIDER" ]; then
-    echo -e "${RED}错误: MEMOS_AI_LLM_PROVIDER 未设置${NC}"
+if [ -z "$DIVINESENSE_AI_LLM_PROVIDER" ]; then
+    echo -e "${RED}错误: DIVINESENSE_AI_LLM_PROVIDER 未设置${NC}"
     echo "请在 .env 文件中配置 LLM provider"
     exit 1
 fi
@@ -54,7 +54,7 @@ echo -e "${GREEN}✓ 后端服务正在运行${NC}"
 echo ""
 
 # 如果没有 token，提示用户
-if [ -z "$MEMOS_TEST_TOKEN" ]; then
+if [ -z "$DIVINESENSE_TEST_TOKEN" ]; then
     echo -e "${YELLOW}=========================================${NC}"
     echo -e "${YELLOW}需要认证 Token${NC}"
     echo -e "${YELLOW}=========================================${NC}"
@@ -69,10 +69,10 @@ if [ -z "$MEMOS_TEST_TOKEN" ]; then
     echo "2. 从响应中复制 access_token"
     echo ""
     echo "3. 设置环境变量："
-    echo "   export MEMOS_TEST_TOKEN=your_token_here"
+    echo "   export DIVINESENSE_TEST_TOKEN=your_token_here"
     echo ""
     echo "或者直接在下面输入 token："
-    read -p "请输入 token: " MEMOS_TEST_TOKEN
+    read -p "请输入 token: " DIVINESENSE_TEST_TOKEN
     echo ""
 fi
 
@@ -83,7 +83,7 @@ test_schedule_query() {
     echo ""
 
     response=$(curl -s -X POST "http://localhost:28081/api/v1/ai/chat" \
-        -H "Authorization: Bearer $MEMOS_TEST_TOKEN" \
+        -H "Authorization: Bearer $DIVINESENSE_TEST_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
             "message": "查看明天有什么安排",
@@ -103,7 +103,7 @@ test_schedule_create() {
     echo ""
 
     response=$(curl -s -X POST "http://localhost:28081/api/v1/ai/chat" \
-        -H "Authorization: Bearer $MEMOS_TEST_TOKEN" \
+        -H "Authorization: Bearer $DIVINESENSE_TEST_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
             "message": "后天上午10点开个产品讨论会",
@@ -123,7 +123,7 @@ test_schedule_weekly() {
     echo ""
 
     response=$(curl -s -X POST "http://localhost:28081/api/v1/ai/chat" \
-        -H "Authorization: Bearer $MEMOS_TEST_TOKEN" \
+        -H "Authorization: Bearer $DIVINESENSE_TEST_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{
             "message": "本周有哪些日程安排？",

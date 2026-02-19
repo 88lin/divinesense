@@ -25,7 +25,7 @@ import (
 //   - L2 Redis disabled
 //
 // TO ENABLE REDIS (multi-instance):
-//   - Set MEMOS_CACHE_REDIS_ADDR environment variable
+//   - Set DIVINESENSE_CACHE_REDIS_ADDR environment variable
 type TieredCache struct {
 	l1        *Cache
 	l2        RedisCacheInterface
@@ -42,7 +42,7 @@ type TieredCacheConfig struct {
 	L1TTL      time.Duration // TTL for L1 cache entries
 	L2TTL      time.Duration // TTL for L2 Redis cache entries
 	EnableL1   bool          // Enable L1 memory cache (default: true)
-	EnableL2   bool          // Enable L2 Redis cache (default: false, auto-enabled if MEMOS_CACHE_REDIS_ADDR set)
+	EnableL2   bool          // Enable L2 Redis cache (default: false, auto-enabled if DIVINESENSE_CACHE_REDIS_ADDR set)
 }
 
 // DefaultTieredConfig returns the default tiered cache configuration.

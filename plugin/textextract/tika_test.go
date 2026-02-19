@@ -238,11 +238,11 @@ func TestConfigFromEnv(t *testing.T) {
 	origEmbedded := ""
 
 	// Set test env vars
-	t.Setenv("MEMOS_TEXTEXTRACT_TIKA_URL", "http://test:9999")
-	t.Setenv("MEMOS_TEXTEXTRACT_TIKA_JAR", "/path/to/tika.jar")
-	t.Setenv("MEMOS_TEXTEXTRACT_JAVA_PATH", "/usr/bin/java")
-	t.Setenv("MEMOS_TEXTEXTRACT_TIMEOUT", "60s")
-	t.Setenv("MEMOS_TEXTEXTRACT_EMBEDDED", "true")
+	t.Setenv("DIVINESENSE_TEXTEXTRACT_TIKA_URL", "http://test:9999")
+	t.Setenv("DIVINESENSE_TEXTEXTRACT_TIKA_JAR", "/path/to/tika.jar")
+	t.Setenv("DIVINESENSE_TEXTEXTRACT_JAVA_PATH", "/usr/bin/java")
+	t.Setenv("DIVINESENSE_TEXTEXTRACT_TIMEOUT", "60s")
+	t.Setenv("DIVINESENSE_TEXTEXTRACT_EMBEDDED", "true")
 
 	config := ConfigFromEnv()
 

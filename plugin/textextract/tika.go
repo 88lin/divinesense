@@ -63,21 +63,21 @@ func DefaultConfig() *Config {
 func ConfigFromEnv() *Config {
 	config := DefaultConfig()
 
-	if url := os.Getenv("MEMOS_TEXTEXTRACT_TIKA_URL"); url != "" {
+	if url := os.Getenv("DIVINESENSE_TEXTEXTRACT_TIKA_URL"); url != "" {
 		config.TikaServerURL = url
 	}
-	if path := os.Getenv("MEMOS_TEXTEXTRACT_TIKA_JAR"); path != "" {
+	if path := os.Getenv("DIVINESENSE_TEXTEXTRACT_TIKA_JAR"); path != "" {
 		config.TikaJarPath = path
 	}
-	if path := os.Getenv("MEMOS_TEXTEXTRACT_JAVA_PATH"); path != "" {
+	if path := os.Getenv("DIVINESENSE_TEXTEXTRACT_JAVA_PATH"); path != "" {
 		config.JavaPath = path
 	}
-	if timeout := os.Getenv("MEMOS_TEXTEXTRACT_TIMEOUT"); timeout != "" {
+	if timeout := os.Getenv("DIVINESENSE_TEXTEXTRACT_TIMEOUT"); timeout != "" {
 		if d, err := time.ParseDuration(timeout); err == nil {
 			config.Timeout = d
 		}
 	}
-	if useEmbedded := os.Getenv("MEMOS_TEXTEXTRACT_EMBEDDED"); useEmbedded == "true" || useEmbedded == "1" {
+	if useEmbedded := os.Getenv("DIVINESENSE_TEXTEXTRACT_EMBEDDED"); useEmbedded == "true" || useEmbedded == "1" {
 		config.UseEmbedded = true
 	}
 

@@ -52,9 +52,9 @@ USER nonroot:nonroot
 VOLUME /var/opt/divinesense
 
 ENV TZ="UTC" \
-    MEMOS_MODE="prod" \
-    MEMOS_PORT="5230"
+    DIVINESENSE_MODE="prod" \
+    DIVINESENSE_PORT="28081"
 
-EXPOSE 5230
+EXPOSE 28081
 
 ENTRYPOINT ["/usr/local/divinesense/entrypoint.sh", "/usr/local/divinesense/divinesense"]
