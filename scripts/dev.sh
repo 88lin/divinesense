@@ -359,6 +359,20 @@ stop_backend() {
             local pid=$(cat "$BACKEND_PID_FILE")
             log_info "停止后端 (PID: $pid)..."
             kill "$pid" 2>/dev/null || true
+
+            # 等待进程真正退出（最多 10 秒，与 server.go Shutdown 超时一致）
+            local wait_count=0
+            while ps -p "$pid" &>/dev/null && [ $wait_count -lt 10 ]; do
+                sleep 1
+                wait_count=$((wait_count + 1))
+            done
+
+            # 如果还没退出，强制杀死
+            if ps -p "$pid" &>/dev/null; then
+                log_warn "后端未能在 10 秒内优雅退出，强制终止..."
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+
             rm -f "$BACKEND_PID_FILE"
             log_success "后端已停止"
             ;;
@@ -384,7 +398,14 @@ stop_backend() {
                 if verify_backend_process "$port_pid"; then
                     log_info "终止 divinesense 后端进程 (PID: $port_pid)..."
                     kill "$port_pid" 2>/dev/null || true
-                    sleep 1
+
+                    # 等待进程退出（最多 5 秒）
+                    local wait_count=0
+                    while ps -p "$port_pid" &>/dev/null && [ $wait_count -lt 5 ]; do
+                        sleep 1
+                        wait_count=$((wait_count + 1))
+                    done
+
                     # 如果还没终止，强制杀死
                     if ps -p "$port_pid" &>/dev/null; then
                         kill -9 "$port_pid" 2>/dev/null || true
@@ -393,7 +414,7 @@ stop_backend() {
                 else
                     log_warn "端口 $BACKEND_PORT 被其他进程占用 (PID: $port_pid)"
                     local proc_cmd=$(ps -p "$port_pid" -o command=)
-                    log_warn "  Command: $proc_cmd" 
+                    log_warn "  Command: $proc_cmd"
                     log_warn "  (未匹配到 divinesense 特征，为防止误杀，跳过处理)"
                     log_warn "  如需终止该进程，请手动执行: kill $port_pid"
                 fi
