@@ -80,8 +80,8 @@ const (
 	AgentType_AGENT_TYPE_DEFAULT  AgentType = 0 // Default behavior (existing logic)
 	AgentType_AGENT_TYPE_MEMO     AgentType = 1 // 🦜 Memo Parrot - Note assistant
 	AgentType_AGENT_TYPE_SCHEDULE AgentType = 2 // 🦜 Schedule Parrot - Schedule assistant
-	AgentType_AGENT_TYPE_AMAZING  AgentType = 3 // 🦜 Amazing Parrot - Comprehensive assistant (Milestone 2)
-	AgentType_AGENT_TYPE_CREATIVE AgentType = 4 // 🦜 Creative Parrot - Creative assistant (Milestone 4)
+	AgentType_AGENT_TYPE_GENERAL  AgentType = 3 // 🦜 General Parrot (通才) - General purpose assistant
+	AgentType_AGENT_TYPE_IDEATION AgentType = 5 // 💡 Ideation Parrot (灵光) - Creative assistant for brainstorming and ideation
 )
 
 // Enum value maps for AgentType.
@@ -90,15 +90,15 @@ var (
 		0: "AGENT_TYPE_DEFAULT",
 		1: "AGENT_TYPE_MEMO",
 		2: "AGENT_TYPE_SCHEDULE",
-		3: "AGENT_TYPE_AMAZING",
-		4: "AGENT_TYPE_CREATIVE",
+		3: "AGENT_TYPE_GENERAL",
+		5: "AGENT_TYPE_IDEATION",
 	}
 	AgentType_value = map[string]int32{
 		"AGENT_TYPE_DEFAULT":  0,
 		"AGENT_TYPE_MEMO":     1,
 		"AGENT_TYPE_SCHEDULE": 2,
-		"AGENT_TYPE_AMAZING":  3,
-		"AGENT_TYPE_CREATIVE": 4,
+		"AGENT_TYPE_GENERAL":  3,
+		"AGENT_TYPE_IDEATION": 5,
 	}
 )
 
@@ -2091,9 +2091,9 @@ func (x *GetRelatedMemosResponse) GetMemos() []*SearchResult {
 // ParrotSelfCognition represents a parrot's metacognitive understanding of itself.
 type ParrotSelfCognition struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                                 // Parrot name (e.g., "schedule", "memo", "creative", "amazing")
+	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                                 // Parrot name (e.g., "memo", "schedule", "general", "ideation")
 	Emoji            string                 `protobuf:"bytes,2,opt,name=emoji,proto3" json:"emoji,omitempty"`                                               // Visual representation (e.g., "🦜")
-	Title            string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`                                               // Formal title (e.g., "金刚 - 日程助手鹦鹉")
+	Title            string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`                                               // Formal title (e.g., "时巧 - 日程管理专家")
 	Personality      []string               `protobuf:"bytes,4,rep,name=personality,proto3" json:"personality,omitempty"`                                   // Character traits
 	Capabilities     []string               `protobuf:"bytes,5,rep,name=capabilities,proto3" json:"capabilities,omitempty"`                                 // What the parrot can do
 	Limitations      []string               `protobuf:"bytes,6,rep,name=limitations,proto3" json:"limitations,omitempty"`                                   // What the parrot cannot do
@@ -6739,13 +6739,13 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\x04AUTO\x10\x00\x12\f\n" +
 	"\bSTANDARD\x10\x01\x12\n" +
 	"\n" +
-	"\x06STRICT\x10\x02*\x82\x01\n" +
+	"\x06STRICT\x10\x02*\x88\x01\n" +
 	"\tAgentType\x12\x16\n" +
 	"\x12AGENT_TYPE_DEFAULT\x10\x00\x12\x13\n" +
 	"\x0fAGENT_TYPE_MEMO\x10\x01\x12\x17\n" +
 	"\x13AGENT_TYPE_SCHEDULE\x10\x02\x12\x16\n" +
-	"\x12AGENT_TYPE_AMAZING\x10\x03\x12\x17\n" +
-	"\x13AGENT_TYPE_CREATIVE\x10\x04*\x94\x01\n" +
+	"\x12AGENT_TYPE_GENERAL\x10\x03\x12\x17\n" +
+	"\x13AGENT_TYPE_IDEATION\x10\x05\"\x04\b\x04\x10\x04*\x94\x01\n" +
 	"\rReviewQuality\x12\x1e\n" +
 	"\x1aREVIEW_QUALITY_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14REVIEW_QUALITY_AGAIN\x10\x01\x12\x17\n" +

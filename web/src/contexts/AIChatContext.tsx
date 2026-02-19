@@ -36,7 +36,8 @@ function getDefaultTitle(parrotId: ParrotAgentType): string {
   const titles: Record<string, string> = {
     [ParrotAgentType.MEMO]: "chat.default.memo",
     [ParrotAgentType.SCHEDULE]: "chat.default.schedule",
-    [ParrotAgentType.AMAZING]: "chat.default.amazing",
+    [ParrotAgentType.GENERAL]: "chat.default.general",
+    [ParrotAgentType.IDEATION]: "chat.default.ideation",
     [ParrotAgentType.GEEK]: "chat.default.geek",
     [ParrotAgentType.EVOLUTION]: "chat.default.evolution",
   };
@@ -168,7 +169,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
           const fallbacks: Record<string, string> = {
             "chat.memo.title": "Memo Chat",
             "chat.schedule.title": "Schedule Chat",
-            "chat.amazing.title": "Amazing Chat",
+            "chat.general.title": "General Chat",
           };
           return fallbacks[titleKey] || titleKey;
         }
@@ -217,7 +218,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
       case AgentType.SCHEDULE:
         return ParrotAgentType.SCHEDULE;
       default:
-        return ParrotAgentType.AMAZING;
+        return ParrotAgentType.GENERAL;
     }
   }, []);
 
@@ -229,7 +230,7 @@ export function AIChatProvider({ children, initialState }: AIChatProviderProps) 
       case ParrotAgentType.SCHEDULE:
         return AgentType.SCHEDULE;
       default:
-        return AgentType.AMAZING;
+        return AgentType.GENERAL;
     }
   }, []);
 

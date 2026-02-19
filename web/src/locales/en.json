@@ -123,6 +123,18 @@
           "examples": ["What's on my schedule today", "Am I free tomorrow afternoon", "Create a meeting reminder for next week"],
           "name": "Tick",
           "nameAlt": "时巧"
+        },
+        "general": {
+          "description": "General assistant for text summarization, translation, and rewriting",
+          "examples": ["Summarize this", "Translate to English", "Help me rewrite this"],
+          "name": "General",
+          "nameAlt": "通才"
+        },
+        "insight": {
+          "description": "Creative assistant for brainstorming, writing support, and inspiration",
+          "examples": ["Help me brainstorm", "Write some copy", "Give me some ideas"],
+          "name": "Insight",
+          "nameAlt": "灵光"
         }
       },
       "amazing-tagline": "All-in-One",
@@ -386,6 +398,15 @@
       "evolution_locked": "Evolution (Admin)",
       "evolution_locked_tooltip": "Evolution Mode is admin-only"
     },
+    "mention": {
+      "select_agent": "🦜 Select Agent",
+      "no_match": "No matching agent found",
+      "navigate": "Navigate",
+      "confirm": "Confirm",
+      "close": "Close",
+      "hint": "Type @ to select an agent",
+      "loading": "Loading..."
+    },
     "geek_mode": {
       "label": "Geek",
       "tooltip": "Toggle Geek Mode for code-related tasks using Claude Code CLI",
@@ -634,7 +655,8 @@
       "auto": "AI Chat",
       "memo": "Chat with Memo",
       "schedule": "Chat with Schedule",
-      "amazing": "Chat with Amazing",
+      "general": "Chat with General",
+      "ideation": "Chat with Ideation",
       "geek": "Geek Mode",
       "evolution": "Evolution Mode"
     },

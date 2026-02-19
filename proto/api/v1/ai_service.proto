@@ -359,8 +359,9 @@ enum AgentType {
   AGENT_TYPE_DEFAULT = 0; // Default behavior (existing logic)
   AGENT_TYPE_MEMO = 1; // 🦜 Memo Parrot - Note assistant
   AGENT_TYPE_SCHEDULE = 2; // 🦜 Schedule Parrot - Schedule assistant
-  AGENT_TYPE_AMAZING = 3; // 🦜 Amazing Parrot - Comprehensive assistant (Milestone 2)
-  AGENT_TYPE_CREATIVE = 4; // 🦜 Creative Parrot - Creative assistant (Milestone 4)
+  AGENT_TYPE_GENERAL = 3; // 🦜 General Parrot (通才) - General purpose assistant
+  reserved 4; // AGENT_TYPE_CREATIVE deprecated - reserved for future use
+  AGENT_TYPE_IDEATION = 5; // 💡 Ideation Parrot (灵光) - Creative assistant for brainstorming and ideation
 }
 
 // ChatRequest is the request for Chat.
@@ -517,9 +518,9 @@ message GetRelatedMemosResponse {
 
 // ParrotSelfCognition represents a parrot's metacognitive understanding of itself.
 message ParrotSelfCognition {
-  string name = 1; // Parrot name (e.g., "schedule", "memo", "creative", "amazing")
+  string name = 1; // Parrot name (e.g., "memo", "schedule", "general", "ideation")
   string emoji = 2; // Visual representation (e.g., "🦜")
-  string title = 3; // Formal title (e.g., "金刚 - 日程助手鹦鹉")
+  string title = 3; // Formal title (e.g., "时巧 - 日程管理专家")
   repeated string personality = 4; // Character traits
   repeated string capabilities = 5; // What the parrot can do
   repeated string limitations = 6; // What the parrot cannot do
