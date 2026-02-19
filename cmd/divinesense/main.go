@@ -189,6 +189,20 @@ func init() {
 	viper.SetEnvPrefix("divinesense")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+
+	// Bind environment variables explicitly for clarity
+	if err := viper.BindEnv("driver", "DIVINESENSE_DRIVER"); err != nil {
+		panic(err)
+	}
+	if err := viper.BindEnv("dsn", "DIVINESENSE_DSN"); err != nil {
+		panic(err)
+	}
+	if err := viper.BindEnv("instance-url", "DIVINESENSE_INSTANCE_URL"); err != nil {
+		panic(err)
+	}
+	if err := viper.BindEnv("log-level", "DIVINESENSE_LOG_LEVEL"); err != nil {
+		panic(err)
+	}
 }
 
 func printGreetings(profile *profile.Profile) {
