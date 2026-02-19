@@ -601,6 +601,14 @@ func (r *CCRunner) streamOutput(
 				"line_num", lineCount,
 				"line", line)
 		}
+		// Check for scanner errors (previously missing)
+		// 检查扫描器错误（之前缺失）
+		if err := scanner.Err(); err != nil {
+			r.logger.Error("CCRunner: stderr scanner error",
+				"mode", cfg.Mode,
+				"session_id", cfg.SessionID,
+				"error", err)
+		}
 	}()
 
 	// Wait for completion or timeout
