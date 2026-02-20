@@ -3,39 +3,29 @@ package v1
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/hrygo/divinesense/internal/profile"
 	"github.com/hrygo/divinesense/internal/util"
-	"github.com/hrygo/divinesense/plugin/filter"
 	v1pb "github.com/hrygo/divinesense/proto/gen/api/v1"
 	storepb "github.com/hrygo/divinesense/proto/gen/store"
 	"github.com/hrygo/divinesense/store"
 )
 
+type ShortcutService struct {
+	v1pb.UnimplementedShortcutServiceServer
+	Store   *store.Store
+	Profile *profile.Profile
+}
+
 // Helper function to extract user ID and shortcut ID from shortcut resource name.
 // Format: users/{user}/shortcuts/{shortcut}.
+// Delegates to the standardized resource name extractor.
 func extractUserAndShortcutIDFromName(name string) (int32, string, error) {
-	parts := strings.Split(name, "/")
-	if len(parts) != 4 || parts[0] != "users" || parts[2] != "shortcuts" {
-		return 0, "", errors.Errorf("invalid shortcut name format: %s", name)
-	}
-
-	userID, err := util.ConvertStringToInt32(parts[1])
-	if err != nil {
-		return 0, "", errors.Errorf("invalid user ID %q", parts[1])
-	}
-
-	shortcutID := parts[3]
-	if shortcutID == "" {
-		return 0, "", errors.Errorf("empty shortcut ID in name: %s", name)
-	}
-
-	return userID, shortcutID, nil
+	return ExtractUserAndShortcutIDFromName(name)
 }
 
 // Helper function to construct shortcut resource name.
@@ -43,13 +33,13 @@ func constructShortcutName(userID int32, shortcutID string) string {
 	return fmt.Sprintf("users/%d/shortcuts/%s", userID, shortcutID)
 }
 
-func (s *APIV1Service) ListShortcuts(ctx context.Context, request *v1pb.ListShortcutsRequest) (*v1pb.ListShortcutsResponse, error) {
+func (s *ShortcutService) ListShortcuts(ctx context.Context, request *v1pb.ListShortcutsRequest) (*v1pb.ListShortcutsResponse, error) {
 	userID, err := ExtractUserIDFromName(request.Parent)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid user name: %v", err)
 	}
 
-	currentUser, err := s.fetchCurrentUser(ctx)
+	currentUser, err := fetchCurrentUser(ctx, s.Store)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
 	}
@@ -85,13 +75,13 @@ func (s *APIV1Service) ListShortcuts(ctx context.Context, request *v1pb.ListShor
 	}, nil
 }
 
-func (s *APIV1Service) GetShortcut(ctx context.Context, request *v1pb.GetShortcutRequest) (*v1pb.Shortcut, error) {
+func (s *ShortcutService) GetShortcut(ctx context.Context, request *v1pb.GetShortcutRequest) (*v1pb.Shortcut, error) {
 	userID, shortcutID, err := extractUserAndShortcutIDFromName(request.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid shortcut name: %v", err)
 	}
 
-	currentUser, err := s.fetchCurrentUser(ctx)
+	currentUser, err := fetchCurrentUser(ctx, s.Store)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
 	}
@@ -124,13 +114,13 @@ func (s *APIV1Service) GetShortcut(ctx context.Context, request *v1pb.GetShortcu
 	return nil, status.Errorf(codes.NotFound, "shortcut not found")
 }
 
-func (s *APIV1Service) CreateShortcut(ctx context.Context, request *v1pb.CreateShortcutRequest) (*v1pb.Shortcut, error) {
+func (s *ShortcutService) CreateShortcut(ctx context.Context, request *v1pb.CreateShortcutRequest) (*v1pb.Shortcut, error) {
 	userID, err := ExtractUserIDFromName(request.Parent)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid user name: %v", err)
 	}
 
-	currentUser, err := s.fetchCurrentUser(ctx)
+	currentUser, err := fetchCurrentUser(ctx, s.Store)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
 	}
@@ -146,7 +136,7 @@ func (s *APIV1Service) CreateShortcut(ctx context.Context, request *v1pb.CreateS
 	if newShortcut.Title == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "title is required")
 	}
-	if err := s.validateFilter(ctx, newShortcut.Filter); err != nil {
+	if err := validateSearchFilter(ctx, s.Profile, newShortcut.Filter); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid filter: %v", err)
 	}
 	if request.ValidateOnly {
@@ -196,13 +186,13 @@ func (s *APIV1Service) CreateShortcut(ctx context.Context, request *v1pb.CreateS
 	}, nil
 }
 
-func (s *APIV1Service) UpdateShortcut(ctx context.Context, request *v1pb.UpdateShortcutRequest) (*v1pb.Shortcut, error) {
+func (s *ShortcutService) UpdateShortcut(ctx context.Context, request *v1pb.UpdateShortcutRequest) (*v1pb.Shortcut, error) {
 	userID, shortcutID, err := extractUserAndShortcutIDFromName(request.Shortcut.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid shortcut name: %v", err)
 	}
 
-	currentUser, err := s.fetchCurrentUser(ctx)
+	currentUser, err := fetchCurrentUser(ctx, s.Store)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
 	}
@@ -239,7 +229,7 @@ func (s *APIV1Service) UpdateShortcut(ctx context.Context, request *v1pb.UpdateS
 					}
 					shortcut.Title = request.Shortcut.GetTitle()
 				case "filter":
-					if err := s.validateFilter(ctx, request.Shortcut.GetFilter()); err != nil {
+					if err := validateSearchFilter(ctx, s.Profile, request.Shortcut.GetFilter()); err != nil {
 						return nil, status.Errorf(codes.InvalidArgument, "invalid filter: %v", err)
 					}
 					shortcut.Filter = request.Shortcut.GetFilter()
@@ -269,13 +259,13 @@ func (s *APIV1Service) UpdateShortcut(ctx context.Context, request *v1pb.UpdateS
 	}, nil
 }
 
-func (s *APIV1Service) DeleteShortcut(ctx context.Context, request *v1pb.DeleteShortcutRequest) (*emptypb.Empty, error) {
+func (s *ShortcutService) DeleteShortcut(ctx context.Context, request *v1pb.DeleteShortcutRequest) (*emptypb.Empty, error) {
 	userID, shortcutID, err := extractUserAndShortcutIDFromName(request.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid shortcut name: %v", err)
 	}
 
-	currentUser, err := s.fetchCurrentUser(ctx)
+	currentUser, err := fetchCurrentUser(ctx, s.Store)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
 	}
@@ -318,28 +308,4 @@ func (s *APIV1Service) DeleteShortcut(ctx context.Context, request *v1pb.DeleteS
 	}
 
 	return &emptypb.Empty{}, nil
-}
-
-func (s *APIV1Service) validateFilter(ctx context.Context, filterStr string) error {
-	if filterStr == "" {
-		return errors.New("filter cannot be empty")
-	}
-
-	engine, err := filter.DefaultEngine()
-	if err != nil {
-		return err
-	}
-
-	var dialect filter.DialectName
-	switch s.Profile.Driver {
-	case "postgres":
-		dialect = filter.DialectPostgres
-	default:
-		dialect = filter.DialectSQLite
-	}
-
-	if _, err := engine.CompileToStatement(ctx, filterStr, filter.RenderOptions{Dialect: dialect}); err != nil {
-		return errors.Wrap(err, "failed to compile filter")
-	}
-	return nil
 }
