@@ -49,16 +49,30 @@ type ParrotHandler struct {
 	metadataMgr            *ctxpkg.MetadataManager          // Context engineering: metadata-based sticky routing
 	contextBuilder         *ctxpkg.Service                  // P0 fix: backend-driven context construction
 	memoryGenerator        memory.Generator                 // Phase 3: async episodic memory generation (extension point)
+	geekRunner             *agentpkg.CCRunner               // Singleton CCRunner for Geek mode
+	evoRunner              *agentpkg.CCRunner               // Singleton CCRunner for Evolution mode
 }
 
 // NewParrotHandler creates a new parrot handler.
 func NewParrotHandler(factory *AgentFactory, llm ai.LLMService, persister *aistats.Persister, blockManager *BlockManager, titleGenerator *ai.TitleGenerator) *ParrotHandler {
+	// Create singletons for CC execution. Evolution and Geek use isolated runners.
+	geekRunner, err := agentpkg.NewCCRunner(30*time.Minute, slog.Default()) // Long timeout for active shell
+	if err != nil {
+		slog.Warn("Failed to create geekRunner in init (CLI not found?)", "error", err)
+	}
+	evoRunner, err := agentpkg.NewCCRunner(30*time.Minute, slog.Default())
+	if err != nil {
+		slog.Warn("Failed to create evoRunner in init (CLI not found?)", "error", err)
+	}
+
 	return &ParrotHandler{
 		factory:        factory,
 		llm:            llm,
 		persister:      persister,
 		blockManager:   blockManager, // Phase 5
 		titleGenerator: titleGenerator,
+		geekRunner:     geekRunner,
+		evoRunner:      evoRunner,
 	}
 }
 
@@ -93,6 +107,20 @@ func (h *ParrotHandler) SetCapabilityMap(cm *orchestrator.CapabilityMap) {
 // This enables metadata-based sticky routing and state persistence.
 func (h *ParrotHandler) SetMetadataManager(mgr *ctxpkg.MetadataManager) {
 	h.metadataMgr = mgr
+}
+
+// Close gracefully shuts down all managed singleton runners and active sessions.
+func (h *ParrotHandler) Close() error {
+	slog.Info("Shutting down ParrotHandler singletons")
+
+	if h.geekRunner != nil {
+		h.geekRunner.Close()
+	}
+	if h.evoRunner != nil {
+		h.evoRunner.Close()
+	}
+
+	return nil
 }
 
 // SetContextBuilder configures the context builder for backend-driven context construction.
@@ -406,14 +434,20 @@ func (h *ParrotHandler) handleGeekMode(
 	}
 
 	// Generate a stable session ID based on Conversation ID using UUID v5
-	// Using a fixed namespace ensures the same conversation ID always generates the same UUID
-	// 使用固定的命名空间确保相同的 Conversation ID 总是生成相同的 UUID
-	namespace := uuid.MustParse("00000000-0000-0000-0000-000000000000") // Null UUID as namespace
+	// 统一 Namespace 规则：使用模式名称(geek)作为前缀并结合 UserID，确保跨用户、跨模式完全隔离
+	namespaceBase := fmt.Sprintf("geek_%d", req.UserID)
+	namespace := uuid.NewMD5(uuid.NameSpaceOID, []byte(namespaceBase))
 	sessionID := uuid.NewSHA1(namespace, []byte(fmt.Sprintf("conversation_%d", req.ConversationID))).String()
 
-	// Create GeekParrot directly (no factory needed, no LLM dependency)
-	// 直接创建 GeekParrot（无需工厂，无 LLM 依赖）
+	if h.geekRunner == nil {
+		logger.Error("GeekRunner global singleton is null, cannot perform Hot-Multiplexing", nil)
+		return status.Error(codes.Unavailable, "GeekMode CLI runner not initialized")
+	}
+
+	// Create GeekParrot directly (no LLM dependency)
+	// 直接创建 GeekParrot（无 LLM 依赖），注入全局 geekRunner 单例
 	geekParrot, err := geek.NewGeekParrot(
+		h.geekRunner,
 		h.getWorkDirForUser(req.UserID),
 		req.UserID,
 		sessionID,
@@ -482,15 +516,19 @@ func (h *ParrotHandler) handleEvolutionMode(
 		return status.Error(codes.Internal, "evolution mode requires source directory configuration")
 	}
 
-	// Generate session ID for evolution (must be valid UUID for Claude Code CLI)
-	// Using user-specific namespace to isolate Evolution sessions from Geek sessions
-	// 使用用户特定的命名空间隔离 Evolution 和 Geek 会话
-	// Format: 00000000-0000-0000-0000-<user_id_padded_to_12_hex>
-	namespace := uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012x", req.UserID))
-	sessionID := uuid.NewSHA1(namespace, []byte(fmt.Sprintf("evolution_%d", req.ConversationID))).String()
+	// Generate a stable session ID based on Conversation ID using UUID v5
+	// 统一 Namespace 规则：使用模式名称(evolution)作为前缀并结合 UserID，确保跨用户、跨模式完全隔离
+	namespaceBase := fmt.Sprintf("evolution_%d", req.UserID)
+	namespace := uuid.NewMD5(uuid.NameSpaceOID, []byte(namespaceBase))
+	sessionID := uuid.NewSHA1(namespace, []byte(fmt.Sprintf("conversation_%d", req.ConversationID))).String()
 
-	// Create EvolutionParrot (pass store for admin verification)
-	evoParrot, err := geek.NewEvolutionParrot(sourceDir, req.UserID, sessionID, h.factory.store)
+	if h.evoRunner == nil {
+		logger.Error("EvoRunner global singleton is null, cannot perform Hot-Multiplexing", nil)
+		return status.Error(codes.Unavailable, "EvolutionMode CLI runner not initialized")
+	}
+
+	// Create EvolutionParrot (pass store for admin verification, inject global evoRunner)
+	evoParrot, err := geek.NewEvolutionParrot(h.evoRunner, sourceDir, req.UserID, sessionID, h.factory.store)
 	if err != nil {
 		logger.Error("Failed to create EvolutionParrot", err)
 		return status.Error(codes.Internal, fmt.Sprintf("failed to create EvolutionParrot: %v", err))
@@ -1733,6 +1771,14 @@ func (h *RoutingHandler) Handle(ctx context.Context, req *ChatRequest, stream Ch
 	// All agent types (including DEFAULT) now use parrot handler
 	// DEFAULT parrot (羽飞/Navi) is implemented as a standard parrot with pure LLM mode
 	return h.parrotHandler.Handle(ctx, req, stream)
+}
+
+// Close gracefully shuts down the underlying ParrotHandler and its singletons.
+func (h *RoutingHandler) Close() error {
+	if h.parrotHandler != nil {
+		return h.parrotHandler.Close()
+	}
+	return nil
 }
 
 // ToChatRequest converts a protobuf request to an internal ChatRequest.
