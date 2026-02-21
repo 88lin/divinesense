@@ -15,27 +15,25 @@ import (
 )
 
 type CCRunner struct {
-	engine *hotplex.Engine
+	engine     hotplex.HotPlexClient
+	adminToken string // Token for SetDangerBypassEnabled calls
 }
 
 // CCRunnerConfig defines the configuration for CCRunner execution.
-// DeviceContext is used to build SystemPrompt, not passed to hotplex directly.
+// DeviceContext is used to build TaskInstructions, not passed to hotplex directly.
+//
+// TaskInstructions has session-level persistence in hotplex: once set, it automatically
+// applies to all subsequent Execute calls in the same session unless explicitly overridden.
 type CCRunnerConfig struct {
-	Mode           string
-	WorkDir        string
-	ConversationID int64
-	SessionID      string
-	UserID         int32
-	SystemPrompt   string
-	DeviceContext  string // Used to build SystemPrompt via BuildSystemPrompt()
-	PermissionMode string
+	Mode             string
+	WorkDir          string
+	ConversationID   int64
+	SessionID        string
+	UserID           int32
+	TaskInstructions string // Session-persistent instructions (mapped to hotplex.TaskInstructions)
+	DeviceContext    string // Used to build TaskInstructions via BuildUserContextPrompt()
+	PermissionMode   string
 }
-
-type DangerDetector = hotplex.Detector
-
-type Session = hotplex.Session
-
-type SessionStatus = hotplex.SessionStatus
 
 type StreamMessage = hotplex.StreamMessage
 
@@ -89,10 +87,6 @@ func NewParrotStreamAdapter(send func(eventType string, eventData any) error) *P
 	return &ParrotStreamAdapter{send: send}
 }
 
-type DangerLevel = hotplex.DangerLevel
-
-type DangerBlockEvent = hotplex.DangerBlockEvent
-
 type ProcessingPhase string
 
 const (
@@ -124,15 +118,6 @@ type AssistantMessage = hotplex.AssistantMessage
 type UsageStats = hotplex.UsageStats
 
 const (
-	SessionStatusStarting = hotplex.SessionStatusStarting
-	SessionStatusReady    = hotplex.SessionStatusReady
-	SessionStatusBusy     = hotplex.SessionStatusBusy
-	SessionStatusDead     = hotplex.SessionStatusDead
-
-	DangerLevelCritical = hotplex.DangerLevelCritical
-	DangerLevelHigh     = hotplex.DangerLevelHigh
-	DangerLevelModerate = hotplex.DangerLevelModerate
-
 	EventTypePhaseChange  = "phase_change"
 	EventTypeProgress     = "progress"
 	EventTypeThinking     = "thinking"
@@ -143,24 +128,66 @@ const (
 	EventTypeSessionStats = "session_stats"
 )
 
-func NewCCRunner(timeout time.Duration, logger *slog.Logger) (*CCRunner, error) {
-	opts := hotplex.EngineOptions{
-		Timeout:     timeout,
-		IdleTimeout: 30 * time.Minute,
-		Logger:      logger,
-		Namespace:   "divinesense",
+// CCRunnerOption is a functional option for configuring CCRunner.
+type CCRunnerOption func(*ccRunnerOptions)
+
+type ccRunnerOptions struct {
+	adminToken       string
+	baseSystemPrompt string
+	namespace        string
+}
+
+// WithAdminToken sets the admin token for danger bypass mode.
+func WithAdminToken(token string) CCRunnerOption {
+	return func(o *ccRunnerOptions) {
+		o.adminToken = token
+	}
+}
+
+// WithBaseSystemPrompt sets the base system prompt for the engine.
+// This is injected at process startup as foundational rules for all sessions.
+func WithBaseSystemPrompt(prompt string) CCRunnerOption {
+	return func(o *ccRunnerOptions) {
+		o.baseSystemPrompt = prompt
+	}
+}
+
+// WithNamespace sets the namespace for UUID v5 session ID generation.
+// Different namespaces ensure physical isolation between modes (e.g., Geek vs Evolution).
+func WithNamespace(namespace string) CCRunnerOption {
+	return func(o *ccRunnerOptions) {
+		o.namespace = namespace
+	}
+}
+
+func NewCCRunner(timeout time.Duration, logger *slog.Logger, opts ...CCRunnerOption) (*CCRunner, error) {
+	// Apply options
+	opt := &ccRunnerOptions{}
+	for _, o := range opts {
+		o(opt)
 	}
 
-	engine, err := hotplex.NewEngine(opts)
+	// Default namespace
+	namespace := opt.namespace
+	if namespace == "" {
+		namespace = "divinesense"
+	}
+
+	engineOpts := hotplex.EngineOptions{
+		Timeout:          timeout,
+		IdleTimeout:      30 * time.Minute,
+		Logger:           logger,
+		Namespace:        namespace,
+		BaseSystemPrompt: opt.baseSystemPrompt,
+		AdminToken:       opt.adminToken,
+	}
+
+	engine, err := hotplex.NewEngine(engineOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	if e, ok := engine.(*hotplex.Engine); ok {
-		return &CCRunner{engine: e}, nil
-	}
-
-	return nil, fmt.Errorf("hotplex: failed to cast to *Engine")
+	return &CCRunner{engine: engine, adminToken: opt.adminToken}, nil
 }
 
 func (r *CCRunner) Execute(ctx context.Context, cfg *CCRunnerConfig, prompt string, callback EventCallback) error {
@@ -171,11 +198,13 @@ func (r *CCRunner) Execute(ctx context.Context, cfg *CCRunnerConfig, prompt stri
 	hotplexCfg := &hotplex.Config{
 		WorkDir:          cfg.WorkDir,
 		SessionID:        cfg.SessionID,
-		TaskSystemPrompt: cfg.SystemPrompt,
+		TaskInstructions: cfg.TaskInstructions,
 	}
 
-	if cfg.PermissionMode == "bypassPermissions" {
-		r.engine.SetDangerBypassEnabled(true)
+	if cfg.PermissionMode == "bypassPermissions" && r.adminToken != "" {
+		if err := r.engine.SetDangerBypassEnabled(r.adminToken, true); err != nil {
+			return fmt.Errorf("failed to enable danger bypass: %w", err)
+		}
 	}
 
 	var cb hotplex.Callback
@@ -207,12 +236,9 @@ func (r *CCRunner) SetDangerAllowPaths(paths []string) {
 	r.engine.SetDangerAllowPaths(paths)
 }
 
-func (r *CCRunner) SetDangerBypassEnabled(enabled bool) {
-	r.engine.SetDangerBypassEnabled(enabled)
-}
-
-func (r *CCRunner) GetDangerDetector() *DangerDetector {
-	return r.engine.GetDangerDetector()
+func (r *CCRunner) SetDangerBypassEnabled(token string, enabled bool) error {
+	r.adminToken = token // Store for Execute calls
+	return r.engine.SetDangerBypassEnabled(token, enabled)
 }
 
 func (r *CCRunner) ValidateConfig(cfg *CCRunnerConfig) error {
@@ -237,32 +263,24 @@ func ConversationIDToSessionID(conversationID int64) string {
 	return uuid.NewSHA1(namespace, []byte(name)).String()
 }
 
-func BuildSystemPrompt(workDir, sessionID string, userID int32, deviceContext string) string {
-	return BuildSystemPromptWithRuntime(workDir, sessionID, userID, deviceContext, getRuntimeInfo())
-}
+// DivineSenseBaseContext is the fixed context for all DivineSense sessions.
+// This should be included in EngineOptions.BaseSystemPrompt.
+const DivineSenseBaseContext = `# Context
 
-type RuntimeInfo struct {
-	OS        string
-	Arch      string
-	Timestamp time.Time
-}
+You are running inside DivineSense, an intelligent assistant system.
 
-func getRuntimeInfo() RuntimeInfo {
-	return RuntimeInfo{
-		OS:        runtime.GOOS,
-		Arch:      runtime.GOARCH,
-		Timestamp: time.Now(),
-	}
-}
+**User Interaction**: Users type questions in their web browser, which invokes you via a Go backend. Your response streams back to their browser in real-time. **Always respond in Chinese (Simplified).**
+`
 
-func BuildSystemPromptWithRuntime(workDir, sessionID string, userID int32, deviceContext string, runtimeInfo RuntimeInfo) string {
-	osName := runtimeInfo.OS
-	arch := runtimeInfo.Arch
+// BuildUserContextPrompt builds the user-specific context prompt.
+// This should be passed to hotplex.Config.TaskInstructions on first session creation.
+// Time is excluded as it changes on every request.
+func BuildUserContextPrompt(workDir, sessionID string, userID int32, deviceContext string) string {
+	osName := runtime.GOOS
+	arch := runtime.GOARCH
 	if osName == "darwin" {
 		osName = "macOS"
 	}
-
-	timestamp := runtimeInfo.Timestamp.Format("2006-01-02 15:04:05")
 
 	var contextMap map[string]any
 	userAgent := "Unknown"
@@ -297,21 +315,19 @@ func BuildSystemPromptWithRuntime(workDir, sessionID string, userID int32, devic
 		}
 	}
 
-	return fmt.Sprintf(`# Context
-
-You are running inside DivineSense, an intelligent assistant system.
-
-**User Interaction**: Users type questions in their web browser, which invokes you via a Go backend. Your response streams back to their browser in real-time. **Always respond in Chinese (Simplified).**
-
-- **User ID**: %d
+	return fmt.Sprintf(`- **User ID**: %d
 - **Client Device**: %s
 - **User Agent**: %s
 - **Server OS**: %s (%s)
-- **Time**: %s
 - **Workspace**: %s
 - **Mode**: Non-interactive headless (--print)
 - **Session**: %s (persists via --session-id/--resume)
-`, userID, deviceInfo, userAgent, osName, arch, timestamp, workDir, sessionID)
+`, userID, deviceInfo, userAgent, osName, arch, workDir, sessionID)
+}
+
+// BuildSystemPrompt is deprecated. Use DivineSenseBaseContext + BuildUserContextPrompt instead.
+func BuildSystemPrompt(workDir, sessionID string, userID int32, deviceContext string) string {
+	return DivineSenseBaseContext + "\n" + BuildUserContextPrompt(workDir, sessionID, userID, deviceContext)
 }
 
 func SafeCallback(callback EventCallback) SafeCallbackFunc {

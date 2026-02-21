@@ -55,12 +55,32 @@ type ParrotHandler struct {
 
 // NewParrotHandler creates a new parrot handler.
 func NewParrotHandler(factory *AgentFactory, llm ai.LLMService, persister *aistats.Persister, blockManager *BlockManager, titleGenerator *ai.TitleGenerator) *ParrotHandler {
+	// Read admin token for danger bypass mode (Geek and Evolution modes)
+	adminToken := os.Getenv("DIVINESENSE_GEEK_ADMIN_TOKEN")
+
+	// Create mode instances for BaseSystemPrompt
+	geekMode := geek.NewGeekMode("")
+	evoMode := geek.NewEvolutionMode(&geek.EvolutionModeConfig{
+		SourceDir: ".",
+		AdminOnly: os.Getenv("DIVINESENSE_EVOLUTION_ADMIN_ONLY") == "true",
+		Store:     factory.store,
+	})
+
 	// Create singletons for CC execution. Evolution and Geek use isolated runners.
-	geekRunner, err := agentpkg.NewCCRunner(30*time.Minute, slog.Default()) // Long timeout for active shell
+	// Each runner has its own BaseSystemPrompt and Namespace for physical isolation.
+	geekRunner, err := agentpkg.NewCCRunner(30*time.Minute, slog.Default(),
+		agentpkg.WithAdminToken(adminToken),
+		agentpkg.WithBaseSystemPrompt(geekMode.BaseSystemPrompt()),
+		agentpkg.WithNamespace("divinesense-geek"),
+	)
 	if err != nil {
 		slog.Warn("Failed to create geekRunner in init (CLI not found?)", "error", err)
 	}
-	evoRunner, err := agentpkg.NewCCRunner(30*time.Minute, slog.Default())
+	evoRunner, err := agentpkg.NewCCRunner(30*time.Minute, slog.Default(),
+		agentpkg.WithAdminToken(adminToken),
+		agentpkg.WithBaseSystemPrompt(evoMode.BaseSystemPrompt()),
+		agentpkg.WithNamespace("divinesense-evolution"),
+	)
 	if err != nil {
 		slog.Warn("Failed to create evoRunner in init (CLI not found?)", "error", err)
 	}
