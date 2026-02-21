@@ -97,6 +97,7 @@ func (r *ConflictResolver) Resolve(ctx context.Context, userID int32,
 }
 
 // FindAllFreeSlots finds all free time slots for a specific date.
+// It strictly filters out time slots that are in the past (no time travel).
 func (r *ConflictResolver) FindAllFreeSlots(ctx context.Context, userID int32,
 	date time.Time, duration time.Duration) ([]TimeSlot, error) {
 
@@ -105,10 +106,38 @@ func (r *ConflictResolver) FindAllFreeSlots(ctx context.Context, userID int32,
 		hourEnd   = 22 // 10 PM (last slot starts at 22:00)
 	)
 
-	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), hourStart, 0, 0, 0, date.Location())
-	endOfDay := time.Date(date.Year(), date.Month(), date.Day(), hourEnd, 0, 0, 0, date.Location())
+	loc := date.Location()
+	now := time.Now().In(loc)
 
-	return r.findSlotsInRange(ctx, userID, startOfDay, endOfDay, duration, date.Location())
+	// If the date is today, start from current time; otherwise start from hourStart
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), hourStart, 0, 0, 0, loc)
+	if date.Year() == now.Year() && date.YearDay() == now.YearDay() {
+		// Today: only consider slots from now onwards (strict no time travel)
+		if now.After(startOfDay) {
+			startOfDay = now
+		}
+	}
+
+	endOfDay := time.Date(date.Year(), date.Month(), date.Day(), hourEnd, 0, 0, 0, loc)
+
+	slots, err := r.findSlotsInRange(ctx, userID, startOfDay, endOfDay, duration, loc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Strict filter: remove any slots that start before now
+	// This handles edge cases where the slot calculation returns past times
+	if date.Year() == now.Year() && date.YearDay() == now.YearDay() {
+		var filtered []TimeSlot
+		for _, slot := range slots {
+			if slot.Start.After(now) || slot.Start.Equal(now) {
+				filtered = append(filtered, slot)
+			}
+		}
+		return filtered, nil
+	}
+
+	return slots, nil
 }
 
 // findAlternatives finds all available alternative time slots.
