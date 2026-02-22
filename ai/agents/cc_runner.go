@@ -72,7 +72,7 @@ type SessionStatsData struct {
 }
 
 type SessionStatsProvider interface {
-	GetSessionStats() *SessionStats
+	GetSessionStats(sessionID string) *SessionStats
 }
 
 type ParrotStreamAdapter struct {
@@ -219,8 +219,8 @@ func (r *CCRunner) Close() error {
 	return r.engine.Close()
 }
 
-func (r *CCRunner) GetSessionStats() *SessionStats {
-	return r.engine.GetSessionStats()
+func (r *CCRunner) GetSessionStats(sessionID string) *SessionStats {
+	return r.engine.GetSessionStats(sessionID)
 }
 
 func (r *CCRunner) StopSession(sessionID string, reason string) error {

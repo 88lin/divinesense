@@ -218,7 +218,7 @@ func (p *EvolutionParrot) Cancel() {
 // GetSessionStats 返回上次执行的会话统计数据。
 // Implements agentpkg.ParrotAgent interface.
 func (p *EvolutionParrot) GetSessionStats() *agentpkg.NormalSessionStats {
-	stats := p.runner.GetSessionStats()
+	stats := p.runner.GetSessionStats(p.sessionID)
 	if stats == nil {
 		return nil
 	}

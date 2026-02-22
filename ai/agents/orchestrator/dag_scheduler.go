@@ -238,6 +238,10 @@ func (s *DAGScheduler) Run(ctx context.Context) error {
 			}
 
 			if active == 0 {
+				if len(s.readyQueue) > 0 {
+					s.mu.Unlock()
+					continue
+				}
 				s.mu.Unlock()
 				// No active workers and ready queue is empty (implied by default case)
 				// This means we are stuck -> Cycle detected
