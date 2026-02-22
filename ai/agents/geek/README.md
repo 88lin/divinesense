@@ -1,12 +1,12 @@
 # Geek Parrot (`ai/agents/geek`)
 
-`geek` 包实现了面向**代码执行**和**自我进化**的高级 Agent —— `GeekParrot` 和 `EvolutionParrot`。它集成了 Claude Code CLI，使其具备直接操作文件系统、运行终端命令和编写代码的能力。
+`geek` 包实现了面向**代码执行**和**自我进化**的高级 Agent —— `GeekParrot` 和 `EvolutionParrot`。它通过集成 **[HotPlex](https://github.com/hrygo/hotplex)** 深度连接 Claude Code CLI，使其具备直接操作文件系统、运行终端命令和编写代码的能力。
 
 ## 架构与能力
 
 ### 1. GeekParrot (Geek Mode)
 *   **代码执行**: 封装了 Claude Code CLI 的交互。
-*   **适配器模式**: 自身是无状态瞬态对象，将请求转发给全局长生命周期的 `runner.CCRunner` 单例。
+*   **适配器模式**: 自身是无状态瞬态对象，将请求转发给基于 **HotPlex** 构建的 `runner.CCRunner` 引擎。
 *   **会话一致性**: 通过 UUID v5 (ConversationID + UserID) 保证绝对物理隔离。
 
 ### 2. EvolutionParrot (Evolution Mode)

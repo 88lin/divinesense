@@ -19,7 +19,7 @@
 - **数据完全私有**：100% 自托管，无遥测，所有数据存储在您自己的服务器
 - **极简单文件部署**：Go 语言编译的单二进制文件，零依赖，极低资源占用
 - **Chat Apps 无缝集成**：原生支持 Telegram 和 钉钉，双向对话，随时随地记录与交互
-- **Geek Mode**: 深度集成 Claude Code CLI，采用 **Hot-Multiplexing (热多路复用)** 架构，秒级响应代码执行与自动化任务
+- **Geek Mode**: 集成 Claude Code CLI，通过 **HotPlex** 实现 **Hot-Multiplexing (热多路复用)** 架构，秒级响应代码执行与自动化任务
 - **智能日程管理**：支持自然语言创建日程（如"明天下午三点开会"），自动冲突检测
 
 ---
@@ -178,7 +178,7 @@ make deps-all && make start
 
 **架构亮点**：
 - **Orchestrator-Workers**：LLM 驱动的任务分解、并行执行、结果聚合
-- **CC Runner v2.0**：深度集成 Claude Code，通过 **Hot-Multiplexing** 实现 Stdin/Stdout 流复用，挂载 PGID 进程组实现优雅销毁
+- **CC Runner v2.0**：集成 Claude Code，通过 **HotPlex** 提供的 **Hot-Multiplexing** 实现 Stdin/Stdout 流复用，挂载 PGID 进程组实现优雅销毁
 - **单二进制分发**：Go embed 打包前端静态资源，零依赖部署
 - **Connect RPC**：gRPC-HTTP 转码，类型安全的 API
 - **Unified Block Model**：AI 聊天对话持久化，支持流式渲染和会话恢复
