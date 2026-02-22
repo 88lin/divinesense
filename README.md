@@ -9,6 +9,7 @@
   <a href="https://github.com/hrygo/divinesense/releases"><img src="https://img.shields.io/badge/version-v0.101.0-green.svg" alt="Version"></a>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8.svg" alt="Go"></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18-61DAFB.svg" alt="React"></a>
+  <a href="https://github.com/hrygo/hotplex"><img src="https://img.shields.io/badge/powered%20by-HotPlex-orange.svg" alt="Powered by HotPlex"></a>
 </p>
 
 ---
@@ -253,3 +254,4 @@ make deps-all && make start
 ## 致谢
 
 本项目受到 [memos](https://github.com/usememos/memos) 启发。
+Powered by [HotPlex](https://github.com/hrygo/hotplex).
